@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="75" height="75" viewBox="0 0 75 75">
+  <g id="Group_9" data-name="Group 9" transform="translate(-44 -182)">
+    <rect id="Rectangle_194" data-name="Rectangle 194" width="75" height="75" rx="11" transform="translate(44 182)" fill="#ebebeb"/>
+    <g id="hospital" transform="translate(49 187)">
+      <path id="Path_110" data-name="Path 110" d="M32.5,0A32.5,32.5,0,1,1,0,32.5,32.5,32.5,0,0,1,32.5,0Z" fill="#ebebeb"/>
+      <path id="Path_111" data-name="Path 111" d="M72.022,80.162h8.156V72.029A2.03,2.03,0,0,1,82.207,70h8.117a2.03,2.03,0,0,1,2.027,2.031V80.16h8.113a2.03,2.03,0,0,1,2.031,2.031v8.127a2.032,2.032,0,0,1-2.031,2.035H92.351v8.109a2.029,2.029,0,0,1-2.027,2.031H82.207a2.029,2.029,0,0,1-2.029-2.031V92.354H72.022a2.033,2.033,0,0,1-2.033-2.035V82.192A2.031,2.031,0,0,1,72.022,80.162Z" transform="translate(-53.743 -53.75)" fill="#e2574c"/>
+    </g>
+  </g>
+</svg>
