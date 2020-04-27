@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -9,15 +10,55 @@ class DepartmentsPage extends StatefulWidget {
 class _DepartmentsPageState extends State<DepartmentsPage> {
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
+    return Container(
+      color: Colors.white,
+      height: double.infinity,
+      child: Stack(
+        alignment: Alignment.topCenter,
         children: [
+          Positioned(
+            top: 60.0,
+            left: 0.0,
+            right: 0.0,
+            bottom: 0.0,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DepartmentsMessageBox(
+                    imageLoc: 'assets/health_avatar.svg',
+                    subscribed: true,
+                    title: "Ministry of Health",
+                    subtitle: "India",
+                  ),
+                  DepartmentsMessageBox(
+                    imageLoc: 'assets/police_avatar.svg',
+                    subscribed: false,
+                    title: "Police Department",
+                    subtitle: "Surat",
+                  ),
+                  DepartmentsMessageBox(
+                    imageLoc: 'assets/muncorp_avatar.svg',
+                    subscribed: true,
+                    title: "Municipal Corporation",
+                    subtitle: "Surat",
+                  ),
+                  DepartmentsMessageBox(
+                    imageLoc: 'assets/muncorp_avatar.svg',
+                    subscribed: true,
+                    title: "Municipal Corporation",
+                    subtitle: "Surat",
+                  ),
+                ],
+              ),
+            ),
+          ),
           Container(
-            margin: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
-            padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+            margin: EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
+            padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(25.0),
-              color: Colors.grey.withOpacity(0.2),
+              color: Color(0xffF0F0F0),
             ),
             child: Row(
               children: [
@@ -28,7 +69,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                     style: Theme.of(context)
                         .textTheme
                         .headline1
-                        .copyWith(color: Color(0xff8C8C8C)),
+                        .copyWith(color: Color(0xff6F6F6F)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -39,40 +80,24 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
               ],
             ),
           ),
-          DepartmentsMessageBox(
-            imageLoc: 'assets/health_avatar.svg',
-            subscribed: true,
-            title: "Ministry of Health",
-            subtitle: "India",
-          ),
-          DepartmentsMessageBox(
-            imageLoc: 'assets/police_avatar.svg',
-            subscribed: false,
-            title: "Police Department",
-            subtitle: "Surat",
-          ),
-          DepartmentsMessageBox(
-            imageLoc: 'assets/muncorp_avatar.svg',
-            subscribed: true,
-            title: "Municipal Corporation",
-            subtitle: "Surat",
-          ),
         ],
       ),
     );
   }
 }
 
+
 class DepartmentsMessageBox extends StatelessWidget {
+
   final String imageLoc, title, subtitle;
   final bool subscribed;
-  DepartmentsMessageBox(
-      {this.imageLoc, this.title, this.subtitle, this.subscribed});
+
+  DepartmentsMessageBox({this.imageLoc, this.title, this.subtitle, this.subscribed});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+      margin: EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
       padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(5.0)),
@@ -108,9 +133,9 @@ class DepartmentsMessageBox extends StatelessWidget {
                       ),
                       Text(
                         subtitle,
-                        style: Theme.of(context).textTheme.headline3.copyWith(
+                        style: Theme.of(context).textTheme.headline2.copyWith(
                             color: Color(0xff514A4A),
-                            fontWeight: FontWeight.bold),
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -121,20 +146,16 @@ class DepartmentsMessageBox extends StatelessWidget {
             ],
           ),
           Align(
-            alignment: Alignment.topRight,
-            child: Container(
-              margin: EdgeInsets.only(top: 10.0),
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: Colors.white,
-              ),
+            alignment: Alignment.bottomRight,
+            child: CupertinoButton(
+              padding: EdgeInsets.all(0.0),
+              onPressed: (){},
               child: Text(
-                subscribed ? "Subscribed" : "Unsubscribed",
+                subscribed ? "SUBSCRIBE" : "UNSUBSCRIBE",
                 style: Theme.of(context)
                     .textTheme
                     .headline2
-                    .copyWith(color: Color(0xff8C8C8C)),
+                    .copyWith(color: Colors.red, fontWeight: FontWeight.w600),
               ),
             ),
           ),

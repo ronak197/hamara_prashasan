@@ -54,8 +54,7 @@ class _HomePageState extends State<HomePage> {
             Text('Welcome Ronak',
                 style: Theme.of(context)
                     .textTheme
-                    .headline4
-                    .copyWith(fontWeight: FontWeight.w600)),
+                    .headline4),
             Row(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
