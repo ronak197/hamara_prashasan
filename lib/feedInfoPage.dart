@@ -6,15 +6,23 @@ import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/feedClasses.dart';
 
 class FeedInfoPage extends StatefulWidget {
-  final List<dynamic> content;
-  FeedInfoPage({this.content});
+  final Feed feed;
+  FeedInfoPage({@required this.feed});
   @override
-  _FeedInfoPageState createState() => _FeedInfoPageState(content: content);
+  _FeedInfoPageState createState() => _FeedInfoPageState(feed: feed);
 }
 
 class _FeedInfoPageState extends State<FeedInfoPage> {
-  final List<dynamic> content;
-  _FeedInfoPageState({this.content});
+  final Feed feed;
+  _FeedInfoPageState({this.feed});
+  List<dynamic> content;
+
+  @override
+  void initState() {
+    super.initState();
+    content = feed.contents;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,7 +36,9 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
         titleSpacing: 0.0,
         leading: IconButton(
           icon: Icon(Icons.clear),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
         ),
         actions: [
           Column(
@@ -36,7 +46,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Police Department',
+              Text(feed.department.name,
                   style: Theme.of(context).textTheme.headline2),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -56,7 +66,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                       height: 16.0,
                       alignment: Alignment.bottomRight,
                       child: Center(
-                          child: Text('Surat',
+                          child: Text(feed.location.city,
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyText1
@@ -68,7 +78,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
           Container(
             padding: EdgeInsets.symmetric(vertical: 8, horizontal: 2),
             child: SvgPicture.asset(
-              'assets/police_avatar.svg',
+              feed.department.logoUrl,
             ),
           )
         ],
@@ -84,13 +94,18 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text("Curfew till 12th May",
+                        Text(feed.title,
                             style: Theme.of(context)
                                 .textTheme
                                 .headline4
                                 .copyWith(fontWeight: FontWeight.bold)),
                         Spacer(),
-                        Text("India, 11:00 AM",
+                        Text(
+                            feed.location.country +
+                                ", " +
+                                feed.time.hour.toString() +
+                                ":" +
+                                feed.time.minute.toString(),
                             style: Theme.of(context).textTheme.bodyText1),
                       ],
                     ),
@@ -122,6 +137,10 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                         child: CachedNetworkImage(
                           imageUrl: image.url,
                           fit: BoxFit.contain,
+                          placeholder: (context, s) => Container(
+                            alignment: Alignment.center,
+                            child: CircularProgressIndicator(),
+                          ),
                         ),
                       ),
                     );
