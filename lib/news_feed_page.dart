@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:hamaraprashasan/feedClasses.dart';
+import 'package:hamaraprashasan/feedInfoPage.dart';
 
 class NewsFeedPage extends StatefulWidget {
   @override
@@ -11,7 +13,29 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        MessageBox(),
+        GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (context) => FeedInfoPage(
+                      content: [
+                        TextData(
+                            text:
+                                "Citizens are informed that curfew has been imposed starting from today till further announcement by the government of India. Following locations are the places where you can get shelter homes."),
+                        TableData(
+                          headers: List.generate(6, (index) => "Head"),
+                          contents: List.generate(
+                            4,
+                            (i) => List.generate(6, (j) => "Row ${i + 1}"),
+                          ),
+                        ),
+                        ImageData(
+                            url:
+                                "https://firebasestorage.googleapis.com/v0/b/elare-bd2f2.appspot.com/o/cover_images%2FMLDC_cover.png?alt=media&token=b375c390-bf56-47e2-9fcf-d6ba5d7d39f8"),
+                      ],
+                    )));
+          },
+          child: MessageBox(),
+        ),
       ],
     );
   }
@@ -49,13 +73,18 @@ class MessageBox extends StatelessWidget {
                     children: [
                       Text(
                         'Surat Police Department',
-                        style: Theme.of(context).textTheme.headline3.copyWith(color: Color(0xff514A4A), fontWeight: FontWeight.w600),
+                        style: Theme.of(context).textTheme.headline3.copyWith(
+                            color: Color(0xff514A4A),
+                            fontWeight: FontWeight.w600),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         'Curfew Till 12th of May',
-                        style: Theme.of(context).textTheme.headline2.copyWith( color: Color(0xff514A4A)),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline2
+                            .copyWith(color: Color(0xff514A4A)),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -68,12 +97,21 @@ class MessageBox extends StatelessWidget {
           Container(
             alignment: Alignment.topLeft,
             margin: EdgeInsets.only(top: 10.0),
-            child: Text('Citizens are informed that curfew has been imposed starting from today till further announcement.', style: Theme.of(context).textTheme.headline1,),
+            child: Text(
+              'Citizens are informed that curfew has been imposed starting from today till further announcement.',
+              style: Theme.of(context).textTheme.headline1,
+            ),
           ),
           Container(
             alignment: Alignment.topRight,
             margin: EdgeInsets.only(top: 10.0),
-            child: Text('Surat, 11:00 AM', style: Theme.of(context).textTheme.bodyText1.copyWith(color: Color(0xff8C8C8C)),),
+            child: Text(
+              'Surat, 11:00 AM',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyText1
+                  .copyWith(color: Color(0xff8C8C8C)),
+            ),
           ),
         ],
       ),
