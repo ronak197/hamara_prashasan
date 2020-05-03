@@ -25,6 +25,9 @@ dependencies:
     sdk: flutter
   flutter_webview_plugin: ^0.3.11
   flutter_svg: ^0.17.4
+  cached_network_image: 2.1.0+1
+  image_picker:
+  google_maps_flutter:
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -63,20 +66,20 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
-   - family: OpenSans
-     fonts:
-       - asset: assets/fonts/OpenSans-Regular.ttf
-       - asset: assets/fonts/OpenSans-SemiBold.ttf
-         weight: 600
-   - family:  BottomBarIcons
-     fonts:
-       - asset: assets/icons/BottomBarIcons.ttf
-   - family:  AppBarIcons
-     fonts:
-       - asset: assets/icons/AppBarIcons.ttf
-   - family:  DrawerIcons
-     fonts:
-       - asset: assets/icons/DrawerIcons.ttf
+    - family: OpenSans
+      fonts:
+        - asset: assets/fonts/OpenSans-Regular.ttf
+        - asset: assets/fonts/OpenSans-SemiBold.ttf
+          weight: 600
+    - family:  BottomBarIcons
+      fonts:
+        - asset: assets/icons/BottomBarIcons.ttf
+    - family:  AppBarIcons
+      fonts:
+        - asset: assets/icons/AppBarIcons.ttf
+    - family:  DrawerIcons
+      fonts:
+        - asset: assets/icons/DrawerIcons.ttf
 
   #
   # For details regarding fonts from package dependencies,
