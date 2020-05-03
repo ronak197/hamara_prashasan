@@ -1,10 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/send_post_page.dart';
-
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/bookmarks.dart';
-
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
 import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/departments_page.dart';
