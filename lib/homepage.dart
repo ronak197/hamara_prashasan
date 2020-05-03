@@ -2,6 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/send_post_page.dart';
 
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:hamaraprashasan/bookmarks.dart';
+
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
 import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/departments_page.dart';
@@ -15,73 +18,183 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
-  final List<Widget> _children = [
-    NewsFeedPage(),
-    DepartmentsPage(),
-    Center(
-      child: Text('Bookmark Page'),
-    ),
-    Center(
-      child: Text('Chat Page'),
-    ),
-  ];
+  List<Widget> _children;
+  NewsFeedPage newsFeedPage;
+  DepartmentsPage departmentsPage;
+  BookmarkPage bookmarkPage;
+  bool feedSelected = false, bookmarkSelected = false;
+
+  void anyFeedSelected() {
+    setState(() {
+      feedSelected = true;
+    });
+  }
+
+  void allSelectedFeedCleared() {
+    setState(() {
+      feedSelected = false;
+    });
+  }
+
+  void clearSelectedFeed() {
+    setState(() {
+      feedSelected = false;
+    });
+    newsFeedPage.clearSelectedFeed();
+  }
+
+  void anyBookmarkSelected() {
+    setState(() {
+      bookmarkSelected = true;
+    });
+  }
+
+  void allSelectedBookmarkCleared() {
+    setState(() {
+      bookmarkSelected = false;
+    });
+  }
+
+  void clearSelectedBookmark() {
+    setState(() {
+      bookmarkSelected = false;
+    });
+    bookmarkPage.clearSelectedBookmark();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    newsFeedPage = new NewsFeedPage(
+      anyFeedSelected: anyFeedSelected,
+      allSelectedFeedCleared: allSelectedFeedCleared,
+    );
+    bookmarkPage = new BookmarkPage(
+      anyBookmarkSelected: anyBookmarkSelected,
+      allSelectedBookmarkCleared: allSelectedBookmarkCleared,
+    );
+    departmentsPage = new DepartmentsPage();
+    _children = [
+      newsFeedPage,
+      departmentsPage,
+      bookmarkPage,
+      Center(
+        child: Text('Chat Page'),
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.black,
-        ),
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 0.0,
-        titleSpacing: 0.0,
-        actions: [
-          Container(
-            padding: EdgeInsets.all(10.0),
-            child: Icon(
-              AppBarIcons.filter,
-              size: 20.0,
-            ),
-          )
-        ],
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Welcome Ronak',
-                style: Theme.of(context)
-                    .textTheme
-                    .headline4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
+      appBar: feedSelected && _currentIndex == 0
+          ? AppBar(
+              iconTheme: IconThemeData(
+                color: Colors.black,
+              ),
+              backgroundColor: Colors.white,
+              elevation: 5.0,
+              titleSpacing: 0.0,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.clear,
+                  size: 30.0,
+                ),
+                onPressed: clearSelectedFeed,
+              ),
+              actions: [
                 Container(
-                    height: 16.0,
-                    alignment: Alignment.bottomCenter,
-                    child: Center(
-                        child: Icon(
-                      AppBarIcons.location,
-                      size: 10.0,
-                      color: Color(0xff6D6D6D),
-                    ))),
-                Container(
-                    height: 16.0,
-                    alignment: Alignment.topLeft,
-                    child: Center(
-                        child: Text('Surat',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyText1
-                                .copyWith(color: Color(0xff6D6D6D)))))
+                  padding: EdgeInsets.all(10.0),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.bookmark_border,
+                      size: 30.0,
+                    ),
+                    onPressed: () {},
+                  ),
+                )
               ],
             )
-          ],
-        ),
-      ),
+          : bookmarkSelected && _currentIndex == 2
+              ? AppBar(
+                  iconTheme: IconThemeData(
+                    color: Colors.black,
+                  ),
+                  backgroundColor: Colors.white,
+                  elevation: 5.0,
+                  titleSpacing: 0.0,
+                  leading: IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      size: 30.0,
+                    ),
+                    onPressed: clearSelectedBookmark,
+                  ),
+                  actions: [
+                    Container(
+                      padding: EdgeInsets.all(10.0),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.delete,
+                          size: 30.0,
+                          color: Colors.red,
+                        ),
+                        onPressed: () {},
+                      ),
+                    )
+                  ],
+                )
+              : AppBar(
+                  iconTheme: IconThemeData(
+                    color: Colors.black,
+                  ),
+                  automaticallyImplyLeading: true,
+                  backgroundColor: Colors.white,
+                  elevation: 0.0,
+                  titleSpacing: 0.0,
+                  actions: [
+                    Container(
+                      padding: EdgeInsets.all(10.0),
+                      child: Icon(
+                        AppBarIcons.filter,
+                        size: 20.0,
+                      ),
+                    )
+                  ],
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Welcome Ronak',
+                          style: Theme.of(context).textTheme.headline4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Container(
+                              height: 16.0,
+                              alignment: Alignment.bottomCenter,
+                              child: Center(
+                                  child: Icon(
+                                AppBarIcons.location,
+                                size: 10.0,
+                                color: Color(0xff6D6D6D),
+                              ))),
+                          Container(
+                              height: 16.0,
+                              alignment: Alignment.topLeft,
+                              child: Center(
+                                  child: Text('Surat',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyText1
+                                          .copyWith(color: Color(0xff6D6D6D)))))
+                        ],
+                      )
+                    ],
+                  ),
+                ),
       drawer: Drawer(
         child: Column(
           children: [
@@ -356,7 +469,10 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: _children[_currentIndex],
+      body: IndexedStack(
+        children: _children,
+        index: _currentIndex,
+      ),
     );
   }
 }

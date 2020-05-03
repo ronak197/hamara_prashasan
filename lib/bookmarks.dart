@@ -3,28 +3,29 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/feedClasses.dart';
 import 'package:hamaraprashasan/feedInfoPage.dart';
 
-class NewsFeedPage extends StatefulWidget {
-  final Function anyFeedSelected, allSelectedFeedCleared;
-  void clearSelectedFeed() {
-    _newsFeedPageState.clearSelectedFeed();
+class BookmarkPage extends StatefulWidget {
+  final Function anyBookmarkSelected, allSelectedBookmarkCleared;
+  void clearSelectedBookmark() {
+    _newsFeedPageState.clearSelectedBookmark();
   }
 
-  _NewsFeedPageState _newsFeedPageState = new _NewsFeedPageState();
-  NewsFeedPage(
-      {@required this.anyFeedSelected, @required this.allSelectedFeedCleared});
+  _BookmarkPageState _newsFeedPageState = new _BookmarkPageState();
+  BookmarkPage(
+      {@required this.anyBookmarkSelected,
+      @required this.allSelectedBookmarkCleared});
   @override
-  _NewsFeedPageState createState() => _newsFeedPageState;
+  _BookmarkPageState createState() => _newsFeedPageState;
 }
 
-class _NewsFeedPageState extends State<NewsFeedPage> {
-  List<Feed> feeds;
+class _BookmarkPageState extends State<BookmarkPage> {
+  List<Feed> bookmarks;
   List<bool> selected;
 
-  void getFeeds() {
-    feeds = new List();
+  void getBookmarks() {
+    bookmarks = new List();
     selected = new List();
     for (int i = 0; i < 4; i++) {
-      feeds.add(new Feed(
+      bookmarks.add(new Feed(
         contents: [
           TextData(
               text:
@@ -51,7 +52,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     }
   }
 
-  void clearSelectedFeed() {
+  void clearSelectedBookmark() {
     setState(() {
       for (int i = 0; i < selected.length; i++) selected[i] = false;
     });
@@ -60,7 +61,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   @override
   void initState() {
     super.initState();
-    getFeeds();
+    getBookmarks();
   }
 
   @override
@@ -69,14 +70,14 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     return SingleChildScrollView(
       child: Column(
         children: List<Widget>.generate(
-          feeds.length,
+          bookmarks.length,
           (i) => GestureDetector(
             onLongPress: anySelected
                 ? null
                 : () {
                     setState(() {
                       selected[i] = true;
-                      widget.anyFeedSelected();
+                      widget.anyBookmarkSelected();
                     });
                   },
             onTap: selected[i] || anySelected
@@ -84,14 +85,14 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                     setState(() {
                       selected[i] = !selected[i];
                       if (!(selected.any((element) => element)))
-                        widget.allSelectedFeedCleared();
+                        widget.allSelectedBookmarkCleared();
                     });
                   }
                 : () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => FeedInfoPage(
-                          feed: feeds[i],
+                          feed: bookmarks[i],
                         ),
                       ),
                     );
@@ -99,7 +100,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
             child: Container(
               margin: EdgeInsets.symmetric(vertical: 10),
               child: MessageBox(
-                feed: feeds[i],
+                feed: bookmarks[i],
                 selected: selected[i],
                 canBeSelected: anySelected,
               ),
