@@ -25,6 +25,8 @@ dependencies:
     sdk: flutter
   flutter_webview_plugin: ^0.3.11
   flutter_svg: ^0.17.4
+  image_picker: ^0.6.5+2
+  google_maps_flutter: ^0.5.26+4
 
 
   # The following adds the Cupertino Icons font to your application.

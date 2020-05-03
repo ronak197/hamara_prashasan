@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:hamaraprashasan/send_post_page.dart';
 
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
 import 'package:hamaraprashasan/app_bar_icons_icons.dart';
@@ -106,6 +105,34 @@ class _HomePageState extends State<HomePage> {
               accountName: Text('Ronak Jain',
                   style: Theme.of(context).textTheme.headline1.copyWith(
                       fontWeight: FontWeight.w600, color: Colors.white)),
+            ),
+            InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context){
+                      return SendPostPage();
+                    }
+                  )
+                );
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  Container(
+                      padding: EdgeInsets.all(20.0),
+                      child: Icon(
+                        DrawerIcons.paper_plane,
+                        color: Colors.black,
+                        size: 18.0,
+                      )),
+                  Text(
+                    'Make a Public Post',
+                    style: Theme.of(context).textTheme.headline2,
+                  )
+                ],
+              ),
             ),
             InkWell(
               onTap: () {},
