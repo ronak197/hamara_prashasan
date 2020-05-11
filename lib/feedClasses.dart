@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 
 class ImageData {
   String url;
-  ImageData({@required this.url});
+  bool isLocal;
+  ImageData({@required this.url, this.isLocal}) {
+    if (this.isLocal == null) this.isLocal = false;
+  }
 }
 
-class TextData {
+class TitleData {
+  String title;
+  TitleData({@required this.title});
+}
+
+class ContentData {
   String text;
-  TextData({@required this.text});
+  ContentData({@required this.text});
 }
 
 class MapData {
@@ -26,17 +34,18 @@ class TableData {
 }
 
 class Feed {
-  String title;
   DateTime time;
+  TitleData firstTitle;
   List<dynamic> contents;
   Department department;
   LocationData location;
-  Feed(
-      {@required this.contents,
-      @required this.location,
-      @required this.time,
-      @required this.title,
-      @required this.department});
+  Feed({
+    @required this.contents,
+    @required this.location,
+    @required this.time,
+    @required this.department,
+    @required this.firstTitle,
+  });
 }
 
 class LocationData {
