@@ -1,14 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/send_post_page.dart';
-import 'package:hamaraprashasan/bookmarks.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/bookmarks.dart';
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
 import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/departments_page.dart';
 import 'package:hamaraprashasan/drawer_icons_icons.dart';
 import 'package:hamaraprashasan/news_feed_page.dart';
+import 'package:hamaraprashasan/sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -196,6 +197,7 @@ class _HomePageState extends State<HomePage> {
                 ),
       drawer: Drawer(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             UserAccountsDrawerHeader(
               currentAccountPicture: CircleAvatar(
@@ -218,154 +220,186 @@ class _HomePageState extends State<HomePage> {
                   style: Theme.of(context).textTheme.headline1.copyWith(
                       fontWeight: FontWeight.w600, color: Colors.white)),
             ),
-            InkWell(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context){
-                      return SendPostPage();
-                    }
-                  )
-                );
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
+            Expanded(
+              child: ListView(
+                scrollDirection: Axis.vertical,
+                padding: EdgeInsets.all(0.0),
                 children: [
-                  Container(
-                      padding: EdgeInsets.all(20.0),
-                      child: Icon(
-                        DrawerIcons.paper_plane,
-                        color: Colors.black,
-                        size: 18.0,
-                      )),
-                  Text(
-                    'Make a Public Post',
-                    style: Theme.of(context).textTheme.headline2,
-                  )
+                  InkWell(
+                    onTap: () {
+                      Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (context){
+                                return SendPostPage();
+                              }
+                          )
+                      );
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              DrawerIcons.paper_plane,
+                              color: Colors.black,
+                              size: 18.0,
+                            )),
+                        Text(
+                          'Make a Public Post',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              DrawerIcons.notifications,
+                              color: Colors.black,
+                              size: 18.0,
+                            )),
+                        Text(
+                          'Notifications',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              DrawerIcons.general,
+                              color: Colors.black,
+                              size: 18.0,
+                            )),
+                        Text(
+                          'General',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              DrawerIcons.account,
+                              color: Colors.black,
+                              size: 18.0,
+                            )),
+                        Text(
+                          'Account',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              DrawerIcons.privacy,
+                              color: Colors.black,
+                              size: 18.0,
+                            )),
+                        Text(
+                          'Privacy',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              DrawerIcons.blacklist,
+                              color: Colors.black,
+                              size: 18.0,
+                            )),
+                        Text(
+                          'Block',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              DrawerIcons.help,
+                              color: Colors.black,
+                              size: 18.0,
+                            )),
+                        Text(
+                          'Help',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () async{
+                      signOutGoogle();
+                      AppConfigurations.setSigningState = false;
+                      Navigator.of(context).pushReplacementNamed('/login');
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              Icons.exit_to_app,
+                              color: Colors.black,
+                              size: 20.0,
+                            )),
+                        Text(
+                          'Logout',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            InkWell(
-              onTap: () {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                      padding: EdgeInsets.all(20.0),
-                      child: Icon(
-                        DrawerIcons.notifications,
-                        color: Colors.black,
-                        size: 18.0,
-                      )),
-                  Text(
-                    'Notifications',
-                    style: Theme.of(context).textTheme.headline2,
-                  )
-                ],
-              ),
-            ),
-            InkWell(
-              onTap: () {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                      padding: EdgeInsets.all(20.0),
-                      child: Icon(
-                        DrawerIcons.general,
-                        color: Colors.black,
-                        size: 18.0,
-                      )),
-                  Text(
-                    'General',
-                    style: Theme.of(context).textTheme.headline2,
-                  )
-                ],
-              ),
-            ),
-            InkWell(
-              onTap: () {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                      padding: EdgeInsets.all(20.0),
-                      child: Icon(
-                        DrawerIcons.account,
-                        color: Colors.black,
-                        size: 18.0,
-                      )),
-                  Text(
-                    'Account',
-                    style: Theme.of(context).textTheme.headline2,
-                  )
-                ],
-              ),
-            ),
-            InkWell(
-              onTap: () {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                      padding: EdgeInsets.all(20.0),
-                      child: Icon(
-                        DrawerIcons.privacy,
-                        color: Colors.black,
-                        size: 18.0,
-                      )),
-                  Text(
-                    'Privacy',
-                    style: Theme.of(context).textTheme.headline2,
-                  )
-                ],
-              ),
-            ),
-            InkWell(
-              onTap: () {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                      padding: EdgeInsets.all(20.0),
-                      child: Icon(
-                        DrawerIcons.blacklist,
-                        color: Colors.black,
-                        size: 18.0,
-                      )),
-                  Text(
-                    'Block',
-                    style: Theme.of(context).textTheme.headline2,
-                  )
-                ],
-              ),
-            ),
-            InkWell(
-              onTap: () {},
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  Container(
-                      padding: EdgeInsets.all(20.0),
-                      child: Icon(
-                        DrawerIcons.help,
-                        color: Colors.black,
-                        size: 18.0,
-                      )),
-                  Text(
-                    'Help',
-                    style: Theme.of(context).textTheme.headline2,
-                  )
-                ],
-              ),
-            )
           ],
         ),
       ),
