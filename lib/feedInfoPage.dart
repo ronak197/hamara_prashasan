@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -88,32 +90,33 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
         child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
-            children: <Widget>[
-                  Container(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(feed.title,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headline4
-                                .copyWith(fontWeight: FontWeight.bold)),
-                        Spacer(),
-                        Text(
-                            feed.location.country +
-                                ", " +
-                                feed.time.hour.toString() +
-                                ":" +
-                                feed.time.minute.toString(),
-                            style: Theme.of(context).textTheme.bodyText1),
-                      ],
-                    ),
-                  ),
-                ] +
-                List<Widget>.generate(content.length, (i) {
-                  if (content[i].runtimeType == TextData) {
-                    String data = (content[i] as TextData).text;
+            children: List<Widget>.generate(content.length, (i) {
+                  if (content[i].runtimeType == TitleData) {
+                    String title = (content[i] as TitleData).title;
+                    return Container(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(title,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headline4
+                                  .copyWith(fontWeight: FontWeight.bold)),
+                          Spacer(),
+                          Text(
+                              feed.location.country +
+                                  ", " +
+                                  feed.time.hour.toString() +
+                                  ":" +
+                                  feed.time.minute.toString(),
+                              style: Theme.of(context).textTheme.bodyText1),
+                        ],
+                      ),
+                    );
+                  }
+                  if (content[i].runtimeType == ContentData) {
+                    String data = (content[i] as ContentData).text;
                     return Container(
                       margin: EdgeInsets.symmetric(vertical: 15),
                       child: Text(data,
@@ -134,14 +137,19 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: CachedNetworkImage(
-                          imageUrl: image.url,
-                          fit: BoxFit.contain,
-                          placeholder: (context, s) => Container(
-                            alignment: Alignment.center,
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
+                        child: image.isLocal
+                            ? Image.file(
+                                File(image.url),
+                                fit: BoxFit.contain,
+                              )
+                            : CachedNetworkImage(
+                                imageUrl: image.url,
+                                fit: BoxFit.contain,
+                                placeholder: (context, s) => Container(
+                                  alignment: Alignment.center,
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
                       ),
                     );
                   }

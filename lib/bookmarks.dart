@@ -27,7 +27,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
     for (int i = 0; i < 4; i++) {
       bookmarks.add(new Feed(
         contents: [
-          TextData(
+          ContentData(
               text:
                   "Citizens are informed that curfew has been imposed starting from today till further announcement by the government of India. Following locations are the places where you can get shelter homes."),
           TableData(
@@ -44,7 +44,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
         location:
             new LocationData(city: "Surat", state: "Gujarat", country: "India"),
         time: DateTime.now(),
-        title: "Curfew till 12th May",
+        firstTitle: TitleData(title: "Curfew till 12th May"),
         department: Department(
             logoUrl: 'assets/police_avatar.svg', name: "Police Department"),
       ));
@@ -168,7 +168,7 @@ class MessageBox extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                feed.title,
+                                feed.firstTitle.title,
                                 style: Theme.of(context)
                                     .textTheme
                                     .headline2
