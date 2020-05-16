@@ -1,17 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:hamaraprashasan/send_post_page.dart';
+import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/homepage.dart';
+import 'package:hamaraprashasan/login_page.dart';
+import 'package:hamaraprashasan/send_post_page.dart';
 
-void main() => runApp(
-  MyApp()
-);
+
+void main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+  String startUpPage;
+  await AppConfigurations.getSharedPrefInstance;
+  if(AppConfigurations.getSigningState){
+    startUpPage = '/home';
+  } else {
+    startUpPage = '/login';
+  }
+
+  runApp(
+      MyApp(startUpPage)
+  );
+}
 
 class MyApp extends StatelessWidget {
+
+  String _defaultHome;
+
+  MyApp(this._defaultHome);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomePage(),
+      initialRoute: _defaultHome,
+      routes: AppConfigurations.getUserRoutes,
       theme: ThemeData(
         textTheme: TextTheme(
           headline6: TextStyle(
