@@ -15,18 +15,23 @@ class FeedInfoPage extends StatefulWidget {
 }
 
 class _FeedInfoPageState extends State<FeedInfoPage> {
-  final Feed feed;
+  Feed feed;
   _FeedInfoPageState({this.feed});
   List<dynamic> content;
 
   @override
   void initState() {
     super.initState();
-    content = feed.contents;
+    if (feed != null) content = feed.contents;
   }
 
   @override
   Widget build(BuildContext context) {
+    if (feed == null) {
+      Map<String, dynamic> args = ModalRoute.of(context).settings.arguments;
+      feed = args['feed'];
+      content = feed.contents;
+    }
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(
