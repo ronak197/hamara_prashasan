@@ -45,9 +45,10 @@ class AppConfigurations{
     return {
       '/home' : (context) => HomePage(),
       '/login' : (context) => LoginPage(),
+      '/sendPost' : (context) => SendPostPage(),
       '/newsFeed' : (context) => NewsFeedPage(),
       '/feedInfo' : (context) => FeedInfoPage(),
-      '/bookmarks' : (context) => BookmarkPage()
+      '/bookmarks' : (context) => BookmarkPage(),
     };
   }
 }
