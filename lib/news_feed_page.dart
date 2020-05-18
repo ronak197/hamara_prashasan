@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:hamaraprashasan/classes.dart';
 import 'package:hamaraprashasan/feedClasses.dart';
 import 'package:hamaraprashasan/feedInfoPage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NewsFeedPage extends StatefulWidget {
   final Function anyFeedSelected, allSelectedFeedCleared;
@@ -16,9 +19,75 @@ class NewsFeedPage extends StatefulWidget {
   _NewsFeedPageState createState() => _newsFeedPageState;
 }
 
+class City {
+
+
+  String name;
+  String state;
+  String country;
+  bool capital;
+  double population;
+  List<String> regions;
+
+  City(String name, String state, String country, bool capital, double population, List<String> regions);
+
+  String getName() {
+    return name;
+  }
+
+  String getState() {
+    return state;
+  }
+
+  String getCountry() {
+    return country;
+  }
+
+  bool isCapital() {
+    return capital;
+  }
+
+  double getPopulation() {
+    return population;
+  }
+
+  List<String> getRegions() {
+    return regions;
+  }
+
+}
+
 class _NewsFeedPageState extends State<NewsFeedPage> {
   List<Feed> feeds;
   List<bool> selected;
+
+  Firestore db = Firestore.instance;
+
+  void createRecord() async{
+
+    FeedInfo feed = FeedInfo(
+      title: 'hedasda',
+      creationDateTimeStamp: DateTime.now(),
+      description: 'adadad',
+      departmentUid: 'admamda'
+    );
+
+
+    FeedInfoDetails feedInfoDetails = FeedInfoDetails(
+      details: [
+        {'title': 'asdasd'},
+        {'content': 'asdka'},
+        {'title': 'adaskd'}
+      ]
+    );
+
+    DateTime d = DateTime.now();
+    await db.collection('feeds').add(feed.toJson()).then((value){
+      db.collection('feeds').document(value.documentID).collection('Details').add(feedInfoDetails.toJson());
+    }).whenComplete((){
+      print(DateTime.now().difference(d));
+    });
+  }
 
   void getFeeds() {
     feeds = new List();
@@ -61,6 +130,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   void initState() {
     super.initState();
     getFeeds();
+    createRecord();
   }
 
   @override
