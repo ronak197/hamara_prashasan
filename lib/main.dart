@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/homepage.dart';
-import 'package:hamaraprashasan/login_page.dart';
-import 'package:hamaraprashasan/send_post_page.dart';
-
 
 void main() async {
 

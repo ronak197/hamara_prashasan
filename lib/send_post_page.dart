@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hamaraprashasan/feedClasses.dart';
-import 'package:hamaraprashasan/feedInfoPage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
@@ -68,125 +66,6 @@ class _SendPostPageState extends State<SendPostPage> {
     return s;
   }
 
-  void getFeed() async {
-    var sp = await Firestore.instance
-        .collection("feeds")
-        .orderBy("created", descending: true)
-        .getDocuments();
-    sp.documents.forEach((doc) {
-      var d = doc.data;
-      List<dynamic> formContent = List.from(d['feed']);
-      print(formContent);
-      List<dynamic> contents = [];
-      for (int i = 0; i < formContent.length; i++) {
-        var data = json.decode(formContent[i]);
-        if (data['title'] != null) {
-          contents.add(
-            new TitleData(title: data['title']),
-          );
-        } else if (data['content'] != null) {
-          contents.add(
-            new ContentData(text: data['content']),
-          );
-        } else if (data['picture'] != null) {
-          contents.add(
-            new ImageData(url: data['picture'], isLocal: true),
-          );
-        } else if (data['map'] != null) {
-          List<double> latLong = List.from(data['map']),
-              latitude = [],
-              longitude = [];
-          for (int i = 0; i < latLong.length / 2; i++) {
-            latitude.add(latLong[2 * i]);
-            longitude.add(latLong[2 * i + 1]);
-          }
-          contents.add(new MapData(
-              latitude: latitude, longitude: longitude, name: null));
-        } else if (data['table'] != null) {
-          String d = data['table'];
-          List<String> a = d.split(";"), headers = [];
-          headers = a[0].split(",");
-          List<List<String>> content = [];
-          for (int i = 1; i < a.length; i++) {
-            content.add(a[i].split(","));
-          }
-          contents.add(new TableData(headers: headers, contents: content));
-        }
-      }
-      TitleData firstTitle = contents[0];
-      Feed f = new Feed(
-          contents: contents,
-          location: new LocationData(
-              city: "Surat", state: "Gujarat", country: "India"),
-          time: DateTime.now(),
-          department: Department(
-            logoUrl: 'assets/police_avatar.svg',
-            name: "Police Department",
-          ),
-          firstTitle: firstTitle);
-      print(f);
-    });
-  }
-
-  void startPreview() {
-    final FormState form = _formKey.currentState;
-    if (!form.validate()) {
-      showMessage('Form is not valid!  Please review and correct.');
-    } else {
-      form.save();
-      List<dynamic> contents = [];
-      for (int i = 0; i < formFields.length; i++) {
-        var data = json.decode(formFields[i].data);
-        if (data['title'] != null) {
-          contents.add(
-            new TitleData(title: data['title']),
-          );
-        } else if (data['content'] != null) {
-          contents.add(
-            new ContentData(text: data['content']),
-          );
-        } else if (data['picture'] != null) {
-          contents.add(
-            new ImageData(url: data['picture'], isLocal: true),
-          );
-        } else if (data['map'] != null) {
-          List<double> latLong = List.from(data['map']),
-              latitude = [],
-              longitude = [];
-          for (int i = 0; i < latLong.length / 2; i++) {
-            latitude.add(latLong[2 * i]);
-            longitude.add(latLong[2 * i + 1]);
-          }
-          contents.add(new MapData(
-              latitude: latitude, longitude: longitude, name: null));
-        } else if (data['table'] != null) {
-          String d = data['table'];
-          List<String> a = d.split(";"), headers = [];
-          headers = a[0].split(",");
-          List<List<String>> content = [];
-          for (int i = 1; i < a.length; i++) {
-            content.add(a[i].split(","));
-          }
-          contents.add(new TableData(headers: headers, contents: content));
-        }
-      }
-      TitleData firstTitle = contents[0];
-      Feed f = new Feed(
-          contents: contents,
-          location: new LocationData(
-              city: "Surat", state: "Gujarat", country: "India"),
-          time: DateTime.now(),
-          department: Department(
-            logoUrl: 'assets/police_avatar.svg',
-            name: "Police Department",
-          ),
-          firstTitle: firstTitle);
-      if (!FocusScope.of(context).hasPrimaryFocus)
-        FocusScope.of(context).unfocus();
-      Navigator.of(context).pushNamed("/feedInfo", arguments: {"feed": f});
-    }
-  }
-
   void editForm() {
     for (int i = 2; i < formFields.length; i++) {
       formFields[i].toggleDisable();
@@ -222,7 +101,7 @@ class _SendPostPageState extends State<SendPostPage> {
         ),
         actions: [
           GestureDetector(
-            onTap: startPreview,
+            onTap: (){},
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 10.0),
               child: Center(

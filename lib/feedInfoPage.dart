@@ -1,11 +1,9 @@
-import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_bar_icons_icons.dart';
-import 'package:hamaraprashasan/feedClasses.dart';
+import 'package:hamaraprashasan/classes.dart';
 
 class FeedInfoPage extends StatefulWidget {
   final Feed feed;
@@ -17,12 +15,12 @@ class FeedInfoPage extends StatefulWidget {
 class _FeedInfoPageState extends State<FeedInfoPage> {
   Feed feed;
   _FeedInfoPageState({this.feed});
-  List<dynamic> content;
+  List<Map<String,dynamic>> content;
 
   @override
   void initState() {
     super.initState();
-    if (feed != null) content = feed.contents;
+    if (feed != null) content = feed.feedInfoDetails.details;
   }
 
   @override
@@ -30,7 +28,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
     if (feed == null) {
       Map<String, dynamic> args = ModalRoute.of(context).settings.arguments;
       feed = args['feed'];
-      content = feed.contents;
+      content = feed.feedInfoDetails.details;
     }
     return Scaffold(
       appBar: AppBar(
@@ -73,7 +71,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                       height: 16.0,
                       alignment: Alignment.bottomRight,
                       child: Center(
-                          child: Text(feed.location.city,
+                          child: Text(feed.department.areaOfAdministration,
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyText1
@@ -85,7 +83,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
           Container(
             padding: EdgeInsets.symmetric(vertical: 8, horizontal: 2),
             child: SvgPicture.asset(
-              feed.department.logoUrl,
+              feed.profileAvatar,
             ),
           )
         ],
@@ -96,8 +94,8 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: List<Widget>.generate(content.length, (i) {
-                  if (content[i].runtimeType == TitleData) {
-                    String title = (content[i] as TitleData).title;
+                  if (content[i].containsKey('title')) {
+                    String title = content[i]['title'];
                     return Container(
                       padding: EdgeInsets.symmetric(vertical: 20),
                       child: Row(
@@ -110,25 +108,26 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                                   .copyWith(fontWeight: FontWeight.bold)),
                           Spacer(),
                           Text(
-                              feed.location.country +
+                              feed.department.areaOfAdministration +
                                   ", " +
-                                  feed.time.hour.toString() +
+                                  feed.feedInfo.creationDateTimeStamp.hour.toString() +
                                   ":" +
-                                  feed.time.minute.toString(),
+                                  feed.feedInfo.creationDateTimeStamp.minute.toString(),
                               style: Theme.of(context).textTheme.bodyText1),
                         ],
                       ),
                     );
                   }
-                  if (content[i].runtimeType == ContentData) {
-                    String data = (content[i] as ContentData).text;
+                  else if (content[i].containsKey('content')) {
+                    String data = content[i]['content'];
                     return Container(
                       margin: EdgeInsets.symmetric(vertical: 15),
                       child: Text(data,
                           style: Theme.of(context).textTheme.headline2),
                     );
-                  } else if (content[i].runtimeType == ImageData) {
-                    ImageData image = content[i] as ImageData;
+                  }
+                  else if (content[i].containsKey('pictureUrl')) {
+                    String pictureUrl = content[i]['pictureUrl'];
                     return Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
@@ -142,27 +141,25 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: image.isLocal
-                            ? Image.file(
-                                File(image.url),
-                                fit: BoxFit.contain,
-                              )
-                            : CachedNetworkImage(
-                                imageUrl: image.url,
-                                fit: BoxFit.contain,
-                                placeholder: (context, s) => Container(
-                                  alignment: Alignment.center,
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
+                        child: CachedNetworkImage(
+                          imageUrl: pictureUrl,
+                          fit: BoxFit.contain,
+                          placeholder: (context, s) => Container(
+                            alignment: Alignment.center,
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
                       ),
                     );
                   }
-                  if (content[i].runtimeType == MapData) {
+                  if (content[i].containsKey('coords')) {
                     return SizedBox();
                   }
-                  if (content[i].runtimeType == TableData) {
-                    TableData t = content[i] as TableData;
+                  if (content[i].containsKey('table')) {
+                    TableData t;
+                    t.headers = content[i]['table'].toString().split(';')[0].split(',');
+                    t.contents = [];
+                    content[i]['table'].toString().split(';').forEach((element) { t.contents.add(element.split(','));});
                     int n = t.contents.length + 1;
                     double tileHeight = 30, margin = 2;
                     return Container(
