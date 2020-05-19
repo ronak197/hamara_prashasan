@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:hamaraprashasan/classes.dart';
 
 class DepartmentsPage extends StatefulWidget {
   @override
@@ -26,27 +27,27 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DepartmentsMessageBox(
-                    imageLoc: 'assets/health_avatar.svg',
+                    category: 'health',
                     subscribed: true,
                     title: "Ministry of Health",
                     subtitle: "India",
                   ),
                   DepartmentsMessageBox(
-                    imageLoc: 'assets/police_avatar.svg',
+                    category: 'police',
                     subscribed: false,
                     title: "Police Department",
                     subtitle: "Surat",
                   ),
                   DepartmentsMessageBox(
-                    imageLoc: 'assets/muncorp_avatar.svg',
+                    category: 'muncorp',
                     subscribed: true,
                     title: "Municipal Corporation",
                     subtitle: "Surat",
                   ),
                   DepartmentsMessageBox(
-                    imageLoc: 'assets/muncorp_avatar.svg',
+                    category: 'health',
                     subscribed: true,
-                    title: "Municipal Corporation",
+                    title: "Health Department",
                     subtitle: "Surat",
                   ),
                 ],
@@ -89,10 +90,10 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
 class DepartmentsMessageBox extends StatelessWidget {
 
-  final String imageLoc, title, subtitle;
+  final String category, title, subtitle;
   final bool subscribed;
 
-  DepartmentsMessageBox({this.imageLoc, this.title, this.subtitle, this.subscribed});
+  DepartmentsMessageBox({this.category, this.title, this.subtitle, this.subscribed});
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +102,7 @@ class DepartmentsMessageBox extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(5.0)),
-        color: Color(0xffFFFCED),
+        color: Color(avatarColorMap[category]),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -111,7 +112,7 @@ class DepartmentsMessageBox extends StatelessWidget {
             children: [
               Container(
                 child: SvgPicture.asset(
-                  imageLoc,
+                  avatarLocMap[category]
                 ),
               ),
               Expanded(
@@ -134,7 +135,7 @@ class DepartmentsMessageBox extends StatelessWidget {
                       Text(
                         subtitle,
                         style: Theme.of(context).textTheme.headline2.copyWith(
-                            color: Color(0xff514A4A),
+                          color: Color(0xff514A4A),
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:hamaraprashasan/classes.dart';
-import 'package:hamaraprashasan/feedClasses.dart';
 import 'package:hamaraprashasan/feedInfoPage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hamaraprashasan/classes.dart';
 
 class NewsFeedPage extends StatefulWidget {
+
   final Function anyFeedSelected, allSelectedFeedCleared;
   void clearSelectedFeed() {
     _newsFeedPageState.clearSelectedFeed();
@@ -19,110 +18,42 @@ class NewsFeedPage extends StatefulWidget {
   _NewsFeedPageState createState() => _newsFeedPageState;
 }
 
-class City {
-  String name;
-  String state;
-  String country;
-  bool capital;
-  double population;
-  List<String> regions;
-
-  City(String name, String state, String country, bool capital,
-      double population, List<String> regions);
-
-  String getName() {
-    return name;
-  }
-
-  String getState() {
-    return state;
-  }
-
-  String getCountry() {
-    return country;
-  }
-
-  bool isCapital() {
-    return capital;
-  }
-
-  double getPopulation() {
-    return population;
-  }
-
-  List<String> getRegions() {
-    return regions;
-  }
-}
 
 class _NewsFeedPageState extends State<NewsFeedPage> {
+
   List<Feed> feeds;
   List<bool> selected;
 
   Firestore db = Firestore.instance;
 
-  void createRecord() async {
-    FeedInfo feed = FeedInfo(
-        title: 'hedasda',
-        creationDateTimeStamp: DateTime.now(),
-        description: 'adadad',
-        departmentUid: 'admamda');
-
-    FeedInfoDetails feedInfoDetails = FeedInfoDetails(details: [
-      {'title': 'asdasd'},
-      {'content': 'asdka'},
-      {'title': 'adaskd'}
-    ]);
-
-    DateTime d = DateTime.now();
-    await db.collection('feeds').add(feed.toJson()).then((value) {
-      db
-          .collection('feeds')
-          .document(value.documentID)
-          .collection('Details')
-          .add(feedInfoDetails.toJson());
-    }).whenComplete(() {
-      print(DateTime.now().difference(d));
-    });
-  }
-
   void getFeeds() {
     feeds = new List();
     selected = new List();
-    for (int i = 0; i < 4; i++) {
-      feeds.add(new Feed(
-        contents: [
-          ContentData(
-              text:
-                  "Citizens are informed that curfew has been imposed starting from today till further announcement by the government of India. Following locations are the places where you can get shelter homes."),
-          TableData(
-            headers: List.generate(6, (index) => "Head"),
-            contents: List.generate(
-              4,
-              (i) => List.generate(6, (j) => "Row ${i + 1}"),
-            ),
-          ),
-          MapData(
-            latitude: [21.639151, 24.639151, 18.639151],
-            longitude: [69.612160, 66.612160, 72.612160],
-            name: ["Home", "Home", "Home"],
-          ),
-          ImageData(
-              url:
-                  "https://firebasestorage.googleapis.com/v0/b/elare-bd2f2.appspot.com/o/cover_images%2FMLDC_cover.png?alt=media&token=b375c390-bf56-47e2-9fcf-d6ba5d7d39f8"),
-          MapData(
-            latitude: [21.639151, 24.639151, 18.639151],
-            longitude: [69.612160, 66.612160, 72.612160],
-            name: ["Home", "Home", "Home"],
-          ),
-        ],
-        location:
-            new LocationData(city: "Surat", state: "Gujarat", country: "India"),
-        time: DateTime.now(),
-        firstTitle: TitleData(title: "Curfew till 12th May"),
-        department: Department(
-            logoUrl: 'assets/police_avatar.svg', name: "Police Department"),
-      ));
+    List<String> categories = ['health', 'police', 'muncorp'];
+    for (int i = 0; i < 10; i++) {
+      feeds.add(
+      Feed(
+        FeedInfo(
+          departmentUid: 'andskad',
+          description: 'anjdsbkandkasmlda',
+          creationDateTimeStamp: DateTime.now(),
+          title: 'anksdnaknd'
+        ),
+        Department(
+          areaOfAdministration: 'adnsd',
+          category: categories[i%3],
+          email: 'naksda',
+          name: 'Surat Health Department',
+          userType: 'department'
+        ),
+        FeedInfoDetails(
+          details: [
+            {'title': 'asnda,'},
+            {'content' : 'asdnkand'},
+          ]
+        )
+      )
+      );
       selected.add(false);
     }
   }
@@ -137,7 +68,6 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   void initState() {
     super.initState();
     getFeeds();
-    createRecord();
   }
 
   @override
@@ -204,7 +134,7 @@ class MessageBox extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.all(Radius.circular(15.0)),
-                color: Color(0xffFFFCED),
+                color: Color(feed.bgColor),
               ),
               foregroundDecoration: selected || canBeSelected
                   ? BoxDecoration(
@@ -220,7 +150,7 @@ class MessageBox extends StatelessWidget {
                     children: [
                       Container(
                         child: SvgPicture.asset(
-                          feed.department.logoUrl,
+                          feed.profileAvatar,
                         ),
                       ),
                       Expanded(
@@ -233,7 +163,7 @@ class MessageBox extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                feed.location.city + " " + feed.department.name,
+                                feed.department.name,
                                 style: Theme.of(context)
                                     .textTheme
                                     .headline3
@@ -244,7 +174,7 @@ class MessageBox extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                feed.firstTitle.title,
+                                feed.feedInfo.title,
                                 style: Theme.of(context)
                                     .textTheme
                                     .headline2
@@ -262,7 +192,7 @@ class MessageBox extends StatelessWidget {
                     alignment: Alignment.topLeft,
                     margin: EdgeInsets.only(top: 10.0),
                     child: Text(
-                      'Citizens are informed that curfew has been imposed starting from today till further announcement.',
+                      feed.feedInfo.description,
                       style: Theme.of(context).textTheme.headline1,
                     ),
                   ),
@@ -270,11 +200,11 @@ class MessageBox extends StatelessWidget {
                     alignment: Alignment.topRight,
                     margin: EdgeInsets.only(top: 10.0),
                     child: Text(
-                      feed.location.city +
+                      feed.department.areaOfAdministration +
                           ", " +
-                          feed.time.hour.toString() +
+                          feed.feedInfo.creationDateTimeStamp.hour.toString() +
                           ":" +
-                          feed.time.minute.toString(),
+                          feed.feedInfo.creationDateTimeStamp.minute.toString(),
                       style: Theme.of(context)
                           .textTheme
                           .bodyText1

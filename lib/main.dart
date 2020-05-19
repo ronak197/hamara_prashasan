@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/homepage.dart';
-import 'package:hamaraprashasan/login_page.dart';
-import 'package:hamaraprashasan/send_post_page.dart';
-
 
 void main() async {
 
@@ -39,37 +35,37 @@ class MyApp extends StatelessWidget {
           headline6: TextStyle(
             fontSize: 24.0,
             color: Colors.black,
-            fontFamily: 'OpenSans'
+            fontFamily: 'ProductSans'
           ),
           headline5: TextStyle(
             fontSize: 22.0,
             color: Colors.black,
-            fontFamily: 'OpenSans',
+            fontFamily: 'ProductSans',
           ),
           headline4: TextStyle(
               fontSize: 20.0,
               color: Colors.black,
-              fontFamily: 'OpenSans',
+              fontFamily: 'ProductSans',
           ),
           headline3: TextStyle(
               color: Colors.black,
               fontSize: 18.0,
-              fontFamily: 'OpenSans'
+              fontFamily: 'ProductSans'
           ),
           headline2: TextStyle(
               color: Colors.black,
               fontSize: 16.0,
-              fontFamily: 'OpenSans'
+              fontFamily: 'ProductSans'
           ),
           headline1: TextStyle(
               color: Colors.black,
               fontSize: 14.0,
-              fontFamily: 'OpenSans'
+              fontFamily: 'ProductSans'
           ),
           bodyText1: TextStyle(
             fontSize: 12.0,
             color: Colors.black,
-            fontFamily: 'OpenSans'
+            fontFamily: 'ProductSans'
           ),
         )
       ),
