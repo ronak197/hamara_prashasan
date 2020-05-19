@@ -9,6 +9,18 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_fab_dialer/flutter_fab_dialer.dart';
+
+class FormField {
+  String data;
+  bool disabled;
+  Type fieldType;
+  void saveData(String data) {
+    this.data = data;
+  }
+
+  FormField(this.data, this.disabled, this.fieldType);
+}
 
 class SendPostPage extends StatefulWidget {
   @override
@@ -21,7 +33,7 @@ class _SendPostPageState extends State<SendPostPage> {
 
   int keyIndex = 1;
 
-  List<dynamic> formFields = [];
+  List<FormField> formFields = [];
   bool showInsertOptions = false;
   bool showTextFieldOptions = false;
   bool editing = false;
@@ -188,10 +200,17 @@ class _SendPostPageState extends State<SendPostPage> {
   }
 
   void editForm() {
-    for (int i = 2; i < formFields.length; i++) {
-      formFields[i].toggleDisable();
+    if (editing) {
+      for (int i = 0; i < formFields.length; i++) {
+        formFields[i].disabled = false;
+      }
+      editing = false;
+    } else {
+      for (int i = 0; i < formFields.length; i++) {
+        formFields[i].disabled = true;
+      }
+      editing = true;
     }
-    editing = !editing;
     setState(() {});
   }
 
@@ -200,15 +219,39 @@ class _SendPostPageState extends State<SendPostPage> {
     setState(() {});
   }
 
+  Widget fieldWidget(FormField f) {
+    if (f.fieldType == TitleFieldBox)
+      return TitleFieldBox(
+          data: f.data, disabled: f.disabled, saveData: f.saveData);
+    else if (f.fieldType == ContentFieldBox)
+      return ContentFieldBox(
+          data: f.data, disabled: f.disabled, saveData: f.saveData);
+    else if (f.fieldType == PictureUploadBox)
+      return PictureUploadBox(
+          data: f.data, disabled: f.disabled, saveData: f.saveData);
+    else if (f.fieldType == MapFieldBox)
+      return MapFieldBox(
+          data: f.data, disabled: f.disabled, saveData: f.saveData);
+    else if (f.fieldType == TableFieldBox)
+      return TableFieldBox(
+          data: f.data, disabled: f.disabled, saveData: f.saveData);
+    else
+      return null;
+  }
+
   @override
   void initState() {
-    formFields.add(TitleFieldBox(removeThis: null));
-    formFields.add(ContentFieldBox(removeThis: null));
+    formFields.add(FormField(null, false, TitleFieldBox));
+    formFields.add(FormField(null, false, ContentFieldBox));
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    var form = _formKey.currentState;
+    if (form != null) {
+      form.save();
+    }
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -247,229 +290,244 @@ class _SendPostPageState extends State<SendPostPage> {
           )
         ],
       ),
-      body: SingleChildScrollView(
-        primary: true,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
-          child: Column(
-            children: [
-              Form(
-                key: _formKey,
-                child: Column(
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          showInsertOptions & showTextFieldOptions
+              ? Row(
                   children: [
-                    ListView.builder(
-                      physics: NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: formFields.length,
-                      itemBuilder: (context, index) {
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: formFields[index],
-                            ),
-                            formFields[index].disabled
-                                ? Container(
-                                    child: IconButton(
-                                      icon: Icon(Icons.close),
-                                      alignment: Alignment.topRight,
-                                      onPressed: () {
-                                        removeItem(index);
-                                      },
-                                    ),
-                                  )
-                                : SizedBox(),
-                          ],
-                        );
-                      },
-                    ),
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: CupertinoButton(
-                              child: Icon(
-                                showInsertOptions ? Icons.close : Icons.add,
-                                size: 30.0,
-                              ),
-                              color: Colors.deepOrange,
-                              onPressed: () {
-                                setState(() {
-                                  showInsertOptions = !showInsertOptions;
-                                  showTextFieldOptions = false;
-                                });
-                              },
-                              padding: EdgeInsets.all(0.0),
-                              borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                          showInsertOptions && !showTextFieldOptions
-                              ? Row(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(2.0),
-                                      child: CupertinoButton(
-                                        child: Icon(
-                                          Icons.text_fields,
-                                          size: 20.0,
-                                          color: Colors.black,
-                                        ),
-                                        color: Colors.amber,
-                                        onPressed: () {
-                                          setState(() {
-                                            showTextFieldOptions = true;
-                                          });
-                                        },
-                                        padding: EdgeInsets.all(0.0),
-                                        borderRadius:
-                                            BorderRadius.circular(50.0),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(2.0),
-                                      child: CupertinoButton(
-                                        child: Icon(
-                                          Icons.insert_photo,
-                                          size: 20.0,
-                                          color: Colors.black,
-                                        ),
-                                        color: Colors.amber,
-                                        onPressed: () {
-                                          setState(() {
-                                            formFields.add(PictureUploadBox(
-                                              removeThis: removeItem,
-                                            ));
-                                          });
-                                        },
-                                        padding: EdgeInsets.all(0.0),
-                                        borderRadius:
-                                            BorderRadius.circular(50.0),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(2.0),
-                                      child: CupertinoButton(
-                                        child: Icon(
-                                          Icons.map,
-                                          size: 20.0,
-                                          color: Colors.black,
-                                        ),
-                                        color: Colors.amber,
-                                        onPressed: () {
-                                          setState(() {
-                                            formFields.add(MapFieldBox(
-                                              removeThis: removeItem,
-                                            ));
-                                          });
-                                        },
-                                        padding: EdgeInsets.all(0.0),
-                                        borderRadius:
-                                            BorderRadius.circular(50.0),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(2.0),
-                                      child: CupertinoButton(
-                                        child: Icon(
-                                          Icons.table_chart,
-                                          size: 20.0,
-                                          color: Colors.black,
-                                        ),
-                                        color: Colors.amber,
-                                        onPressed: () {
-                                          setState(() {
-                                            formFields.add(TableFieldBox(
-                                              removeThis: removeItem,
-                                            ));
-                                          });
-                                        },
-                                        padding: EdgeInsets.all(0.0),
-                                        borderRadius:
-                                            BorderRadius.circular(50.0),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(2.0),
-                                      child: CupertinoButton(
-                                        child: Icon(
-                                          Icons.edit,
-                                          size: 20.0,
-                                          color: Colors.black,
-                                        ),
-                                        color: editing
-                                            ? Colors.white
-                                            : Colors.amber,
-                                        onPressed: editForm,
-                                        padding: EdgeInsets.all(0.0),
-                                        borderRadius:
-                                            BorderRadius.circular(50.0),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : SizedBox(),
-                          showInsertOptions & showTextFieldOptions
-                              ? Row(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(2.0),
-                                      child: CupertinoButton(
-                                        child: Text(
-                                          'Add Title',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .headline2
-                                              .copyWith(color: Colors.black),
-                                        ),
-                                        color: Colors.amber,
-                                        onPressed: () {
-                                          setState(() {
-                                            formFields.add(TitleFieldBox(
-                                              removeThis: removeItem,
-                                            ));
-                                          });
-                                        },
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 15.0),
-                                        borderRadius:
-                                            BorderRadius.circular(25.0),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(2.0),
-                                      child: CupertinoButton(
-                                        child: Text(
-                                          'Add Body',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .headline2
-                                              .copyWith(color: Colors.black),
-                                        ),
-                                        color: Colors.amber,
-                                        onPressed: () {
-                                          setState(() {
-                                            formFields.add(ContentFieldBox(
-                                              removeThis: removeItem,
-                                            ));
-                                          });
-                                        },
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 15.0),
-                                        borderRadius:
-                                            BorderRadius.circular(25.0),
-                                      ),
-                                    )
-                                  ],
-                                )
-                              : SizedBox(),
-                        ],
+                    Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: CupertinoButton(
+                        child: Text(
+                          'Add Title',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headline2
+                              .copyWith(color: Colors.black),
+                        ),
+                        color: Colors.amber,
+                        onPressed: () {
+                          setState(() {
+                            formFields
+                                .add(new FormField(null, false, TitleFieldBox));
+                          });
+                        },
+                        padding: EdgeInsets.symmetric(horizontal: 15.0),
+                        borderRadius: BorderRadius.circular(25.0),
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: CupertinoButton(
+                        child: Text(
+                          'Add Body',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headline2
+                              .copyWith(color: Colors.black),
+                        ),
+                        color: Colors.amber,
+                        onPressed: () {
+                          setState(() {
+                            formFields.add(
+                                new FormField(null, false, ContentFieldBox));
+                          });
+                        },
+                        padding: EdgeInsets.symmetric(horizontal: 15.0),
+                        borderRadius: BorderRadius.circular(25.0),
+                      ),
+                    )
                   ],
-                ),
+                )
+              : SizedBox(),
+          showInsertOptions //&& !showTextFieldOptions
+              ? Row(
+                  children: [
+                    Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: CupertinoButton(
+                        child: Icon(
+                          Icons.text_fields,
+                          size: 20.0,
+                          color: editing ? Colors.grey : Colors.black,
+                        ),
+                        color: editing ? Colors.grey : Colors.amber,
+                        onPressed: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  showTextFieldOptions = !showTextFieldOptions;
+                                });
+                              },
+                        padding: EdgeInsets.all(0.0),
+                        borderRadius: BorderRadius.circular(50.0),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: CupertinoButton(
+                        child: Icon(
+                          Icons.insert_photo,
+                          size: 20.0,
+                          color: editing ? Colors.grey : Colors.black,
+                        ),
+                        color: editing ? Colors.grey : Colors.amber,
+                        onPressed: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  formFields.add(new FormField(
+                                      null, false, PictureUploadBox));
+                                });
+                              },
+                        padding: EdgeInsets.all(0.0),
+                        borderRadius: BorderRadius.circular(50.0),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: CupertinoButton(
+                        child: Icon(
+                          Icons.map,
+                          size: 20.0,
+                          color: editing ? Colors.grey : Colors.black,
+                        ),
+                        color: editing ? Colors.grey : Colors.amber,
+                        onPressed: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  formFields.add(
+                                      new FormField(null, false, MapFieldBox));
+                                });
+                              },
+                        padding: EdgeInsets.all(0.0),
+                        borderRadius: BorderRadius.circular(50.0),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: CupertinoButton(
+                        child: Icon(
+                          Icons.table_chart,
+                          size: 20.0,
+                          color: editing ? Colors.grey : Colors.black,
+                        ),
+                        color: editing ? Colors.grey : Colors.amber,
+                        onPressed: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  formFields.add(new FormField(
+                                      null, false, TableFieldBox));
+                                });
+                              },
+                        padding: EdgeInsets.all(0.0),
+                        borderRadius: BorderRadius.circular(50.0),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(2.0),
+                      child: CupertinoButton(
+                        child: Icon(
+                          Icons.edit,
+                          size: 20.0,
+                          color: Colors.black,
+                        ),
+                        color: editing ? Colors.green : Colors.amber,
+                        onPressed: () {
+                          showTextFieldOptions = false;
+                          editForm();
+                        },
+                        padding: EdgeInsets.all(0.0),
+                        borderRadius: BorderRadius.circular(50.0),
+                      ),
+                    ),
+                    Spacer(),
+                  ],
+                )
+              : SizedBox(),
+          Padding(
+            padding: const EdgeInsets.all(2.0),
+            child: CupertinoButton(
+              child: Icon(
+                showInsertOptions ? Icons.close : Icons.add,
+                size: 30.0,
               ),
-            ],
+              color: Colors.deepOrange,
+              onPressed: () {
+                setState(() {
+                  showInsertOptions = !showInsertOptions;
+                  showTextFieldOptions = false;
+                });
+              },
+              padding: EdgeInsets.all(0.0),
+              borderRadius: BorderRadius.circular(50.0),
+            ),
+          ),
+        ],
+      ),
+      body: Container(
+        padding: EdgeInsets.symmetric(vertical: 15.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: new List<Widget>.generate(2, (index) {
+                  var field = formFields[index];
+                  return fieldWidget(field);
+                }) +
+                <Widget>[
+                  Expanded(
+                    child: ReorderableListView(
+                      onReorder: (oldIndex, newIndex) {
+                        print(111);
+                        oldIndex += 2;
+                        newIndex += 2;
+                        if (oldIndex < newIndex) {
+                          newIndex -= 1;
+                        }
+                        var f = formFields.removeAt(oldIndex);
+                        formFields.insert(newIndex, f);
+                        setState(() {});
+                      },
+                      children: List<Widget>.generate(
+                        formFields.length - 2,
+                        (index) {
+                          index += 2;
+                          var field = formFields[index];
+                          {
+                            if (!editing)
+                              return fieldWidget(field);
+                            else
+                              return Dismissible(
+                                key: new Key(
+                                    formFields[index].hashCode.toString()),
+                                onDismissed: (dir) async {
+                                  formFields.removeAt(index);
+                                  setState(() {});
+                                },
+                                direction: DismissDirection.startToEnd,
+                                background: Container(
+                                  color: Colors.red,
+                                  alignment: Alignment.centerLeft,
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.white,
+                                    size: 30,
+                                  ),
+                                ),
+                                child: fieldWidget(field),
+                              );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
           ),
         ),
       ),
@@ -477,72 +535,105 @@ class _SendPostPageState extends State<SendPostPage> {
   }
 }
 
-class PictureUploadBox extends StatefulWidget {
+class TitleFieldBox extends StatefulWidget {
   String data;
-  final Function removeThis;
-  PictureUploadBox({@required this.removeThis});
-  bool _disabled = false;
-  void toggleDisable() {
-    _disabled = !_disabled;
+  final Function saveData;
+  Key key;
+  TitleFieldBox(
+      {@required this.data, @required this.disabled, @required this.saveData}) {
+    key = new Key(this.hashCode.toString());
   }
-
-  bool get disabled => _disabled;
+  final bool disabled;
 
   @override
-  _PictureUploadBoxState createState() => _PictureUploadBoxState();
+  _TitleFieldBoxState createState() => _TitleFieldBoxState();
 }
 
-class _PictureUploadBoxState extends State<PictureUploadBox> {
-  File image;
+class _TitleFieldBoxState extends State<TitleFieldBox> {
+  String initialString;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.data != null) {
+      initialString = json.decode(widget.data)['title'];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    bool dis = widget.disabled;
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 8.0),
-      child: Container(
-        color: Colors.grey[300],
-        child: ListTile(
-          title: image != null
-              ? Image.file(
-                  image,
-                  fit: BoxFit.contain,
-                )
-              : Text(
-                  'Picture',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headline2
-                      .copyWith(fontWeight: FontWeight.w600),
-                ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                alignment: Alignment.centerRight,
-                padding: EdgeInsets.all(0.0),
-                icon: Icon(Icons.file_upload),
-                onPressed: widget.disabled
-                    ? null
-                    : () async {
-                        image = await ImagePicker.pickImage(
-                            source: ImageSource.gallery);
-                        setState(() {});
-                        widget.data = json.encode({'picture': image.path});
-                      },
-              ),
-              IconButton(
-                alignment: Alignment.centerRight,
-                padding: EdgeInsets.all(0.0),
-                icon: Icon(Icons.close),
-                onPressed: widget.disabled
-                    ? null
-                    : () {
-                        setState(() {
-                          image = null;
-                        });
-                      },
-              )
-            ],
+      margin: EdgeInsets.symmetric(vertical: 10.0),
+      padding: EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 0.5,
+            offset: Offset(0, 1),
+            color: Colors.grey[300],
           ),
+          BoxShadow(
+            blurRadius: 0.5,
+            offset: Offset(0, -1),
+            color: Colors.grey[300],
+          )
+        ],
+        color: Colors.white,
+      ),
+      child: TextFormField(
+        validator: (s) {
+          return s == "" ? 'Enter a Title' : null;
+        },
+        onSaved: (s) {
+          widget.saveData(json.encode({"title": s}));
+        },
+        style: Theme.of(context)
+            .textTheme
+            .headline2
+            .copyWith(color: dis ? Colors.grey : Colors.black),
+        cursorColor: Colors.black54,
+        minLines: 1,
+        maxLines: null,
+        maxLength: 100,
+        maxLengthEnforced: true,
+        enabled: !dis,
+        initialValue: initialString,
+        decoration: InputDecoration(
+          labelText: 'TITLE',
+          hintText: 'Enter Title...',
+          hintStyle: Theme.of(context)
+              .textTheme
+              .headline2
+              .copyWith(color: Colors.grey, fontSize: 15.0),
+          labelStyle: Theme.of(context).textTheme.headline1.copyWith(
+              color: dis ? Colors.grey : Colors.black,
+              fontWeight: FontWeight.w600,
+              fontSize: 20.0),
+          counterText: "",
+          contentPadding: EdgeInsets.all(12.0),
+          floatingLabelBehavior: FloatingLabelBehavior.auto,
+          /* focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(
+              color: Colors.black,
+              style: BorderStyle.solid,
+            ),
+            borderRadius: BorderRadius.circular(5.0),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderSide: BorderSide(
+              color: Colors.red,
+              style: BorderStyle.solid,
+            ),
+            borderRadius: BorderRadius.circular(5.0),
+          ),
+          border: OutlineInputBorder(
+            borderSide: BorderSide(
+              color: Colors.grey,
+              style: BorderStyle.solid,
+            ),
+            borderRadius: BorderRadius.circular(5.0),
+          ), */
+          border: InputBorder.none,
         ),
       ),
     );
@@ -551,22 +642,31 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
 
 class ContentFieldBox extends StatefulWidget {
   String data;
-  final Function removeThis;
-  ContentFieldBox({@required this.removeThis});
-  bool _disabled = false;
-  void toggleDisable() {
-    _disabled = !_disabled;
+  final Function saveData;
+  Key key;
+  ContentFieldBox(
+      {@required this.data, @required this.disabled, @required this.saveData}) {
+    key = new Key(this.hashCode.toString());
   }
-
-  bool get disabled => _disabled;
+  final bool disabled;
 
   @override
   _ContentFieldBoxState createState() => _ContentFieldBoxState();
 }
 
 class _ContentFieldBoxState extends State<ContentFieldBox> {
+  String initialString;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.data != null) {
+      initialString = json.decode(widget.data)['content'];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    bool dis = widget.disabled;
     return Container(
       padding: EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -574,22 +674,28 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
           return s == "" ? 'Enter some content' : null;
         },
         onSaved: (s) {
-          widget.data = json.encode({"content": s});
+          widget.saveData(json.encode({"content": s}));
         },
-        style: Theme.of(context).textTheme.headline2,
+        style: Theme.of(context)
+            .textTheme
+            .headline2
+            .copyWith(color: dis ? Colors.grey : Colors.black),
         cursorColor: Colors.black54,
         minLines: 3,
         maxLines: null,
         maxLength: 600,
         maxLengthEnforced: true,
         keyboardType: TextInputType.text,
-        enabled: !widget.disabled,
+        initialValue: initialString,
+        enabled: !dis,
         decoration: InputDecoration(
           labelText: 'Content',
           hintText: 'Write a Description',
           hintStyle: Theme.of(context).textTheme.headline2,
           labelStyle: Theme.of(context).textTheme.headline1.copyWith(
-              color: Colors.black, fontWeight: FontWeight.w600, fontSize: 15.0),
+              color: dis ? Colors.grey : Colors.black,
+              fontWeight: FontWeight.w600,
+              fontSize: 15.0),
           contentPadding: EdgeInsets.all(12.0),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
           focusedBorder: OutlineInputBorder(
@@ -619,16 +725,102 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
   }
 }
 
-class MapFieldBox extends StatefulWidget {
+class PictureUploadBox extends StatefulWidget {
   String data;
-  final Function removeThis;
-  MapFieldBox({@required this.removeThis});
-  bool _disabled = false;
-  void toggleDisable() {
-    _disabled = !_disabled;
+  final Function saveData;
+  Key key;
+  PictureUploadBox(
+      {@required this.data, @required this.disabled, @required this.saveData}) {
+    key = new Key(this.hashCode.toString());
+  }
+  final bool disabled;
+
+  @override
+  _PictureUploadBoxState createState() => _PictureUploadBoxState();
+}
+
+class _PictureUploadBoxState extends State<PictureUploadBox> {
+  File image;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.data != null) {
+      image = File(json.decode(widget.data)['picture']);
+    }
   }
 
-  bool get disabled => _disabled;
+  @override
+  Widget build(BuildContext context) {
+    bool dis = widget.disabled;
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 8.0),
+      child: Container(
+        color: dis ? Colors.grey[300] : Colors.grey[300],
+        child: ListTile(
+          title: image != null
+              ? Image.file(
+                  image,
+                  fit: BoxFit.contain,
+                  color: dis ? Colors.grey : Colors.transparent,
+                  colorBlendMode: BlendMode.darken,
+                  height: 100,
+                )
+              : Text(
+                  'Picture',
+                  style: Theme.of(context).textTheme.headline2.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: dis ? Colors.grey : Colors.black),
+                ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                alignment: Alignment.centerRight,
+                padding: EdgeInsets.all(0.0),
+                icon: Icon(Icons.file_upload),
+                disabledColor: Colors.grey[400],
+                color: Colors.grey[600],
+                onPressed: dis
+                    ? null
+                    : () async {
+                        image = await ImagePicker.pickImage(
+                            source: ImageSource.gallery);
+                        setState(() {});
+                        widget.saveData(json.encode({'picture': image.path}));
+                      },
+              ),
+              IconButton(
+                alignment: Alignment.centerRight,
+                padding: EdgeInsets.all(0.0),
+                icon: Icon(Icons.close),
+                disabledColor: Colors.grey[400],
+                color: Colors.grey[600],
+                onPressed: dis
+                    ? null
+                    : () {
+                        setState(() {
+                          image = null;
+                        });
+                      },
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class MapFieldBox extends StatefulWidget {
+  String data;
+  final Function saveData;
+  Key key;
+  MapFieldBox(
+      {@required this.data, @required this.disabled, @required this.saveData}) {
+    key = new Key(this.hashCode.toString());
+  }
+
+  final bool disabled;
 
   @override
   _MapFieldBoxState createState() => _MapFieldBoxState();
@@ -643,12 +835,39 @@ class _MapFieldBoxState extends State<MapFieldBox> {
       longCont = [TextEditingController()];
 
   void saveMapData() {
-    widget.data = json.encode({'map': latLongs});
+    if (latLongs.length > 0) widget.saveData(json.encode({'map': latLongs}));
+  }
+
+  void initState() {
+    super.initState();
+    if (widget.data != null) {
+      List<dynamic> latLong = json.decode(widget.data)['map'];
+      latCont = [];
+      longCont = [];
+      for (int i = 0; i < latLong.length; i++) {
+        if (i % 2 == 0) {
+          if (latLong[i] != null)
+            latCont.add(TextEditingController(text: latLong[i].toString()));
+          else
+            latCont.add(TextEditingController());
+        } else {
+          if (latLong[i] != null)
+            longCont.add(TextEditingController(text: latLong[i].toString()));
+          else
+            longCont.add(TextEditingController());
+        }
+      }
+      while (longCont.length < latCont.length) {
+        longCont.add(TextEditingController());
+      }
+      noOfLatLongs = latCont.length;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.disabled) searchOptions = false;
+    bool dis = widget.disabled;
+    if (dis) searchOptions = false;
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.0),
       padding: EdgeInsets.only(bottom: 8.0),
@@ -666,19 +885,16 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                   padding: const EdgeInsets.all(8.0),
                   child: Text(
                     'Map',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headline2
-                        .copyWith(fontWeight: FontWeight.w600),
+                    style: Theme.of(context).textTheme.headline2.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: dis ? Colors.grey : Colors.black),
                   ),
                 ),
                 searchOptions
                     ? Align(
                         alignment: Alignment.topRight,
                         child: RawMaterialButton(
-                          onPressed: () {
-                            saveMapData();
-                          },
+                          onPressed: () {},
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20.0)),
                           fillColor: Colors.grey[300],
@@ -719,15 +935,18 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                     padding: const EdgeInsets.symmetric(horizontal: 0.0),
                     child: IconButton(
                       padding: EdgeInsets.all(0.0),
-                      onPressed: () {
-                        setState(() {
-                          searchOptions = searchOptions ? false : true;
-                        });
-                      },
+                      onPressed: dis
+                          ? null
+                          : () {
+                              setState(() {
+                                searchOptions = searchOptions ? false : true;
+                              });
+                            },
                       icon: Icon(
                         searchOptions ? Icons.close : Icons.add_circle_outline,
-                        color: Colors.black,
                       ),
+                      color: Colors.black,
+                      disabledColor: Colors.grey,
                     ),
                   ),
                 )
@@ -738,6 +957,7 @@ class _MapFieldBoxState extends State<MapFieldBox> {
             ),
             ListView.builder(
               physics: NeverScrollableScrollPhysics(),
+              primary: false,
               shrinkWrap: true,
               itemCount: noOfLatLongs,
               itemBuilder: (_, index) {
@@ -759,8 +979,13 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                             if (index == 0) {
                               latLongs = [];
                             }
-                            latLongs.insert(index * 2, double.parse(s));
+                            if (s.length != 0)
+                              latLongs.insert(index * 2, double.parse(s));
+                            else
+                              latLongs.insert(index * 2, null);
                           },
+                          style: Theme.of(context).textTheme.headline1.copyWith(
+                              color: dis ? Colors.grey[300] : Colors.black),
                           enabled: !widget.disabled,
                           enableInteractiveSelection: false,
                           cursorColor: Colors.black,
@@ -768,6 +993,11 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                           decoration: InputDecoration(
                             hoverColor: Colors.amber,
                             hintText: 'Latitude',
+                            hintStyle: Theme.of(context)
+                                .textTheme
+                                .headline1
+                                .copyWith(
+                                    color: dis ? Colors.grey : Colors.black),
                             filled: true,
                             fillColor: Colors.white,
                             errorBorder: UnderlineInputBorder(
@@ -792,16 +1022,26 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                             return s == "" ? 'Enter Longitude' : null;
                           },
                           onSaved: (s) {
-                            latLongs.insert(index * 2 + 1, double.parse(s));
+                            if (s.length != 0)
+                              latLongs.insert(index * 2 + 1, double.parse(s));
+                            else
+                              latLongs.insert(index * 2 + 1, null);
                             if (index + 1 == noOfLatLongs) {
                               saveMapData();
                             }
                           },
+                          style: Theme.of(context).textTheme.headline1.copyWith(
+                              color: dis ? Colors.grey[300] : Colors.black),
                           enabled: !widget.disabled,
                           keyboardType: TextInputType.number,
                           enableInteractiveSelection: false,
                           decoration: InputDecoration(
                             hintText: 'Longitude',
+                            hintStyle: Theme.of(context)
+                                .textTheme
+                                .headline1
+                                .copyWith(
+                                    color: dis ? Colors.grey : Colors.black),
                             focusColor: Colors.red,
                             filled: true,
                             fillColor: Colors.white,
@@ -819,9 +1059,10 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                     IconButton(
                       icon: Icon(
                         Icons.close,
-                        color: index == 0 ? Colors.grey[300] : Colors.black,
                       ),
-                      onPressed: index == 0
+                      color: Colors.black,
+                      disabledColor: Colors.grey,
+                      onPressed: dis || (noOfLatLongs == 1 && index == 0)
                           ? null
                           : () {
                               setState(() {
@@ -844,14 +1085,13 @@ class _MapFieldBoxState extends State<MapFieldBox> {
 
 class TableFieldBox extends StatefulWidget {
   String data;
-  final Function removeThis;
-  TableFieldBox({@required this.removeThis});
-  bool _disabled = false;
-  void toggleDisable() {
-    _disabled = !_disabled;
+  final Function saveData;
+  Key key;
+  TableFieldBox(
+      {@required this.data, @required this.disabled, @required this.saveData}) {
+    key = new Key(this.hashCode.toString());
   }
-
-  bool get disabled => _disabled;
+  final bool disabled;
 
   @override
   _TableFieldBoxState createState() => _TableFieldBoxState();
@@ -860,15 +1100,18 @@ class TableFieldBox extends StatefulWidget {
 class _TableFieldBoxState extends State<TableFieldBox> {
   TextEditingController controller;
   bool csvAdded = false;
-
   @override
   void initState() {
     super.initState();
     controller = new TextEditingController();
+    if (widget.data != null) {
+      controller.text = json.decode(widget.data)['table'];
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    bool dis = widget.disabled;
     return Container(
       padding: EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -880,19 +1123,22 @@ class _TableFieldBoxState extends State<TableFieldBox> {
                 return s == "" ? 'Enter Table data' : null;
               },
               onSaved: (s) {
-                widget.data = json.encode({"table": s});
+                widget.saveData(json.encode({"table": s}));
               },
-              style: Theme.of(context).textTheme.headline2,
+              style: Theme.of(context)
+                  .textTheme
+                  .headline2
+                  .copyWith(color: dis ? Colors.grey : Colors.black),
               cursorColor: Colors.black54,
               minLines: 3,
-              maxLines: 5,
+              maxLines: 10,
               enabled: !widget.disabled,
               decoration: InputDecoration(
                 labelText: 'Table',
                 hintText: 'Separate column with \',\' and row with \';\'',
                 hintStyle: Theme.of(context).textTheme.headline2,
                 labelStyle: Theme.of(context).textTheme.headline1.copyWith(
-                    color: Colors.black,
+                    color: dis ? Colors.grey : Colors.black,
                     fontWeight: FontWeight.w600,
                     fontSize: 15.0),
                 contentPadding: EdgeInsets.all(12.0),
@@ -928,11 +1174,11 @@ class _TableFieldBoxState extends State<TableFieldBox> {
               child: Text(
                 csvAdded ? "Remove CSV" : "Upload CSV",
                 style: TextStyle(
-                  color: widget.disabled ? Colors.grey : Colors.blue,
+                  color: dis ? Colors.grey[400] : Colors.blue,
                   decoration: TextDecoration.underline,
                 ),
               ),
-              onPressed: widget.disabled
+              onPressed: dis
                   ? null
                   : csvAdded
                       ? () {
@@ -965,75 +1211,6 @@ class _TableFieldBoxState extends State<TableFieldBox> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class TitleFieldBox extends StatefulWidget {
-  String data;
-  final Function removeThis;
-  TitleFieldBox({@required this.removeThis});
-  bool _disabled = false;
-  void toggleDisable() {
-    _disabled = !_disabled;
-  }
-
-  bool get disabled => _disabled;
-
-  @override
-  _TitleFieldBoxState createState() => _TitleFieldBoxState();
-}
-
-class _TitleFieldBoxState extends State<TitleFieldBox> {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 8.0),
-      child: TextFormField(
-        validator: (s) {
-          return s == "" ? 'Enter a Title' : null;
-        },
-        onSaved: (s) {
-          widget.data = json.encode({"title": s});
-        },
-        style: Theme.of(context).textTheme.headline2,
-        cursorColor: Colors.black54,
-        minLines: 1,
-        maxLines: null,
-        maxLength: 100,
-        maxLengthEnforced: true,
-        enabled: !widget.disabled,
-        decoration: InputDecoration(
-          labelText: 'Title',
-          hintText: 'Write a title',
-          hintStyle: Theme.of(context).textTheme.headline2,
-          labelStyle: Theme.of(context).textTheme.headline1.copyWith(
-              color: Colors.black, fontWeight: FontWeight.w600, fontSize: 15.0),
-          contentPadding: EdgeInsets.all(12.0),
-          floatingLabelBehavior: FloatingLabelBehavior.auto,
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.black,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.red,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          border: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.grey,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-        ),
       ),
     );
   }

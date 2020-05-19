@@ -20,8 +20,6 @@ class NewsFeedPage extends StatefulWidget {
 }
 
 class City {
-
-
   String name;
   String state;
   String country;
@@ -29,7 +27,8 @@ class City {
   double population;
   List<String> regions;
 
-  City(String name, String state, String country, bool capital, double population, List<String> regions);
+  City(String name, String state, String country, bool capital,
+      double population, List<String> regions);
 
   String getName() {
     return name;
@@ -54,7 +53,6 @@ class City {
   List<String> getRegions() {
     return regions;
   }
-
 }
 
 class _NewsFeedPageState extends State<NewsFeedPage> {
@@ -63,28 +61,27 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   Firestore db = Firestore.instance;
 
-  void createRecord() async{
-
+  void createRecord() async {
     FeedInfo feed = FeedInfo(
-      title: 'hedasda',
-      creationDateTimeStamp: DateTime.now(),
-      description: 'adadad',
-      departmentUid: 'admamda'
-    );
+        title: 'hedasda',
+        creationDateTimeStamp: DateTime.now(),
+        description: 'adadad',
+        departmentUid: 'admamda');
 
-
-    FeedInfoDetails feedInfoDetails = FeedInfoDetails(
-      details: [
-        {'title': 'asdasd'},
-        {'content': 'asdka'},
-        {'title': 'adaskd'}
-      ]
-    );
+    FeedInfoDetails feedInfoDetails = FeedInfoDetails(details: [
+      {'title': 'asdasd'},
+      {'content': 'asdka'},
+      {'title': 'adaskd'}
+    ]);
 
     DateTime d = DateTime.now();
-    await db.collection('feeds').add(feed.toJson()).then((value){
-      db.collection('feeds').document(value.documentID).collection('Details').add(feedInfoDetails.toJson());
-    }).whenComplete((){
+    await db.collection('feeds').add(feed.toJson()).then((value) {
+      db
+          .collection('feeds')
+          .document(value.documentID)
+          .collection('Details')
+          .add(feedInfoDetails.toJson());
+    }).whenComplete(() {
       print(DateTime.now().difference(d));
     });
   }
@@ -105,9 +102,19 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
               (i) => List.generate(6, (j) => "Row ${i + 1}"),
             ),
           ),
+          MapData(
+            latitude: [21.639151, 24.639151, 18.639151],
+            longitude: [69.612160, 66.612160, 72.612160],
+            name: ["Home", "Home", "Home"],
+          ),
           ImageData(
               url:
                   "https://firebasestorage.googleapis.com/v0/b/elare-bd2f2.appspot.com/o/cover_images%2FMLDC_cover.png?alt=media&token=b375c390-bf56-47e2-9fcf-d6ba5d7d39f8"),
+          MapData(
+            latitude: [21.639151, 24.639151, 18.639151],
+            longitude: [69.612160, 66.612160, 72.612160],
+            name: ["Home", "Home", "Home"],
+          ),
         ],
         location:
             new LocationData(city: "Surat", state: "Gujarat", country: "India"),

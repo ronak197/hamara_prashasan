@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/feedClasses.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class FeedInfoPage extends StatefulWidget {
   final Feed feed;
@@ -22,7 +24,9 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
   @override
   void initState() {
     super.initState();
-    if (feed != null) content = feed.contents;
+    if (feed != null) {
+      content = feed.contents;
+    }
   }
 
   @override
@@ -70,14 +74,17 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                         color: Color(0xff6D6D6D),
                       ))),
                   Container(
-                      height: 16.0,
-                      alignment: Alignment.bottomRight,
-                      child: Center(
-                          child: Text(feed.location.city,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyText1
-                                  .copyWith(color: Color(0xff6D6D6D)))))
+                    height: 16.0,
+                    alignment: Alignment.bottomRight,
+                    child: Center(
+                      child: Text(
+                        feed.location.city,
+                        style: Theme.of(context).textTheme.bodyText1.copyWith(
+                              color: Color(0xff6D6D6D),
+                            ),
+                      ),
+                    ),
+                  )
                 ],
               )
             ],
@@ -95,7 +102,30 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
         child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
-            children: List<Widget>.generate(content.length, (i) {
+            children: <Widget>[
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(feed.firstTitle.title,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline4
+                                .copyWith(fontWeight: FontWeight.bold)),
+                        Spacer(),
+                        Text(
+                            feed.location.country +
+                                ", " +
+                                feed.time.hour.toString() +
+                                ":" +
+                                feed.time.minute.toString(),
+                            style: Theme.of(context).textTheme.bodyText1),
+                      ],
+                    ),
+                  )
+                ] +
+                List<Widget>.generate(content.length, (i) {
                   if (content[i].runtimeType == TitleData) {
                     String title = (content[i] as TitleData).title;
                     return Container(
@@ -130,6 +160,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                   } else if (content[i].runtimeType == ImageData) {
                     ImageData image = content[i] as ImageData;
                     return Container(
+                      margin: EdgeInsets.symmetric(vertical: 20),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
@@ -159,7 +190,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                     );
                   }
                   if (content[i].runtimeType == MapData) {
-                    return SizedBox();
+                    return MyGoogleMap(content[i]);
                   }
                   if (content[i].runtimeType == TableData) {
                     TableData t = content[i] as TableData;
@@ -221,6 +252,76 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                   ),
                 ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class MyGoogleMap extends StatefulWidget {
+  final MapData map;
+
+  MyGoogleMap(this.map);
+  @override
+  _MyGoogleMapState createState() => _MyGoogleMapState(map);
+}
+
+class _MyGoogleMapState extends State<MyGoogleMap> {
+  final MapData map;
+  Completer<GoogleMapController> _controller = Completer();
+  CameraPosition _myLocation;
+
+  Set<Marker> places;
+
+  _MyGoogleMapState(this.map);
+
+  @override
+  void initState() {
+    super.initState();
+    _myLocation = CameraPosition(
+      target: setInitialCameraPosition(),
+      zoom: 4.0,
+    );
+    places = new Set();
+    for (int i = 0; i < map.latitude.length; i++) {
+      places.add(
+        new Marker(
+          markerId: MarkerId(i.toString()),
+          position: LatLng(map.latitude[i], map.longitude[i]),
+        ),
+      );
+    }
+  }
+
+  LatLng setInitialCameraPosition() {
+    double lat = 0, lng = 0;
+    for (int i = 0; i < map.latitude.length; i++) {
+      lat += map.latitude[i];
+      lng += map.longitude[i];
+    }
+    lat /= map.latitude.length;
+    lng /= map.longitude.length;
+    return LatLng(lat, lng);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 20),
+      height: 250,
+      decoration: BoxDecoration(
+        border: Border.all(),
+        borderRadius: BorderRadius.circular(5.0),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(5.0),
+        child: GoogleMap(
+          initialCameraPosition: _myLocation,
+          mapType: MapType.normal,
+          onMapCreated: (controller) {
+            _controller.complete(controller);
+          },
+          markers: places,
         ),
       ),
     );
