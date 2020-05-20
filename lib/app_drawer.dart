@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
@@ -10,6 +11,9 @@ class MyAppDrawer extends StatefulWidget {
 }
 
 class _MyAppDrawerState extends State<MyAppDrawer> {
+
+  bool imageLoadFailed = false;
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -20,19 +24,27 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
             Container(
               margin: EdgeInsets.only(top: 12.0, bottom: 8.0),
               child: CircleAvatar(
+                backgroundImage: CachedNetworkImageProvider(
+                    AppConfigurations.signedUser.photoUrl,
+                  errorListener: (){
+                      setState(() {
+                        imageLoadFailed = true;
+                      });
+                  }
+                ),
                 radius: 40.0,
-                child: Text('RJ',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headline4
-                        .copyWith(color: Colors.white)),
+                child: imageLoadFailed ?
+                  Text(
+                    'RJ',
+                    style: Theme.of(context).textTheme.headline4.copyWith(color: Colors.white)
+                  ) : SizedBox(),
               ),
             ),
-            Text('Ronak Jain',
+            Text(AppConfigurations.signedUser.displayName,
                 style: Theme.of(context).textTheme.headline2.copyWith(
                     fontWeight: FontWeight.w600, color: Color(0xff303046))),
             Text(
-              'jain.ronak197@gmail.com',
+              AppConfigurations.signedUser.email,
               style: Theme.of(context)
                   .textTheme
                   .headline1

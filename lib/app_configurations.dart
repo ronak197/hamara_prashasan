@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hamaraprashasan/homepage.dart';
 import 'package:hamaraprashasan/login_page.dart';
@@ -10,6 +11,7 @@ class AppConfigurations{
 
   static SharedPreferences prefs;
   static String userType = 'user';
+  static AuthUser signedUser;
 
   static Future<SharedPreferences> get getSharedPrefInstance async{
     prefs = await SharedPreferences.getInstance();
@@ -29,6 +31,31 @@ class AppConfigurations{
 
   static bool get getSigningState{
     return prefs.getBool('signingState') ?? false;
+  }
+
+  static saveUserDetails(String displayName, String email, String phoneNumber, String photoUrl, String uid){
+    signedUser = AuthUser(
+      displayName: displayName,
+      email: email,
+      phoneNumber: phoneNumber,
+      photoUrl: photoUrl,
+      uid: uid
+    );
+    prefs.setString('displayName', displayName);
+    prefs.setString('email', email);
+    prefs.setString('phoneNumber', phoneNumber);
+    prefs.setString('photoUrl', photoUrl);
+    prefs.setString('uid', uid);
+  }
+
+  static getUserDetails(){
+    signedUser = AuthUser(
+      displayName : prefs.getString('displayName'),
+      email : prefs.getString('email'),
+      phoneNumber : prefs.getString('phoneNumber'),
+      photoUrl : prefs.getString('photoUrl'),
+      uid : prefs.getString('uid'),
+    );
   }
 
   static get getUserRoutes{
@@ -51,4 +78,14 @@ class AppConfigurations{
       '/bookmarks' : (context) => BookmarkPage(),
     };
   }
+}
+
+class AuthUser{
+  String displayName;
+  String email;
+  String phoneNumber;
+  String photoUrl;
+  String uid;
+
+  AuthUser({this.displayName,this.email,this.phoneNumber,this.photoUrl,this.uid});
 }

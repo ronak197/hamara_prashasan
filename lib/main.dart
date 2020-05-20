@@ -9,6 +9,7 @@ void main() async {
   await AppConfigurations.getSharedPrefInstance;
   if(AppConfigurations.getSigningState){
     startUpPage = '/home';
+    AppConfigurations.getUserDetails();
   } else {
     startUpPage = '/login';
   }

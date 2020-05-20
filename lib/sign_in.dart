@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:hamaraprashasan/app_configurations.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
 final GoogleSignIn googleSignIn = GoogleSignIn();
@@ -22,7 +23,9 @@ Future<bool> signInWithGoogle() async {
 
   final FirebaseUser user = authResult.user;
 
-  print('${user.displayName},${user.email},${user.phoneNumber},${user.photoUrl},${user.providerId},${user.getIdToken()}');
+  AppConfigurations.saveUserDetails(user.displayName, user.email, user.phoneNumber, user.photoUrl, user.uid);
+
+  user.getIdToken().then((value) => print(value));
   assert(!user.isAnonymous);
   assert(await user.getIdToken() != null);
 
