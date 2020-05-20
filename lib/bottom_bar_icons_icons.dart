@@ -21,8 +21,5 @@ class BottomBarIcons {
   static const _kFontFam = 'BottomBarIcons';
   static const _kFontPkg = null;
 
-  static const IconData feed = IconData(0xe800, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData department = IconData(0xe802, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData bookmark = IconData(0xe803, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData chat_bubble = IconData(0xe804, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData building = IconData(0xe801, fontFamily: _kFontFam, fontPackage: _kFontPkg);
 }

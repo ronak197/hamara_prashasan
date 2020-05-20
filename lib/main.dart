@@ -62,6 +62,11 @@ class MyApp extends StatelessWidget {
               fontSize: 14.0,
               fontFamily: 'ProductSans'
           ),
+          bodyText2: TextStyle(
+              fontSize: 13.0,
+              color: Colors.black,
+              fontFamily: 'ProductSans'
+          ),
           bodyText1: TextStyle(
             fontSize: 12.0,
             color: Colors.black,

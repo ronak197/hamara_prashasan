@@ -29,26 +29,26 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                   DepartmentsMessageBox(
                     category: 'health',
                     subscribed: true,
-                    title: "Ministry of Health",
-                    subtitle: "India",
+                    name: "Ministry of Health",
+                    areaOfAdministration: "India",
                   ),
                   DepartmentsMessageBox(
                     category: 'police',
                     subscribed: false,
-                    title: "Police Department",
-                    subtitle: "Surat",
+                    name: "Police Department",
+                    areaOfAdministration: "Surat",
                   ),
                   DepartmentsMessageBox(
                     category: 'muncorp',
                     subscribed: true,
-                    title: "Municipal Corporation",
-                    subtitle: "Surat",
+                    name: "Municipal Corporation",
+                    areaOfAdministration: "Surat",
                   ),
                   DepartmentsMessageBox(
                     category: 'health',
                     subscribed: true,
-                    title: "Health Department",
-                    subtitle: "Surat",
+                    name: "Health Department",
+                    areaOfAdministration: "Surat",
                   ),
                 ],
               ),
@@ -90,73 +90,109 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
 class DepartmentsMessageBox extends StatelessWidget {
 
-  final String category, title, subtitle;
+  final String category, name, areaOfAdministration;
   final bool subscribed;
 
-  DepartmentsMessageBox({this.category, this.title, this.subtitle, this.subscribed});
+  DepartmentsMessageBox({this.category, this.name, this.areaOfAdministration, this.subscribed});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
-      padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+      margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(5.0)),
         color: Color(avatarColorMap[category]),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        mainAxisSize: MainAxisSize.max,
         children: [
-          Row(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              Container(
-                child: SvgPicture.asset(
-                  avatarLocMap[category]
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  alignment: Alignment.topLeft,
-                  margin: EdgeInsets.only(left: 10.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            child: SvgPicture.asset(
+              avatarLocMap[category],
+              height: 60.0,
+              width: 60.0,
+              fit: BoxFit.contain,
+              placeholderBuilder: (context){
+                return Container(
+                  width: 64.0,
+                  height: 64.0,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10.0),
+                    gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.white, Color(0xfff7f7f7)]
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Expanded(
+            child: Container(
+              alignment: Alignment.topLeft,
+              margin: EdgeInsets.only(left: 10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    style: Theme.of(context).textTheme.headline2.copyWith(
+                        color: Color(0xff514A4A),
+                        fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.max,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.headline3.copyWith(
-                            color: Color(0xff514A4A),
-                            fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Text(
+                            areaOfAdministration,
+                            style: Theme.of(context).textTheme.headline1.copyWith(
+                              color: Color(0xff514A4A),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 1.0),
+                            decoration: BoxDecoration(
+                              color: Color(categoryTagColorMap[category]),
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                            child: Text(
+                              category,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyText1
+                                  .copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        subtitle,
-                        style: Theme.of(context).textTheme.headline2.copyWith(
-                          color: Color(0xff514A4A),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      RawMaterialButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.all(0.0),
+                        fillColor: Colors.orange,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5.0)),
+                        child: Text('Subscribe', style: Theme.of(context).textTheme.headline1.copyWith(color: Colors.white),),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: CupertinoButton(
-              padding: EdgeInsets.all(0.0),
-              onPressed: (){},
-              child: Text(
-                subscribed ? "SUBSCRIBE" : "UNSUBSCRIBE",
-                style: Theme.of(context)
-                    .textTheme
-                    .headline2
-                    .copyWith(color: Colors.red, fontWeight: FontWeight.w600),
+                ],
               ),
             ),
           ),
@@ -165,3 +201,4 @@ class DepartmentsMessageBox extends StatelessWidget {
     );
   }
 }
+

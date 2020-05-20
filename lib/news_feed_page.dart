@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/feedInfoPage.dart';
@@ -35,9 +36,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       Feed(
         FeedInfo(
           departmentUid: 'andskad',
-          description: 'anjdsbkandkasmlda',
+          description: 'Citizens are informed that 10 patients are released from qaurantine',
           creationDateTimeStamp: DateTime.now(),
-          title: 'anksdnaknd'
+          title: 'Patients Released from quarantine are kept under isolation'
         ),
         Department(
           areaOfAdministration: 'adnsd',
@@ -50,6 +51,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           details: [
             {'title': 'asnda,'},
             {'content' : 'asdnkand'},
+            {'coords' : [{'latLong' : GeoPoint(12,33), 'label' : 'ansdnak'},{'latLong' : GeoPoint(12,33), 'label' : 'ansdnak'}]}
           ]
         )
       )
@@ -130,7 +132,7 @@ class MessageBox extends StatelessWidget {
     return Stack(
       children: <Widget>[
             Container(
-              margin: EdgeInsets.symmetric(horizontal: 15.0),
+              margin: EdgeInsets.symmetric(horizontal: 8.0),
               padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.all(Radius.circular(15.0)),
@@ -151,6 +153,23 @@ class MessageBox extends StatelessWidget {
                       Container(
                         child: SvgPicture.asset(
                           feed.profileAvatar,
+                          width: 64.0,
+                          height: 64.0,
+                          fit: BoxFit.contain,
+                          placeholderBuilder: (context){
+                            return Container(
+                              width: 64.0,
+                              height: 64.0,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10.0),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.white, Color(0xfff7f7f7)]
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                       Expanded(
@@ -162,23 +181,30 @@ class MessageBox extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                feed.department.name,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline3
-                                    .copyWith(
-                                        color: Color(0xff514A4A),
-                                        fontWeight: FontWeight.w600),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                                decoration: BoxDecoration(
+                                  color: Color(categoryTagColorMap[feed.department.category]),
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                                child: Text(
+                                  feed.department.category,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyText2
+                                      .copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                               Text(
                                 feed.feedInfo.title,
                                 style: Theme.of(context)
                                     .textTheme
-                                    .headline2
-                                    .copyWith(color: Color(0xff514A4A)),
+                                    .headline3
+                                    .copyWith(color: Color(0xff303046), fontWeight: FontWeight.w600),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -193,23 +219,48 @@ class MessageBox extends StatelessWidget {
                     margin: EdgeInsets.only(top: 10.0),
                     child: Text(
                       feed.feedInfo.description,
-                      style: Theme.of(context).textTheme.headline1,
+                      style: Theme.of(context).textTheme.headline1.copyWith(fontWeight: FontWeight.normal),
                     ),
                   ),
-                  Container(
-                    alignment: Alignment.topRight,
-                    margin: EdgeInsets.only(top: 10.0),
-                    child: Text(
-                      feed.department.areaOfAdministration +
-                          ", " +
-                          feed.feedInfo.creationDateTimeStamp.hour.toString() +
-                          ":" +
-                          feed.feedInfo.creationDateTimeStamp.minute.toString(),
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyText1
-                          .copyWith(color: Color(0xff8C8C8C)),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        alignment: Alignment.topRight,
+                        margin: EdgeInsets.only(top: 10.0),
+                        child: Text(
+                          feed.department.name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyText1
+                              .copyWith(color: Color(0xff8C8C8C)),
+                        ),
+                      ),
+                      Container(
+                        alignment: Alignment.topRight,
+                        margin: EdgeInsets.only(top: 10.0),
+                        child: RichText(
+                          text: TextSpan(
+                            children: [
+                              WidgetSpan(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 2.0),
+                                  child: Icon(Icons.access_time, size: 13.0, color: Color(0xff8C8C8C),),
+                                ),
+                              ),
+                              TextSpan(
+                                text: 'July' + ', ' + feed.feedInfo
+                                    .creationDateTimeStamp.hour.toString() +
+                                    ":" +
+                                    feed.feedInfo.creationDateTimeStamp.minute.toString(),
+                                style: Theme.of(context).textTheme.bodyText1
+                                      .copyWith(color: Color(0xff8C8C8C)),
+                              ),
+                            ]
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -225,8 +276,7 @@ class MessageBox extends StatelessWidget {
                       width: 25,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: selected ? Colors.black : Colors.white,
-                        border: Border.all(),
+                        color: selected ? Colors.blue : Color(0xffe3e5e9),
                       ),
                       child: Icon(
                         Icons.check,

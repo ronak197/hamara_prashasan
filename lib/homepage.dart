@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_drawer.dart';
 import 'package:hamaraprashasan/bookmarks.dart';
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
-import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/departments_page.dart';
 import 'package:hamaraprashasan/news_feed_page.dart';
 
@@ -11,6 +10,7 @@ class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
 }
+
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
@@ -94,17 +94,18 @@ class _HomePageState extends State<HomePage> {
               leading: IconButton(
                 icon: Icon(
                   Icons.clear,
-                  size: 30.0,
+                  size: 25.0,
                 ),
                 onPressed: clearSelectedFeed,
               ),
               actions: [
                 Container(
-                  padding: EdgeInsets.all(10.0),
+                  padding: EdgeInsets.only(right: 5.0),
                   child: IconButton(
                     icon: Icon(
-                      Icons.bookmark_border,
-                      size: 30.0,
+                      Icons.bookmark,
+                      size: 25.0,
+                      color: Color(0xff393A4E),
                     ),
                     onPressed: () {},
                   ),
@@ -122,18 +123,18 @@ class _HomePageState extends State<HomePage> {
                   leading: IconButton(
                     icon: Icon(
                       Icons.clear,
-                      size: 30.0,
+                      size: 25.0,
                     ),
                     onPressed: clearSelectedBookmark,
                   ),
                   actions: [
                     Container(
-                      padding: EdgeInsets.all(10.0),
+                      padding: EdgeInsets.only(right: 5.0),
                       child: IconButton(
                         icon: Icon(
-                          Icons.delete,
-                          size: 30.0,
-                          color: Colors.red,
+                          Icons.delete_forever,
+                          size: 25.0,
+                          color: Color(0xffea3953),
                         ),
                         onPressed: () {},
                       ),
@@ -152,7 +153,7 @@ class _HomePageState extends State<HomePage> {
                     Container(
                       padding: EdgeInsets.all(10.0),
                       child: Icon(
-                        AppBarIcons.filter,
+                        Icons.filter_list,
                         size: 20.0,
                       ),
                     )
@@ -162,7 +163,7 @@ class _HomePageState extends State<HomePage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('Welcome Ronak',
-                          style: Theme.of(context).textTheme.headline4),
+                          style: Theme.of(context).textTheme.headline4.copyWith(fontWeight: FontWeight.w600)),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,8 +174,8 @@ class _HomePageState extends State<HomePage> {
                               alignment: Alignment.bottomCenter,
                               child: Center(
                                   child: Icon(
-                                AppBarIcons.location,
-                                size: 10.0,
+                                Icons.location_on,
+                                size: 12.0,
                                 color: Color(0xff6D6D6D),
                               ))),
                           Container(
@@ -204,14 +205,14 @@ class _HomePageState extends State<HomePage> {
         items: [
           BottomNavigationBarItem(
               activeIcon: Icon(
-                BottomBarIcons.feed,
+                Icons.rss_feed,
                 color: Color(0xff02CCFF),
-                size: 20.0,
+                size: 23.0,
               ),
               icon: Icon(
-                BottomBarIcons.feed,
-                color: Color(0xffD9D9D9),
-                size: 21.0,
+                Icons.rss_feed,
+                color: Color(0xff393A4E),
+                size: 24.0,
               ),
               title: Padding(
                 padding: const EdgeInsets.all(2.0),
@@ -220,18 +221,18 @@ class _HomePageState extends State<HomePage> {
                   style: Theme.of(context)
                       .textTheme
                       .bodyText1
-                      .copyWith(color: Color(0xff514A4A)),
+                      .copyWith(color: Color(0xff514A4A), fontWeight: FontWeight.normal),
                 ),
               )),
           BottomNavigationBarItem(
             activeIcon: Icon(
-              BottomBarIcons.department,
+              BottomBarIcons.building,
               color: Color(0xffEAAC00),
               size: 23.0,
             ),
             icon: Icon(
-              BottomBarIcons.department,
-              color: Color(0xffD9D9D9),
+              BottomBarIcons.building,
+              color: Color(0xff393A4E),
               size: 22.0,
             ),
             title: Padding(
@@ -241,20 +242,20 @@ class _HomePageState extends State<HomePage> {
                 style: Theme.of(context)
                     .textTheme
                     .bodyText1
-                    .copyWith(color: Color(0xff514A4A)),
+                    .copyWith(color: Color(0xff514A4A), fontWeight: FontWeight.normal),
               ),
             ),
           ),
           BottomNavigationBarItem(
             activeIcon: Icon(
-              BottomBarIcons.bookmark,
+              Icons.bookmark_border,
               color: Color(0xff01E14C),
-              size: 22.0,
+              size: 23.0,
             ),
             icon: Icon(
-              BottomBarIcons.bookmark,
-              color: Color(0xffD9D9D9),
-              size: 21.0,
+              Icons.bookmark_border,
+              color: Color(0xff393A4E),
+              size: 24.0,
             ),
             title: Padding(
               padding: const EdgeInsets.all(2.0),
@@ -263,20 +264,20 @@ class _HomePageState extends State<HomePage> {
                 style: Theme.of(context)
                     .textTheme
                     .bodyText1
-                    .copyWith(color: Color(0xff514A4A)),
+                    .copyWith(color: Color(0xff514A4A), fontWeight: FontWeight.normal),
               ),
             ),
           ),
           BottomNavigationBarItem(
             activeIcon: Icon(
-              BottomBarIcons.chat_bubble,
+              Icons.chat_bubble_outline,
               color: Color(0xffF3E47A),
-              size: 21.0,
+              size: 22.0,
             ),
             icon: Icon(
-              BottomBarIcons.chat_bubble,
-              color: Color(0xffD9D9D9),
-              size: 19.0,
+              Icons.chat_bubble_outline,
+              color: Color(0xff393A4E),
+              size: 21.0,
             ),
             title: Padding(
               padding: const EdgeInsets.all(2.0),
@@ -285,7 +286,7 @@ class _HomePageState extends State<HomePage> {
                 style: Theme.of(context)
                     .textTheme
                     .bodyText1
-                    .copyWith(color: Color(0xff514A4A)),
+                    .copyWith(color: Color(0xff514A4A), fontWeight: FontWeight.normal),
               ),
             ),
           ),

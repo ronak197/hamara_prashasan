@@ -7,9 +7,15 @@ Map<String,String> avatarLocMap = {
 };
 
 Map<String,int> avatarColorMap = {
-  'health' : 0xffFFEEED,
-  'police' : 0xffFFFCED,
-  'muncorp' : 0xffF1EDFF,
+  'health' : 0xffFFFDFC,
+  'police' : 0xffFFFFFC,
+  'muncorp' : 0xffFDFCFF,
+};
+
+Map<String,int> categoryTagColorMap = {
+  'health' : 0xff01C8B5,
+  'police' : 0xffFFCE00,
+  'muncorp' : 0xff3D17BC,
 };
 
 class Feed{
