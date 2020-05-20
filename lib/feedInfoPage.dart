@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/classes.dart';
 
@@ -129,6 +131,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                   else if (content[i].containsKey('pictureUrl')) {
                     String pictureUrl = content[i]['pictureUrl'];
                     return Container(
+                      margin: EdgeInsets.symmetric(vertical: 20),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
@@ -223,3 +226,74 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
     );
   }
 }
+
+/* class MyGoogleMap extends StatefulWidget {
+  final MapData map;
+
+  MyGoogleMap(this.map);
+  @override
+  _MyGoogleMapState createState() => _MyGoogleMapState(map);
+}
+
+class _MyGoogleMapState extends State<MyGoogleMap> {
+  final MapData map;
+  Completer<GoogleMapController> _controller = Completer();
+  CameraPosition _myLocation;
+
+  Set<Marker> places;
+
+  _MyGoogleMapState(this.map);
+
+  @override
+  void initState() {
+    super.initState();
+    _myLocation = CameraPosition(
+      target: setInitialCameraPosition(),
+      zoom: 4.0,
+    );
+    places = new Set();
+    for (int i = 0; i < map.latitude.length; i++) {
+      places.add(
+        new Marker(
+          markerId: MarkerId(i.toString()),
+          position: LatLng(map.latitude[i], map.longitude[i]),
+        ),
+      );
+    }
+  }
+
+  LatLng setInitialCameraPosition() {
+    double lat = 0, lng = 0;
+    for (int i = 0; i < map.latitude.length; i++) {
+      lat += map.latitude[i];
+      lng += map.longitude[i];
+    }
+    lat /= map.latitude.length;
+    lng /= map.longitude.length;
+    return LatLng(lat, lng);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 20),
+      height: 250,
+      decoration: BoxDecoration(
+        border: Border.all(),
+        borderRadius: BorderRadius.circular(5.0),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(5.0),
+        child: GoogleMap(
+          initialCameraPosition: _myLocation,
+          mapType: MapType.normal,
+          onMapCreated: (controller) {
+            _controller.complete(controller);
+          },
+          markers: places,
+        ),
+      ),
+    );
+  }
+}
+ */
