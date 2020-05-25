@@ -3,11 +3,14 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_fab_dialer/flutter_fab_dialer.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:hamaraprashasan/classes.dart';
+import 'package:hamaraprashasan/searchPlace.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_fab_dialer/flutter_fab_dialer.dart';
 
 class FormField {
   String data;
@@ -78,6 +81,65 @@ class _SendPostPageState extends State<SendPostPage> {
     return s;
   }
 
+  void startPreview() {
+    final FormState form = _formKey.currentState;
+    if (!form.validate()) {
+      showMessage('Form is not valid!  Please review and correct.');
+    } else {
+      form.save();
+      List<Map<String, dynamic>> contents = [];
+      String title = json.decode(formFields[0].data)['title'],
+          description = json.decode(formFields[1].data)['content'];
+      for (int i = 0; i < formFields.length; i++) {
+        var data = json.decode(formFields[i].data);
+        if (data['title'] != null) {
+          contents.add(
+            {"title": data['title']},
+          );
+        } else if (data['content'] != null) {
+          contents.add(
+            {"content": data['content']},
+          );
+        } else if (data['picture'] != null) {
+          contents.add({"pictureUrl": data['picture'], "isLocal": true});
+        } else if (data['map'] != null) {
+          List<double> latLong = List.from(data['map']),
+              latitude = [],
+              longitude = [];
+          for (int i = 0; i < latLong.length / 2; i++) {
+            latitude.add(latLong[2 * i]);
+            longitude.add(latLong[2 * i + 1]);
+          }
+          contents.add(
+              {"latitude": latitude, "longitude": longitude, "label": null});
+        } else if (data['table'] != null) {
+          contents.add({"table": data['table']});
+        }
+      }
+      Feed f = new Feed(
+        FeedInfo(
+          departmentUid: 'andskad',
+          description: description,
+          creationDateTimeStamp: DateTime.now(),
+          title: title,
+        ),
+        Department(
+          areaOfAdministration: 'adnsd',
+          category: "health",
+          email: 'naksda',
+          name: 'Surat Health Department',
+          userType: 'department',
+        ),
+        FeedInfoDetails(
+          details: contents,
+        ),
+      );
+      if (!FocusScope.of(context).hasPrimaryFocus)
+        FocusScope.of(context).unfocus();
+      Navigator.of(context).pushNamed("/feedInfo", arguments: {"feed": f});
+    }
+  }
+
   void editForm() {
     if (editing) {
       for (int i = 0; i < formFields.length; i++) {
@@ -90,11 +152,6 @@ class _SendPostPageState extends State<SendPostPage> {
       }
       editing = true;
     }
-    setState(() {});
-  }
-
-  void removeItem(int index) async {
-    formFields.removeAt(index);
     setState(() {});
   }
 
@@ -131,6 +188,8 @@ class _SendPostPageState extends State<SendPostPage> {
     if (form != null) {
       form.save();
     }
+    var fabColor = editing ? Colors.grey : Color(0xff2d334c),
+        iconColor = editing ? Colors.grey[300] : Colors.white;
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -144,7 +203,7 @@ class _SendPostPageState extends State<SendPostPage> {
         ),
         actions: [
           GestureDetector(
-            onTap: (){},
+            onTap: startPreview,
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 10.0),
               child: Center(
@@ -169,245 +228,597 @@ class _SendPostPageState extends State<SendPostPage> {
           )
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           showInsertOptions & showTextFieldOptions
-              ? Row(
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(2.0),
-                      child: CupertinoButton(
-                        child: Text(
-                          'Add Title',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headline2
-                              .copyWith(color: Colors.black),
-                        ),
-                        color: Colors.amber,
-                        onPressed: () {
-                          setState(() {
-                            formFields
-                                .add(new FormField(null, false, TitleFieldBox));
-                          });
-                        },
-                        padding: EdgeInsets.symmetric(horizontal: 15.0),
-                        borderRadius: BorderRadius.circular(25.0),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                formFields.add(
+                                    new FormField(null, false, TitleFieldBox));
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Title",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.green : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addTitle",
+                              child: Icon(
+                                Icons.title,
+                                size: 20.0,
+                                color: editing ? Colors.white : iconColor,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  formFields.add(new FormField(
+                                      null, false, TitleFieldBox));
+                                });
+                              },
+                              backgroundColor:
+                                  editing ? Colors.green : fabColor,
+                              mini: true,
+                              elevation: 5.0,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(2.0),
-                      child: CupertinoButton(
-                        child: Text(
-                          'Add Body',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headline2
-                              .copyWith(color: Colors.black),
-                        ),
-                        color: Colors.amber,
-                        onPressed: () {
-                          setState(() {
-                            formFields.add(
-                                new FormField(null, false, ContentFieldBox));
-                          });
-                        },
-                        padding: EdgeInsets.symmetric(horizontal: 15.0),
-                        borderRadius: BorderRadius.circular(25.0),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                formFields.add(new FormField(
+                                    null, false, ContentFieldBox));
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Description",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.green : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addContent",
+                              child: Icon(
+                                Icons.content_paste,
+                                size: 20.0,
+                                color: editing ? Colors.white : iconColor,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  formFields.add(new FormField(
+                                      null, false, ContentFieldBox));
+                                });
+                              },
+                              backgroundColor:
+                                  editing ? Colors.green : fabColor,
+                              mini: true,
+                              elevation: 5.0,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
                       ),
-                    )
+                    ),
                   ],
                 )
               : SizedBox(),
-          showInsertOptions //&& !showTextFieldOptions
-              ? Row(
+          showInsertOptions && !showTextFieldOptions
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Spacer(),
-                    Padding(
-                      padding: const EdgeInsets.all(2.0),
-                      child: CupertinoButton(
-                        child: Icon(
-                          Icons.text_fields,
-                          size: 20.0,
-                          color: editing ? Colors.grey : Colors.black,
-                        ),
-                        color: editing ? Colors.grey : Colors.amber,
-                        onPressed: editing
-                            ? null
-                            : () {
-                                setState(() {
-                                  showTextFieldOptions = !showTextFieldOptions;
-                                });
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: editing
+                                ? null
+                                : () {
+                                    setState(() {
+                                      showTextFieldOptions =
+                                          !showTextFieldOptions;
+                                    });
+                                  },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Text",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.green : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addText",
+                              child: Icon(
+                                Icons.text_fields,
+                                size: 20.0,
+                                color: iconColor,
+                              ),
+                              backgroundColor: fabColor,
+                              onPressed: editing
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        showTextFieldOptions =
+                                            !showTextFieldOptions;
+                                      });
+                                    },
+                              mini: true,
+                              elevation: 20,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: editing
+                                ? null
+                                : () {
+                                    setState(() {
+                                      formFields.add(new FormField(
+                                          null, false, PictureUploadBox));
+                                    });
+                                  },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Image",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.green : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addImage",
+                              child: Icon(
+                                Icons.insert_photo,
+                                size: 20.0,
+                                color: iconColor,
+                              ),
+                              backgroundColor: fabColor,
+                              onPressed: editing
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        formFields.add(new FormField(
+                                            null, false, PictureUploadBox));
+                                      });
+                                    },
+                              mini: true,
+                              elevation: 20,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: editing
+                                ? null
+                                : () {
+                                    setState(() {
+                                      formFields.add(new FormField(
+                                          null, false, MapFieldBox));
+                                    });
+                                  },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Map",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.green : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addMap",
+                              child: Icon(
+                                Icons.map,
+                                size: 20.0,
+                                color: iconColor,
+                              ),
+                              backgroundColor: fabColor,
+                              onPressed: editing
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        formFields.add(new FormField(
+                                            null, false, MapFieldBox));
+                                      });
+                                    },
+                              mini: true,
+                              elevation: 20,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: editing
+                                ? null
+                                : () {
+                                    setState(() {
+                                      formFields.add(new FormField(
+                                          null, false, TableFieldBox));
+                                    });
+                                  },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Map",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.green : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addTable",
+                              child: Icon(
+                                Icons.table_chart,
+                                size: 20.0,
+                                color: iconColor,
+                              ),
+                              backgroundColor: fabColor,
+                              onPressed: editing
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        formFields.add(new FormField(
+                                            null, false, TableFieldBox));
+                                      });
+                                    },
+                              mini: true,
+                              elevation: 20,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          /* Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: MaterialButton(
+                              child: Text(
+                                "Edit",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        color:
+                                            editing ? Colors.white : iconColor),
+                              ),
+                              color: editing ? Colors.green : fabColor,
+                              onPressed: () {
+                                if (!editing) {
+                                  showInsertOptions = false;
+                                }
+                                editForm();
                               },
-                        padding: EdgeInsets.all(0.0),
-                        borderRadius: BorderRadius.circular(50.0),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(2.0),
-                      child: CupertinoButton(
-                        child: Icon(
-                          Icons.insert_photo,
-                          size: 20.0,
-                          color: editing ? Colors.grey : Colors.black,
-                        ),
-                        color: editing ? Colors.grey : Colors.amber,
-                        onPressed: editing
-                            ? null
-                            : () {
-                                setState(() {
-                                  formFields.add(new FormField(
-                                      null, false, PictureUploadBox));
-                                });
+                              padding: EdgeInsets.all(0.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                              elevation: 20,
+                            ),
+                          ), */
+                          InkWell(
+                            onTap: () {
+                              showTextFieldOptions = false;
+                              showInsertOptions = false;
+                              editForm();
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Move or Delete Fields",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.green : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "edit",
+                              child: Icon(
+                                Icons.edit,
+                                size: 20.0,
+                                color: editing ? Colors.white : iconColor,
+                              ),
+                              onPressed: () {
+                                showTextFieldOptions = false;
+                                showInsertOptions = false;
+                                editForm();
                               },
-                        padding: EdgeInsets.all(0.0),
-                        borderRadius: BorderRadius.circular(50.0),
+                              backgroundColor:
+                                  editing ? Colors.green : fabColor,
+                              mini: true,
+                              elevation: 5.0,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(2.0),
-                      child: CupertinoButton(
-                        child: Icon(
-                          Icons.map,
-                          size: 20.0,
-                          color: editing ? Colors.grey : Colors.black,
-                        ),
-                        color: editing ? Colors.grey : Colors.amber,
-                        onPressed: editing
-                            ? null
-                            : () {
-                                setState(() {
-                                  formFields.add(
-                                      new FormField(null, false, MapFieldBox));
-                                });
-                              },
-                        padding: EdgeInsets.all(0.0),
-                        borderRadius: BorderRadius.circular(50.0),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(2.0),
-                      child: CupertinoButton(
-                        child: Icon(
-                          Icons.table_chart,
-                          size: 20.0,
-                          color: editing ? Colors.grey : Colors.black,
-                        ),
-                        color: editing ? Colors.grey : Colors.amber,
-                        onPressed: editing
-                            ? null
-                            : () {
-                                setState(() {
-                                  formFields.add(new FormField(
-                                      null, false, TableFieldBox));
-                                });
-                              },
-                        padding: EdgeInsets.all(0.0),
-                        borderRadius: BorderRadius.circular(50.0),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(2.0),
-                      child: CupertinoButton(
-                        child: Icon(
-                          Icons.edit,
-                          size: 20.0,
-                          color: Colors.black,
-                        ),
-                        color: editing ? Colors.green : Colors.amber,
-                        onPressed: () {
-                          showTextFieldOptions = false;
-                          editForm();
-                        },
-                        padding: EdgeInsets.all(0.0),
-                        borderRadius: BorderRadius.circular(50.0),
-                      ),
-                    ),
-                    Spacer(),
                   ],
                 )
               : SizedBox(),
           Padding(
             padding: const EdgeInsets.all(2.0),
-            child: CupertinoButton(
+            child: FloatingActionButton(
               child: Icon(
                 showInsertOptions ? Icons.close : Icons.add,
                 size: 30.0,
+                color: Colors.white,
               ),
-              color: Colors.deepOrange,
+              backgroundColor: Color(0xff2d334c), //Color(0xff1010fc),
               onPressed: () {
                 setState(() {
                   showInsertOptions = !showInsertOptions;
                   showTextFieldOptions = false;
                 });
               },
-              padding: EdgeInsets.all(0.0),
-              borderRadius: BorderRadius.circular(50.0),
+              elevation: 25,
+              //padding: EdgeInsets.all(0.0),
+              //borderRadius: BorderRadius.circular(50.0),
             ),
           ),
         ],
       ),
-      body: Container(
-        padding: EdgeInsets.symmetric(vertical: 15.0),
+      body: Opacity(
+        opacity: showInsertOptions ? 0.2 : 1,
         child: Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: new List<Widget>.generate(2, (index) {
-                  var field = formFields[index];
-                  return fieldWidget(field);
-                }) +
-                <Widget>[
-                  Expanded(
-                    child: ReorderableListView(
-                      onReorder: (oldIndex, newIndex) {
-                        print(111);
-                        oldIndex += 2;
-                        newIndex += 2;
-                        if (oldIndex < newIndex) {
-                          newIndex -= 1;
-                        }
-                        var f = formFields.removeAt(oldIndex);
-                        formFields.insert(newIndex, f);
-                        setState(() {});
-                      },
-                      children: List<Widget>.generate(
-                        formFields.length - 2,
-                        (index) {
-                          index += 2;
-                          var field = formFields[index];
-                          {
-                            if (!editing)
-                              return fieldWidget(field);
-                            else
-                              return Dismissible(
-                                key: new Key(
-                                    formFields[index].hashCode.toString()),
-                                onDismissed: (dir) async {
-                                  formFields.removeAt(index);
-                                  setState(() {});
-                                },
-                                direction: DismissDirection.startToEnd,
-                                background: Container(
-                                  color: Colors.red,
-                                  alignment: Alignment.centerLeft,
-                                  child: Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.white,
-                                    size: 30,
-                                  ),
-                                ),
-                                child: fieldWidget(field),
-                              );
-                          }
-                        },
-                      ),
-                    ),
+          child: editing
+              ? ReorderableListView(
+                  onReorder: (oldIndex, newIndex) {
+                    if (oldIndex >= 2 && newIndex > 1) {
+                      if (oldIndex < newIndex) {
+                        newIndex -= 1;
+                      }
+                      var f = formFields.removeAt(oldIndex);
+                      formFields.insert(newIndex, f);
+                      setState(() {});
+                    } else {
+                      showMessage(
+                          "You cannot reorder the first Title and Description fields.");
+                    }
+                  },
+                  children: List<Widget>.generate(
+                    formFields.length,
+                    (index) {
+                      var field = formFields[index];
+                      {
+                        if (index < 2)
+                          return fieldWidget(field);
+                        else
+                          return Dismissible(
+                            key: new Key(formFields[index].hashCode.toString()),
+                            onDismissed: (dir) async {
+                              formFields.removeAt(index);
+                              setState(() {});
+                            },
+                            direction: DismissDirection.startToEnd,
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerLeft,
+                              child: Icon(
+                                Icons.delete,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                              margin: EdgeInsets.symmetric(vertical: 20),
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                            ),
+                            child: fieldWidget(field),
+                          );
+                      }
+                    },
                   ),
-                ],
-          ),
+                )
+              : ListView(
+                  children: List<Widget>.generate(
+                    formFields.length,
+                    (index) {
+                      var field = formFields[index];
+                      return fieldWidget(field);
+                    },
+                  ),
+                ),
         ),
       ),
     );
@@ -447,13 +858,13 @@ class _TitleFieldBoxState extends State<TitleFieldBox> {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            blurRadius: 0.5,
-            offset: Offset(0, 1),
+            blurRadius: 1.0,
+            offset: Offset(0, 2.5),
             color: Colors.grey[300],
           ),
           BoxShadow(
-            blurRadius: 0.5,
-            offset: Offset(0, -1),
+            blurRadius: 0.1,
+            offset: Offset(0, -0.5),
             color: Colors.grey[300],
           )
         ],
@@ -486,32 +897,11 @@ class _TitleFieldBoxState extends State<TitleFieldBox> {
               .copyWith(color: Colors.grey, fontSize: 15.0),
           labelStyle: Theme.of(context).textTheme.headline1.copyWith(
               color: dis ? Colors.grey : Colors.black,
-              fontWeight: FontWeight.w600,
-              fontSize: 20.0),
+              fontWeight: FontWeight.bold,
+              fontSize: 15.0),
           counterText: "",
           contentPadding: EdgeInsets.all(12.0),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
-          /* focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.black,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.red,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          border: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.grey,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ), */
           border: InputBorder.none,
         ),
       ),
@@ -547,7 +937,23 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
   Widget build(BuildContext context) {
     bool dis = widget.disabled;
     return Container(
+      margin: EdgeInsets.symmetric(vertical: 10.0),
       padding: EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 1.0,
+            offset: Offset(0, 2.5),
+            color: Colors.grey[300],
+          ),
+          BoxShadow(
+            blurRadius: 0.1,
+            offset: Offset(0, -0.5),
+            color: Colors.grey[300],
+          )
+        ],
+        color: Colors.white,
+      ),
       child: TextFormField(
         validator: (s) {
           return s == "" ? 'Enter some content' : null;
@@ -568,36 +974,20 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
         initialValue: initialString,
         enabled: !dis,
         decoration: InputDecoration(
-          labelText: 'Content',
-          hintText: 'Write a Description',
-          hintStyle: Theme.of(context).textTheme.headline2,
+          labelText: 'DESCRIPTION',
+          hintText: 'Enter Details...',
+          counterText: "",
+          hintStyle: Theme.of(context)
+              .textTheme
+              .headline2
+              .copyWith(color: Colors.grey, fontSize: 15.0),
           labelStyle: Theme.of(context).textTheme.headline1.copyWith(
               color: dis ? Colors.grey : Colors.black,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
               fontSize: 15.0),
           contentPadding: EdgeInsets.all(12.0),
           floatingLabelBehavior: FloatingLabelBehavior.auto,
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.black,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.red,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ),
-          border: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.grey,
-              style: BorderStyle.solid,
-            ),
-            borderRadius: BorderRadius.circular(5.0),
-          ),
+          border: InputBorder.none,
         ),
       ),
     );
@@ -633,32 +1023,68 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
     bool dis = widget.disabled;
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.0),
-      child: Container(
-        color: dis ? Colors.grey[300] : Colors.grey[300],
-        child: ListTile(
-          title: image != null
-              ? Image.file(
-                  image,
-                  fit: BoxFit.contain,
-                  color: dis ? Colors.grey : Colors.transparent,
-                  colorBlendMode: BlendMode.darken,
-                  height: 100,
-                )
-              : Text(
-                  'Picture',
-                  style: Theme.of(context).textTheme.headline2.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: dis ? Colors.grey : Colors.black),
+      padding: EdgeInsets.symmetric(vertical: 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 1.0,
+            offset: Offset(0, 2.5),
+            color: Colors.grey[300],
+          ),
+          BoxShadow(
+            blurRadius: 0.1,
+            offset: Offset(0, -0.5),
+            color: Colors.grey[300],
+          )
+        ],
+      ),
+      child: ListTile(
+        title: Text(
+          'PICTURE',
+          style: Theme.of(context).textTheme.headline2.copyWith(
+              fontWeight: FontWeight.bold,
+              color: dis ? Colors.grey : Colors.black),
+        ),
+        subtitle: image != null
+            ? Text(
+                image.path.split("/").last,
+              )
+            : SizedBox(),
+        trailing: image != null
+            ? RaisedButton(
+                child: Text(
+                  "Uploaded",
+                  style: Theme.of(context)
+                      .textTheme
+                      .headline2
+                      .copyWith(color: Colors.white),
                 ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                alignment: Alignment.centerRight,
-                padding: EdgeInsets.all(0.0),
-                icon: Icon(Icons.file_upload),
-                disabledColor: Colors.grey[400],
-                color: Colors.grey[600],
+                color: Color(0xff2d334c),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                onPressed: dis
+                    ? null
+                    : () async {
+                        image = await ImagePicker.pickImage(
+                            source: ImageSource.gallery);
+                        setState(() {});
+                        widget.saveData(json.encode({'picture': image.path}));
+                      },
+              )
+            : RaisedButton(
+                child: Text(
+                  "Upload",
+                  style: Theme.of(context)
+                      .textTheme
+                      .headline2
+                      .copyWith(color: Colors.white),
+                ),
+                color: Color(0xfff69264),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 onPressed: dis
                     ? null
                     : () async {
@@ -668,23 +1094,6 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                         widget.saveData(json.encode({'picture': image.path}));
                       },
               ),
-              IconButton(
-                alignment: Alignment.centerRight,
-                padding: EdgeInsets.all(0.0),
-                icon: Icon(Icons.close),
-                disabledColor: Colors.grey[400],
-                color: Colors.grey[600],
-                onPressed: dis
-                    ? null
-                    : () {
-                        setState(() {
-                          image = null;
-                        });
-                      },
-              )
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -709,9 +1118,10 @@ class _MapFieldBoxState extends State<MapFieldBox> {
   bool searchOptions = false;
 
   int noOfLatLongs = 1;
-  List<double> latLongs = [];
+  List<dynamic> latLongs = [];
   List<TextEditingController> latCont = [TextEditingController()],
-      longCont = [TextEditingController()];
+      longCont = [TextEditingController()],
+      labelCont = [TextEditingController()];
 
   void saveMapData() {
     if (latLongs.length > 0) widget.saveData(json.encode({'map': latLongs}));
@@ -723,21 +1133,24 @@ class _MapFieldBoxState extends State<MapFieldBox> {
       List<dynamic> latLong = json.decode(widget.data)['map'];
       latCont = [];
       longCont = [];
+      labelCont = [];
       for (int i = 0; i < latLong.length; i++) {
-        if (i % 2 == 0) {
+        if (i % 3 == 0) {
           if (latLong[i] != null)
             latCont.add(TextEditingController(text: latLong[i].toString()));
           else
             latCont.add(TextEditingController());
-        } else {
+        } else if (i % 3 == 1) {
           if (latLong[i] != null)
             longCont.add(TextEditingController(text: latLong[i].toString()));
           else
             longCont.add(TextEditingController());
+        } else {
+          if (latLong[i] != null)
+            labelCont.add(TextEditingController(text: latLong[i].toString()));
+          else
+            labelCont.add(TextEditingController());
         }
-      }
-      while (longCont.length < latCont.length) {
-        longCont.add(TextEditingController());
       }
       noOfLatLongs = latCont.length;
     }
@@ -749,9 +1162,23 @@ class _MapFieldBoxState extends State<MapFieldBox> {
     if (dis) searchOptions = false;
     return Container(
       margin: EdgeInsets.symmetric(vertical: 8.0),
-      padding: EdgeInsets.only(bottom: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 1.0,
+            offset: Offset(0, 2.5),
+            color: Colors.grey[300],
+          ),
+          BoxShadow(
+            blurRadius: 0.1,
+            offset: Offset(0, -0.5),
+            color: Colors.grey[300],
+          )
+        ],
+      ),
       child: Container(
-        color: Colors.grey[200],
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -763,72 +1190,120 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Text(
-                    'Map',
+                    'MAP',
                     style: Theme.of(context).textTheme.headline2.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
                         color: dis ? Colors.grey : Colors.black),
                   ),
                 ),
-                searchOptions
-                    ? Align(
-                        alignment: Alignment.topRight,
-                        child: RawMaterialButton(
-                          onPressed: () {},
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20.0)),
-                          fillColor: Colors.grey[300],
-                          padding: EdgeInsets.symmetric(
-                              vertical: 0.0, horizontal: 8.0),
-                          child: Text(
-                            'Search Place',
-                            style: Theme.of(context).textTheme.headline1,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    searchOptions
+                        ? Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 5.0),
+                            child: RaisedButton(
+                              child: Text(
+                                "Search Place",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(color: Colors.white),
+                              ),
+                              color: Color(0xff02c6ba),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              onPressed: dis
+                                  ? null
+                                  : () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => SearchPlace(
+                                            addPlaces: (List<Marker> places) {
+                                              noOfLatLongs += places.length;
+                                              for (var loc in places) {
+                                                latCont.add(
+                                                    new TextEditingController(
+                                                        text: loc
+                                                            .position.latitude
+                                                            .toString()));
+                                                longCont.add(
+                                                    new TextEditingController(
+                                                        text: loc
+                                                            .position.longitude
+                                                            .toString()));
+                                                labelCont.add(
+                                                    new TextEditingController(
+                                                        text: loc
+                                                            .markerId.value));
+                                              }
+                                              setState(() {});
+                                            },
+                                          ),
+                                        ),
+                                      );
+                                    },
+                            ),
+                          )
+                        : SizedBox(),
+                    searchOptions
+                        ? Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 5.0),
+                            child: RaisedButton(
+                              child: Text(
+                                "Add LatLong",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(color: Colors.white),
+                              ),
+                              color: Color(0xff02c6ba),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              onPressed: dis
+                                  ? null
+                                  : () {
+                                      noOfLatLongs += 1;
+                                      latCont.add(new TextEditingController());
+                                      longCont.add(new TextEditingController());
+                                      labelCont
+                                          .add(new TextEditingController());
+                                      setState(() {});
+                                    },
+                            ),
+                          )
+                        : SizedBox(),
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 0.0),
+                        child: IconButton(
+                          padding: EdgeInsets.all(0.0),
+                          onPressed: dis
+                              ? null
+                              : () {
+                                  setState(() {
+                                    searchOptions =
+                                        searchOptions ? false : true;
+                                  });
+                                },
+                          icon: Icon(
+                            searchOptions
+                                ? Icons.close
+                                : Icons.add_circle_outline,
                           ),
+                          color: Color(0xff5658d0),
+                          disabledColor: Colors.grey,
                         ),
-                      )
-                    : SizedBox(),
-                searchOptions
-                    ? Align(
-                        alignment: Alignment.topRight,
-                        child: RawMaterialButton(
-                          onPressed: () {
-                            noOfLatLongs += 1;
-                            latCont.add(new TextEditingController());
-                            longCont.add(new TextEditingController());
-                            setState(() {});
-                          },
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20.0)),
-                          fillColor: Colors.grey[300],
-                          padding: EdgeInsets.symmetric(
-                              vertical: 0.0, horizontal: 8.0),
-                          child: Text(
-                            'Add LatLong',
-                            style: Theme.of(context).textTheme.headline1,
-                          ),
-                        ),
-                      )
-                    : SizedBox(),
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 0.0),
-                    child: IconButton(
-                      padding: EdgeInsets.all(0.0),
-                      onPressed: dis
-                          ? null
-                          : () {
-                              setState(() {
-                                searchOptions = searchOptions ? false : true;
-                              });
-                            },
-                      icon: Icon(
-                        searchOptions ? Icons.close : Icons.add_circle_outline,
                       ),
-                      color: Colors.black,
-                      disabledColor: Colors.grey,
-                    ),
-                  ),
-                )
+                    )
+                  ],
+                ),
               ],
             ),
             Padding(
@@ -859,31 +1334,55 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                               latLongs = [];
                             }
                             if (s.length != 0)
-                              latLongs.insert(index * 2, double.parse(s));
+                              latLongs.insert(index * 3, double.parse(s));
                             else
-                              latLongs.insert(index * 2, null);
+                              latLongs.insert(index * 3, null);
                           },
                           style: Theme.of(context).textTheme.headline1.copyWith(
-                              color: dis ? Colors.grey[300] : Colors.black),
+                              color:
+                                  dis ? Colors.grey[300] : Color(0xff8baee6)),
                           enabled: !widget.disabled,
                           enableInteractiveSelection: false,
                           cursorColor: Colors.black,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
                             hoverColor: Colors.amber,
-                            hintText: 'Latitude',
-                            hintStyle: Theme.of(context)
+                            labelText: 'Latitude',
+                            labelStyle: Theme.of(context)
                                 .textTheme
                                 .headline1
                                 .copyWith(
-                                    color: dis ? Colors.grey : Colors.black),
+                                    color:
+                                        dis ? Colors.grey : Color(0xff8baee6)),
                             filled: true,
+                            isDense: true,
                             fillColor: Colors.white,
-                            errorBorder: UnderlineInputBorder(
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xff8baee6),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            errorBorder: OutlineInputBorder(
                               borderSide: BorderSide(
                                 color: Colors.red,
                                 style: BorderStyle.solid,
                               ),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xff8baee6),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xff8baee6),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
                               borderRadius: BorderRadius.circular(5.0),
                             ),
                           ),
@@ -902,44 +1401,135 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                           },
                           onSaved: (s) {
                             if (s.length != 0)
-                              latLongs.insert(index * 2 + 1, double.parse(s));
+                              latLongs.insert(index * 3 + 1, double.parse(s));
                             else
-                              latLongs.insert(index * 2 + 1, null);
-                            if (index + 1 == noOfLatLongs) {
-                              saveMapData();
-                            }
+                              latLongs.insert(index * 3 + 1, null);
                           },
                           style: Theme.of(context).textTheme.headline1.copyWith(
-                              color: dis ? Colors.grey[300] : Colors.black),
+                              color:
+                                  dis ? Colors.grey[300] : Color(0xff81c39f)),
                           enabled: !widget.disabled,
                           keyboardType: TextInputType.number,
                           enableInteractiveSelection: false,
                           decoration: InputDecoration(
-                            hintText: 'Longitude',
-                            hintStyle: Theme.of(context)
+                            labelText: 'Longitude',
+                            labelStyle: Theme.of(context)
                                 .textTheme
                                 .headline1
                                 .copyWith(
-                                    color: dis ? Colors.grey : Colors.black),
+                                    color:
+                                        dis ? Colors.grey : Color(0xff81c39f)),
                             focusColor: Colors.red,
                             filled: true,
+                            isDense: true,
                             fillColor: Colors.white,
-                            errorBorder: UnderlineInputBorder(
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xff81c39f),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            errorBorder: OutlineInputBorder(
                               borderSide: BorderSide(
                                 color: Colors.red,
                                 style: BorderStyle.solid,
                               ),
                               borderRadius: BorderRadius.circular(5.0),
                             ),
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xff81c39f),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xff81c39f),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    IconButton(
+                    Flexible(
+                      flex: 1,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 5.0, vertical: 8.0),
+                        child: TextFormField(
+                          controller: labelCont[index],
+                          validator: (s) {
+                            return s == "" ? 'Enter a Label' : null;
+                          },
+                          onSaved: (s) {
+                            if (s.length != 0)
+                              latLongs.insert(index * 3 + 2, s);
+                            else
+                              latLongs.insert(index * 3 + 2, null);
+                            if (index + 1 == noOfLatLongs) {
+                              saveMapData();
+                            }
+                          },
+                          style: Theme.of(context).textTheme.headline1.copyWith(
+                              color:
+                                  dis ? Colors.grey[300] : Color(0xfff3d081)),
+                          enabled: !widget.disabled,
+                          enableInteractiveSelection: false,
+                          cursorColor: Colors.black,
+                          keyboardType: TextInputType.text,
+                          decoration: InputDecoration(
+                            hoverColor: Colors.amber,
+                            labelText: 'Label',
+                            labelStyle: Theme.of(context)
+                                .textTheme
+                                .headline1
+                                .copyWith(
+                                    color:
+                                        dis ? Colors.grey : Color(0xfff3d081)),
+                            filled: true,
+                            isDense: true,
+                            fillColor: Colors.white,
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xfff3d081),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.red,
+                                style: BorderStyle.solid,
+                              ),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xfff3d081),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Color(0xfff3d081),
+                                  style: BorderStyle.solid,
+                                  width: 2.0),
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    /* IconButton(
                       icon: Icon(
                         Icons.close,
                       ),
-                      color: Colors.black,
+                      color: Colors.redAccent,
                       disabledColor: Colors.grey,
                       onPressed: dis || (noOfLatLongs == 1 && index == 0)
                           ? null
@@ -950,7 +1540,7 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                                 longCont.removeAt(index);
                               });
                             },
-                    )
+                    ) */
                   ],
                 );
               },
@@ -992,8 +1582,25 @@ class _TableFieldBoxState extends State<TableFieldBox> {
   Widget build(BuildContext context) {
     bool dis = widget.disabled;
     return Container(
+      margin: EdgeInsets.symmetric(vertical: 10.0),
       padding: EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 1.0,
+            offset: Offset(0, 2.5),
+            color: Colors.grey[300],
+          ),
+          BoxShadow(
+            blurRadius: 0.1,
+            offset: Offset(0, -0.5),
+            color: Colors.grey[300],
+          )
+        ],
+        color: Colors.white,
+      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             child: TextFormField(
@@ -1013,49 +1620,36 @@ class _TableFieldBoxState extends State<TableFieldBox> {
               maxLines: 10,
               enabled: !widget.disabled,
               decoration: InputDecoration(
-                labelText: 'Table',
-                hintText: 'Separate column with \',\' and row with \';\'',
-                hintStyle: Theme.of(context).textTheme.headline2,
+                labelText: 'TABLE',
+                hintText:
+                    "Enter Data...", //'Separate column with \',\' and row with \';\'',
+                hintStyle: Theme.of(context)
+                    .textTheme
+                    .headline2
+                    .copyWith(color: Colors.grey, fontSize: 15.0),
                 labelStyle: Theme.of(context).textTheme.headline1.copyWith(
                     color: dis ? Colors.grey : Colors.black,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.bold,
                     fontSize: 15.0),
                 contentPadding: EdgeInsets.all(12.0),
                 floatingLabelBehavior: FloatingLabelBehavior.auto,
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.black,
-                    style: BorderStyle.solid,
-                  ),
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.red,
-                    style: BorderStyle.solid,
-                  ),
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Colors.grey,
-                    style: BorderStyle.solid,
-                  ),
-                  borderRadius: BorderRadius.circular(5.0),
-                ),
+                border: InputBorder.none,
               ),
             ),
           ),
-          Container(
-            alignment: Alignment.bottomRight,
-            child: FlatButton(
-              padding: EdgeInsets.all(0.0),
+          Align(
+            alignment: Alignment.centerRight,
+            child: RaisedButton(
               child: Text(
-                csvAdded ? "Remove CSV" : "Upload CSV",
-                style: TextStyle(
-                  color: dis ? Colors.grey[400] : Colors.blue,
-                  decoration: TextDecoration.underline,
-                ),
+                csvAdded ? "Clear" : "Upload CSV",
+                style: Theme.of(context)
+                    .textTheme
+                    .headline2
+                    .copyWith(color: Colors.white),
+              ),
+              color: Color(0xff01c8b5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
               onPressed: dis
                   ? null

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +18,7 @@ class FeedInfoPage extends StatefulWidget {
 class _FeedInfoPageState extends State<FeedInfoPage> {
   Feed feed;
   _FeedInfoPageState({this.feed});
-  List<Map<String,dynamic>> content;
+  List<Map<String, dynamic>> content;
 
   @override
   void initState() {
@@ -92,93 +93,150 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
       ),
       body: Container(
         padding: EdgeInsets.symmetric(horizontal: 25),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: List<Widget>.generate(content.length, (i) {
-                  if (content[i].containsKey('title')) {
-                    String title = content[i]['title'];
-                    return Container(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+        child: ListView(
+          shrinkWrap: true,
+          children: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      margin: EdgeInsets.symmetric(vertical: 5),
+                      padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      child: Text(
+                        feed.department.category,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline2
+                            .copyWith(color: Colors.white),
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(3),
+                        color: Colors.green,
+                      ),
+                    ),
+                    Text(
+                        feed.department.areaOfAdministration +
+                            ", " +
+                            feed.feedInfo.creationDateTimeStamp.hour
+                                .toString() +
+                            ":" +
+                            feed.feedInfo.creationDateTimeStamp.minute
+                                .toString(),
+                        style: Theme.of(context).textTheme.bodyText1),
+                  ],
+                )
+              ] +
+              List<Widget>.generate(content.length, (i) {
+                if (content[i].containsKey('title')) {
+                  String title = content[i]['title'];
+                  return Container(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text(title,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline4
+                            .copyWith(fontWeight: FontWeight.bold)),
+                  );
+                } else if (content[i].containsKey('content')) {
+                  String data = content[i]['content'];
+                  return Container(
+                    margin: EdgeInsets.symmetric(vertical: 15),
+                    child: RichText(
+                      text: TextSpan(
                         children: [
-                          Text(title,
+                          WidgetSpan(
+                            child: Text(
+                              data[0].toUpperCase(),
                               style: Theme.of(context)
                                   .textTheme
                                   .headline4
-                                  .copyWith(fontWeight: FontWeight.bold)),
-                          Spacer(),
-                          Text(
-                              feed.department.areaOfAdministration +
-                                  ", " +
-                                  feed.feedInfo.creationDateTimeStamp.hour.toString() +
-                                  ":" +
-                                  feed.feedInfo.creationDateTimeStamp.minute.toString(),
-                              style: Theme.of(context).textTheme.bodyText1),
-                        ],
-                      ),
-                    );
-                  }
-                  else if (content[i].containsKey('content')) {
-                    String data = content[i]['content'];
-                    return Container(
-                      margin: EdgeInsets.symmetric(vertical: 15),
-                      child: Text(data,
-                          style: Theme.of(context).textTheme.headline2),
-                    );
-                  }
-                  else if (content[i].containsKey('pictureUrl')) {
-                    String pictureUrl = content[i]['pictureUrl'];
-                    return Container(
-                      margin: EdgeInsets.symmetric(vertical: 20),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            blurRadius: 2,
-                            offset: Offset(5, 5),
-                            color: Colors.grey.withOpacity(0.3),
+                                  .copyWith(fontSize: 30.0),
+                            ),
+                            alignment: PlaceholderAlignment.top,
+                          ),
+                          TextSpan(
+                            text: data.substring(1)+"ndjkenkj njkwjkcndjkcnjkd ncjkndjkc  vbjdkb jdbcbdsj bdsjbcjdsb cbdsvbds iucb sdjbcud  isbcudb cudsbuh cbsdhub cuhs dbcih dsbic bdsic bdsicb dsiucbib",
+                            style: Theme.of(context).textTheme.headline2,
                           ),
                         ],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: CachedNetworkImage(
-                          imageUrl: pictureUrl,
-                          fit: BoxFit.contain,
-                          placeholder: (context, s) => Container(
-                            alignment: Alignment.center,
-                            child: CircularProgressIndicator(),
-                          ),
+                    ),
+                  );
+                } else if (content[i].containsKey('pictureUrl')) {
+                  String pictureUrl = content[i]['pictureUrl'];
+                  bool isLocal = content[i]['isLocal'];
+                  return Container(
+                    margin: EdgeInsets.symmetric(vertical: 20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          blurRadius: 2,
+                          offset: Offset(5, 5),
+                          color: Colors.grey.withOpacity(0.3),
                         ),
-                      ),
-                    );
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: isLocal
+                          ? Image.file(
+                              File(pictureUrl),
+                              fit: BoxFit.contain,
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: pictureUrl,
+                              fit: BoxFit.contain,
+                              placeholder: (context, s) => Container(
+                                alignment: Alignment.center,
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                    ),
+                  );
+                }
+                if (content[i].containsKey('coords')) {
+                  return SizedBox();
+                }
+                if (content[i].containsKey('table')) {
+                  TableData t = new TableData();
+                  t.headers =
+                      content[i]['table'].toString().split(';')[0].split(',');
+                  t.contents = [];
+                  content[i]['table'].toString().split(';').forEach((element) {
+                    t.contents.add(element.split(','));
+                  });
+                  t.contents.removeAt(0);
+                  int n = t.contents.length + 1;
+                  double tileHeight = 30, tileWidth = 90, margin = 2;
+                  int maxLength = 0;
+                  for (var s in t.headers) {
+                    int l = s.length;
+                    if (maxLength < l) maxLength = l;
                   }
-                  if (content[i].containsKey('coords')) {
-                    return SizedBox();
+                  for (var content in t.contents) {
+                    for (var s in content) {
+                      int l = s.length;
+                      if (maxLength < l) maxLength = l;
+                    }
                   }
-                  if (content[i].containsKey('table')) {
-                    TableData t;
-                    t.headers = content[i]['table'].toString().split(';')[0].split(',');
-                    t.contents = [];
-                    content[i]['table'].toString().split(';').forEach((element) { t.contents.add(element.split(','));});
-                    int n = t.contents.length + 1;
-                    double tileHeight = 30, margin = 2;
-                    return Container(
-                      height: n * (tileHeight + 2 * margin),
-                      margin: EdgeInsets.symmetric(vertical: 15),
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        shrinkWrap: true,
+                  //tileHeight = maxLength * 1.0;
+                  return Container(
+                    //height: n * (tileHeight + 2 * margin),
+                    margin: EdgeInsets.symmetric(vertical: 15),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: List<Widget>.generate(t.headers.length, (j) {
                           return Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                                   Container(
                                     height: tileHeight,
-                                    width: tileHeight * 3,
+                                    //width: tileWidth,
                                     margin: EdgeInsets.all(margin),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.withOpacity(0.6),
@@ -194,7 +252,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                                 List<Widget>.generate(n - 1, (k) {
                                   return Container(
                                     height: tileHeight,
-                                    width: tileHeight * 3,
+                                    //width: tileWidth,
                                     margin: EdgeInsets.all(margin),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.withOpacity(0.2),
@@ -210,17 +268,17 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                           );
                         }),
                       ),
-                    );
-                  } else {
-                    return SizedBox();
-                  }
-                }) +
-                <Widget>[
-                  SizedBox(
-                    height: 15,
-                  ),
-                ],
-          ),
+                    ),
+                  );
+                } else {
+                  return SizedBox();
+                }
+              }) +
+              <Widget>[
+                SizedBox(
+                  height: 15,
+                ),
+              ],
         ),
       ),
     );
