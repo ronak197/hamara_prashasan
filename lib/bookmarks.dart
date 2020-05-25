@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/feedInfoPage.dart';
 import 'package:hamaraprashasan/classes.dart';
 
@@ -26,27 +27,30 @@ class _BookmarkPageState extends State<BookmarkPage> {
     selected = new List();
     List<String> categories = ['health', 'police', 'muncorp'];
     for (int i = 0; i < 4; i++) {
-      bookmarks.add(Feed(
-          FeedInfo(
-              departmentUid: 'andskad',
-              description: 'Quarantine facilities are made available to general public',
-              creationDateTimeStamp: DateTime.now(),
-              title: 'Coronovirus victims got shelter homes'
-          ),
-          Department(
-              areaOfAdministration: 'adnsd',
-              category: categories[i%3],
-              email: 'naksda',
-              name: 'Surat Police Department',
-              userType: 'department'
-          ),
-          FeedInfoDetails(
-              details: [
-                {'title': 'Coronovirus victims got shelter homes,'},
-                {'content' : 'Quarantine facilities are made available to general public'},
-              ]
+      bookmarks.add(
+          Feed(
+              feedInfo: FeedInfo(
+                  departmentUid: 'andskad',
+                  description: 'Citizens are informed that 10 patients are released from qaurantine',
+                  creationDateTimeStamp: DateTime.now(),
+                  title: 'Patients Released from quarantine are kept under isolation'
+              ),
+              department: Department(
+                  areaOfAdministration: 'adnsd',
+                  category: categories[i%3],
+                  email: 'naksda',
+                  name: 'Surat Health Department',
+                  userType: 'department'
+              ),
+              feedInfoDetails: FeedInfoDetails(
+                  details: [
+                    {'title': 'asnda,'},
+                    {'content' : 'asdnkand'},
+                    {'coords' : [{'latLong' : LatLng(12,33), 'label' : 'ansdnak'},{'latLong' : LatLng(12,33), 'label' : 'ansdnak'}]}
+                  ]
+              )
           )
-      ));
+      );
       selected.add(false);
     }
   }

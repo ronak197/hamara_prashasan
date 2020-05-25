@@ -1,10 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/app_drawer.dart';
 import 'package:hamaraprashasan/bookmarks.dart';
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
 import 'package:hamaraprashasan/departments_page.dart';
 import 'package:hamaraprashasan/news_feed_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hamaraprashasan/classes.dart';
 
 class HomePage extends StatefulWidget {
   @override

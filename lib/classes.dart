@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 Map<String,String> avatarLocMap = {
   'health' : 'assets/health_avatar.svg',
@@ -25,7 +26,7 @@ class Feed{
   String profileAvatar;
   int bgColor;
 
-  Feed(FeedInfo feedInfo, Department department, FeedInfoDetails feedInfoDetails){
+  Feed({FeedInfo feedInfo, Department department, FeedInfoDetails feedInfoDetails}){
     this.feedInfo = feedInfo;
     this.department = department;
     this.feedInfoDetails = feedInfoDetails;
@@ -60,6 +61,20 @@ class FeedInfo {
     "description" : description,
     "title" : title,
   };
+
+  factory FeedInfo.fromFirestoreJson(Map<String, dynamic> json) => FeedInfo(
+    creationDateTimeStamp : (json["creationDateTimeStamp"] as Timestamp).toDate(),
+    departmentUid : json["departmentUid"],
+    description : json["description"],
+    title : json["title"],
+  );
+
+  Map<String, dynamic> toFirestoreJson() => {
+    "creationDateTimeStamp" : Timestamp.fromDate(creationDateTimeStamp),
+    "departmentUid" : departmentUid,
+    "description" : description,
+    "title" : title,
+  };
 }
 
 class FeedInfoDetails {
@@ -84,7 +99,7 @@ class User {
   List<String> bookmarkedFeeds;
   String email;
   DateTime lastFeedUpdateTime;
-  GeoPoint lastLocation;
+  LatLng lastLocation;
   List<String> subscribedDepartmentIDs;
   String userType;
 
@@ -93,21 +108,65 @@ class User {
       this.lastLocation, this.subscribedDepartmentIDs, this.userType});
 
   factory User.fromJson(Map<String, dynamic> json) => User(
-      bookmarkedFeeds : json["bookmarkedFeeds"],
-      email : json["email"],
-      lastFeedUpdateTime : json["lastFeedUpdateTime"],
-      lastLocation : json["lastLocation"],
-      subscribedDepartmentIDs : json["subscribedDepartmentIDs"],
-      userType : json["userType"],
+      bookmarkedFeeds : List<String>.from((json["bookmarkedFeeds"]?? List<dynamic>()).map((x) => x)),
+      email : json["email"] as String,
+      lastFeedUpdateTime : json["lastFeedUpdateTime"] != null ? (json["lastFeedUpdateTime"].runtimeType == Timestamp ? (json["lastFeedUpdateTime"] as Timestamp)?.toDate() : DateTime.parse(json["lastFeedUpdateTime"])) : DateTime.now(),
+      lastLocation : LatLng((json["lastLocation"] as GeoPoint).latitude ?? 0,(json["lastLocation"] as GeoPoint).longitude ?? 0) ,
+      subscribedDepartmentIDs : List<String>.from((json["subscribedDepartmentIDs"] ?? List<dynamic>()).map((x) => x)),
+      userType : json["userType"] as String,
   );
 
   Map<String, dynamic> toJson() => {
     "bookmarkedFeeds" : bookmarkedFeeds,
     "email" : email,
-    "lastFeedUpdateTime" : lastFeedUpdateTime,
+    "lastFeedUpdateTime" : lastFeedUpdateTime?.toIso8601String(),
     "lastLocation" : lastLocation,
     "subscribedDepartmentIDs" : subscribedDepartmentIDs,
     "userType" : userType,
+  };
+
+  factory User.fromFirestoreJson(Map<String, dynamic> json) => User(
+    bookmarkedFeeds : List<String>.from((json["bookmarkedFeeds"]?? List<dynamic>()).map((x) => x)),
+    email : json["email"] as String,
+    lastFeedUpdateTime : json["lastFeedUpdateTime"] != null ? (json["lastFeedUpdateTime"].runtimeType == Timestamp ? (json["lastFeedUpdateTime"] as Timestamp)?.toDate() : DateTime.parse(json["lastFeedUpdateTime"])) : DateTime.now(),
+    lastLocation : LatLng((json["lastLocation"] as GeoPoint).latitude ?? 0,(json["lastLocation"] as GeoPoint).longitude ?? 0) ,
+    subscribedDepartmentIDs : List<String>.from((json["subscribedDepartmentIDs"] ?? List<dynamic>()).map((x) => x)),
+    userType : json["userType"] as String,
+  );
+
+  Map<String, dynamic> toFirestoreJson() => {
+    "bookmarkedFeeds" : bookmarkedFeeds,
+    "email" : email,
+    "lastFeedUpdateTime" : lastFeedUpdateTime?.toIso8601String(),
+    "lastLocation" : GeoPoint(lastLocation.latitude,lastLocation.longitude),
+    "subscribedDepartmentIDs" : subscribedDepartmentIDs,
+    "userType" : userType,
+  };
+}
+
+class AuthUser{
+  String displayName;
+  String email;
+  String phoneNumber;
+  String photoUrl;
+  String uid;
+
+  AuthUser({this.displayName,this.email,this.phoneNumber,this.photoUrl,this.uid});
+
+  factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
+    displayName : json["displayName"],
+    email : json["email"],
+    phoneNumber : json["phoneNumber"],
+    photoUrl : json["photoUrl"],
+    uid : json["uid"],
+  );
+
+  Map<String, dynamic> toJson() => {
+    "displayName" : displayName,
+    "email" : email,
+    "phoneNumber" : phoneNumber,
+    "photoUrl" : photoUrl,
+    "uid" : uid,
   };
 }
 

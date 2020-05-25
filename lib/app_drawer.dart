@@ -25,7 +25,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
               margin: EdgeInsets.only(top: 12.0, bottom: 8.0),
               child: CircleAvatar(
                 backgroundImage: CachedNetworkImageProvider(
-                    AppConfigurations.signedUser.photoUrl,
+                    UserConfig.signedUser.photoUrl ?? '',
                   errorListener: (){
                       setState(() {
                         imageLoadFailed = true;
@@ -40,11 +40,11 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                   ) : SizedBox(),
               ),
             ),
-            Text(AppConfigurations.signedUser.displayName,
+            Text(UserConfig.signedUser.displayName ?? '',
                 style: Theme.of(context).textTheme.headline2.copyWith(
                     fontWeight: FontWeight.w600, color: Color(0xff303046))),
             Text(
-              AppConfigurations.signedUser.email,
+              UserConfig.signedUser.email ?? '',
               style: Theme.of(context)
                   .textTheme
                   .headline1

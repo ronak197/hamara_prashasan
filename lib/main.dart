@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
+import 'package:hamaraprashasan/sign_in.dart';
 
 void main() async {
 
@@ -8,8 +9,12 @@ void main() async {
   String startUpPage;
   await AppConfigurations.getSharedPrefInstance;
   if(AppConfigurations.getSigningState){
-    startUpPage = '/home';
-    AppConfigurations.getUserDetails();
+    if(UserConfig.getUserAuthInfo()){
+      startUpPage = '/home';
+    } else {
+      signOutGoogle();
+      startUpPage = '/login';
+    }
   } else {
     startUpPage = '/login';
   }
