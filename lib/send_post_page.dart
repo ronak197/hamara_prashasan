@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_fab_dialer/flutter_fab_dialer.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:hamaraprashasan/searchPlace.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,14 +14,34 @@ import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 
 class FormField {
-  String data;
+  Map<String, dynamic> data;
   bool disabled;
   Type fieldType;
-  void saveData(String data) {
+  Widget fieldWidget;
+  void saveData(Map<String, dynamic> data) {
     this.data = data;
   }
 
-  FormField(this.data, this.disabled, this.fieldType);
+  FormField(this.data, this.disabled, this.fieldType) {
+    setWidget();
+  }
+  void setWidget() {
+    if (this.fieldType == TitleFieldBox)
+      this.fieldWidget = TitleFieldBox(
+          data: this.data, disabled: this.disabled, saveData: this.saveData);
+    else if (this.fieldType == ContentFieldBox)
+      this.fieldWidget = ContentFieldBox(
+          data: this.data, disabled: this.disabled, saveData: this.saveData);
+    else if (this.fieldType == PictureUploadBox)
+      this.fieldWidget = PictureUploadBox(
+          data: this.data, disabled: this.disabled, saveData: this.saveData);
+    else if (this.fieldType == MapFieldBox)
+      this.fieldWidget = MapFieldBox(
+          data: this.data, disabled: this.disabled, saveData: this.saveData);
+    else if (this.fieldType == TableFieldBox)
+      this.fieldWidget = TableFieldBox(
+          data: this.data, disabled: this.disabled, saveData: this.saveData);
+  }
 }
 
 class SendPostPage extends StatefulWidget {
@@ -29,7 +50,7 @@ class SendPostPage extends StatefulWidget {
 }
 
 class _SendPostPageState extends State<SendPostPage> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  static final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
   int keyIndex = 1;
@@ -39,7 +60,7 @@ class _SendPostPageState extends State<SendPostPage> {
   bool showTextFieldOptions = false;
   bool editing = false;
 
-  String _dropDownOption = "Up";
+  ScrollController scrollController;
 
   void showMessage(String message, [MaterialColor color = Colors.red]) {
     _scaffoldKey.currentState.showSnackBar(
@@ -52,33 +73,51 @@ class _SendPostPageState extends State<SendPostPage> {
       showMessage('Form is not valid!  Please review and correct.');
     } else {
       form.save();
-      String postData;
-      List<String> formContent = [];
-      formFields.forEach((element) {
-        formContent.add('${element.data}');
-      });
-      var created = getCurrentTimeInString();
-      await Firestore.instance.collection("feeds").add({
-        "feed": formContent,
-        "created": created,
-      });
+      List<Map<String, dynamic>> details = [];
+      for (int i = 2; i < formFields.length; i++) {
+        details.add(formFields[i].data);
+      }
+      print(details);
+      _showSendConfirmationDialog(details);
     }
   }
 
-  String getCurrentTimeInString() {
-    var dt = DateTime.now();
-    String s = dt.year.toString();
-    if (dt.month < 10) s += "0";
-    s += dt.month.toString();
-    if (dt.day < 10) s += "0";
-    s += dt.day.toString();
-    if (dt.hour < 10) s += "0";
-    s += dt.hour.toString();
-    if (dt.minute < 10) s += "0";
-    s += dt.minute.toString();
-    if (dt.second < 10) s += "0";
-    s += dt.second.toString();
-    return s;
+  void _showSendConfirmationDialog(List<Map<String, dynamic>> details) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text("Are you sure you want to post this feed?"),
+        actions: [
+          FlatButton(
+            onPressed: () {
+              Firestore.instance.collection("feeds").add({
+                "creationDateTimeStamp": DateTime.now(),
+                "departmentUid": UserConfig.user.email,
+                "description": details[1]["content"],
+                "title": details[0]["title"],
+              }).then((value) {
+                print("Uploaded Feed Info");
+                value
+                    .collection("feedInfoDetails")
+                    .add({"details": details}).then((value) {
+                  print("Uploaded Feed Info Details");
+                });
+              });
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: Text("Confirm"),
+          ),
+          FlatButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text("Cancel"),
+          ),
+        ],
+      ),
+    );
   }
 
   void startPreview() {
@@ -87,51 +126,28 @@ class _SendPostPageState extends State<SendPostPage> {
       showMessage('Form is not valid!  Please review and correct.');
     } else {
       form.save();
-      List<Map<String, dynamic>> contents = [];
-      String title = json.decode(formFields[0].data)['title'],
-          description = json.decode(formFields[1].data)['content'];
-      for (int i = 0; i < formFields.length; i++) {
-        var data = json.decode(formFields[i].data);
-        if (data['title'] != null) {
-          contents.add(
-            {"title": data['title']},
-          );
-        } else if (data['content'] != null) {
-          contents.add(
-            {"content": data['content']},
-          );
-        } else if (data['picture'] != null) {
-          contents.add({"pictureUrl": data['picture'], "isLocal": true});
-        } else if (data['map'] != null) {
-          List<double> latLong = List.from(data['map']),
-              latitude = [],
-              longitude = [];
-          for (int i = 0; i < latLong.length / 2; i++) {
-            latitude.add(latLong[2 * i]);
-            longitude.add(latLong[2 * i + 1]);
-          }
-          contents.add(
-              {"latitude": latitude, "longitude": longitude, "label": null});
-        } else if (data['table'] != null) {
-          contents.add({"table": data['table']});
-        }
+      List<Map<String, dynamic>> details = [];
+      String title = formFields[0].data['title'],
+          description = formFields[1].data['content'];
+      for (int i = 2; i < formFields.length; i++) {
+        details.add(formFields[i].data);
       }
       Feed f = new Feed(
-        FeedInfo(
-          departmentUid: 'andskad',
+        feedInfo: FeedInfo(
+          departmentUid: UserConfig.signedUser.uid,
           description: description,
           creationDateTimeStamp: DateTime.now(),
           title: title,
         ),
-        Department(
-          areaOfAdministration: 'adnsd',
+        department: Department(
+          areaOfAdministration: 'adnsd', //TODO yet to be determined
           category: "health",
-          email: 'naksda',
+          email: UserConfig.signedUser.email,
           name: 'Surat Health Department',
           userType: 'department',
         ),
-        FeedInfoDetails(
-          details: contents,
+        feedInfoDetails: FeedInfoDetails(
+          details: details,
         ),
       );
       if (!FocusScope.of(context).hasPrimaryFocus)
@@ -141,53 +157,42 @@ class _SendPostPageState extends State<SendPostPage> {
   }
 
   void editForm() {
+    var form = _formKey.currentState;
+    if (form != null) form.save();
     if (editing) {
       for (int i = 0; i < formFields.length; i++) {
         formFields[i].disabled = false;
+        formFields[i].setWidget();
       }
       editing = false;
     } else {
+      showMessage(
+          "Long Press a field to Reorder\nSwipe Right to remove the field",
+          Colors.green);
       for (int i = 0; i < formFields.length; i++) {
         formFields[i].disabled = true;
+        formFields[i].setWidget();
       }
       editing = true;
     }
     setState(() {});
   }
 
-  Widget fieldWidget(FormField f) {
-    if (f.fieldType == TitleFieldBox)
-      return TitleFieldBox(
-          data: f.data, disabled: f.disabled, saveData: f.saveData);
-    else if (f.fieldType == ContentFieldBox)
-      return ContentFieldBox(
-          data: f.data, disabled: f.disabled, saveData: f.saveData);
-    else if (f.fieldType == PictureUploadBox)
-      return PictureUploadBox(
-          data: f.data, disabled: f.disabled, saveData: f.saveData);
-    else if (f.fieldType == MapFieldBox)
-      return MapFieldBox(
-          data: f.data, disabled: f.disabled, saveData: f.saveData);
-    else if (f.fieldType == TableFieldBox)
-      return TableFieldBox(
-          data: f.data, disabled: f.disabled, saveData: f.saveData);
-    else
-      return null;
-  }
-
   @override
   void initState() {
+    scrollController = new ScrollController();
     formFields.add(FormField(null, false, TitleFieldBox));
     formFields.add(FormField(null, false, ContentFieldBox));
     super.initState();
   }
 
+  void gotoBottom() {
+    scrollController.animateTo(scrollController.position.maxScrollExtent,
+        duration: Duration(milliseconds: 500), curve: Curves.ease);
+  }
+
   @override
   Widget build(BuildContext context) {
-    var form = _formKey.currentState;
-    if (form != null) {
-      form.save();
-    }
     var fabColor = editing ? Colors.grey : Color(0xff2d334c),
         iconColor = editing ? Colors.grey[300] : Colors.white;
     return Scaffold(
@@ -246,6 +251,7 @@ class _SendPostPageState extends State<SendPostPage> {
                               setState(() {
                                 formFields.add(
                                     new FormField(null, false, TitleFieldBox));
+                                gotoBottom();
                               });
                             },
                             child: Container(
@@ -288,6 +294,7 @@ class _SendPostPageState extends State<SendPostPage> {
                                 setState(() {
                                   formFields.add(new FormField(
                                       null, false, TitleFieldBox));
+                                  gotoBottom();
                                 });
                               },
                               backgroundColor:
@@ -311,6 +318,7 @@ class _SendPostPageState extends State<SendPostPage> {
                               setState(() {
                                 formFields.add(new FormField(
                                     null, false, ContentFieldBox));
+                                gotoBottom();
                               });
                             },
                             child: Container(
@@ -353,6 +361,7 @@ class _SendPostPageState extends State<SendPostPage> {
                                 setState(() {
                                   formFields.add(new FormField(
                                       null, false, ContentFieldBox));
+                                  gotoBottom();
                                 });
                               },
                               backgroundColor:
@@ -379,307 +388,11 @@ class _SendPostPageState extends State<SendPostPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           InkWell(
-                            onTap: editing
-                                ? null
-                                : () {
-                                    setState(() {
-                                      showTextFieldOptions =
-                                          !showTextFieldOptions;
-                                    });
-                                  },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Text",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.green : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addText",
-                              child: Icon(
-                                Icons.text_fields,
-                                size: 20.0,
-                                color: iconColor,
-                              ),
-                              backgroundColor: fabColor,
-                              onPressed: editing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        showTextFieldOptions =
-                                            !showTextFieldOptions;
-                                      });
-                                    },
-                              mini: true,
-                              elevation: 20,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: editing
-                                ? null
-                                : () {
-                                    setState(() {
-                                      formFields.add(new FormField(
-                                          null, false, PictureUploadBox));
-                                    });
-                                  },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Image",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.green : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addImage",
-                              child: Icon(
-                                Icons.insert_photo,
-                                size: 20.0,
-                                color: iconColor,
-                              ),
-                              backgroundColor: fabColor,
-                              onPressed: editing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        formFields.add(new FormField(
-                                            null, false, PictureUploadBox));
-                                      });
-                                    },
-                              mini: true,
-                              elevation: 20,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: editing
-                                ? null
-                                : () {
-                                    setState(() {
-                                      formFields.add(new FormField(
-                                          null, false, MapFieldBox));
-                                    });
-                                  },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Map",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.green : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addMap",
-                              child: Icon(
-                                Icons.map,
-                                size: 20.0,
-                                color: iconColor,
-                              ),
-                              backgroundColor: fabColor,
-                              onPressed: editing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        formFields.add(new FormField(
-                                            null, false, MapFieldBox));
-                                      });
-                                    },
-                              mini: true,
-                              elevation: 20,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: editing
-                                ? null
-                                : () {
-                                    setState(() {
-                                      formFields.add(new FormField(
-                                          null, false, TableFieldBox));
-                                    });
-                                  },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Map",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.green : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addTable",
-                              child: Icon(
-                                Icons.table_chart,
-                                size: 20.0,
-                                color: iconColor,
-                              ),
-                              backgroundColor: fabColor,
-                              onPressed: editing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        formFields.add(new FormField(
-                                            null, false, TableFieldBox));
-                                      });
-                                    },
-                              mini: true,
-                              elevation: 20,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          /* Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: MaterialButton(
-                              child: Text(
-                                "Edit",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        color:
-                                            editing ? Colors.white : iconColor),
-                              ),
-                              color: editing ? Colors.green : fabColor,
-                              onPressed: () {
-                                if (!editing) {
-                                  showInsertOptions = false;
-                                }
-                                editForm();
-                              },
-                              padding: EdgeInsets.all(0.0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10.0),
-                              ),
-                              elevation: 20,
-                            ),
-                          ), */
-                          InkWell(
                             onTap: () {
-                              showTextFieldOptions = false;
-                              showInsertOptions = false;
+                              if (!editing) {
+                                showTextFieldOptions = false;
+                                showInsertOptions = false;
+                              }
                               editForm();
                             },
                             child: Container(
@@ -719,14 +432,294 @@ class _SendPostPageState extends State<SendPostPage> {
                                 color: editing ? Colors.white : iconColor,
                               ),
                               onPressed: () {
-                                showTextFieldOptions = false;
-                                showInsertOptions = false;
+                                if (!editing) {
+                                  showTextFieldOptions = false;
+                                  showInsertOptions = false;
+                                }
                                 editForm();
                               },
                               backgroundColor:
                                   editing ? Colors.green : fabColor,
                               mini: true,
                               elevation: 5.0,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: editing
+                                ? null
+                                : () {
+                                    setState(() {
+                                      formFields.add(new FormField(
+                                          null, false, TableFieldBox));
+                                      gotoBottom();
+                                    });
+                                  },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Table",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.grey : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addTable",
+                              child: Icon(
+                                Icons.table_chart,
+                                size: 20.0,
+                                color: iconColor,
+                              ),
+                              backgroundColor: fabColor,
+                              onPressed: editing
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        formFields.add(new FormField(
+                                            null, false, TableFieldBox));
+                                        gotoBottom();
+                                      });
+                                    },
+                              mini: true,
+                              elevation: 20,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: editing
+                                ? null
+                                : () {
+                                    setState(() {
+                                      formFields.add(new FormField(
+                                          null, false, MapFieldBox));
+                                      gotoBottom();
+                                    });
+                                  },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Map",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.grey : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addMap",
+                              child: Icon(
+                                Icons.map,
+                                size: 20.0,
+                                color: iconColor,
+                              ),
+                              backgroundColor: fabColor,
+                              onPressed: editing
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        formFields.add(new FormField(
+                                            null, false, MapFieldBox));
+                                        gotoBottom();
+                                      });
+                                    },
+                              mini: true,
+                              elevation: 20,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: editing
+                                ? null
+                                : () {
+                                    setState(() {
+                                      formFields.add(new FormField(
+                                          null, false, PictureUploadBox));
+                                      gotoBottom();
+                                    });
+                                  },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Image",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.grey : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addImage",
+                              child: Icon(
+                                Icons.insert_photo,
+                                size: 20.0,
+                                color: iconColor,
+                              ),
+                              backgroundColor: fabColor,
+                              onPressed: editing
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        formFields.add(new FormField(
+                                            null, false, PictureUploadBox));
+                                        gotoBottom();
+                                      });
+                                    },
+                              mini: true,
+                              elevation: 20,
+                              //padding: EdgeInsets.all(0.0),
+                              //borderRadius: BorderRadius.circular(50.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: editing
+                                ? null
+                                : () {
+                                    setState(() {
+                                      showTextFieldOptions =
+                                          !showTextFieldOptions;
+                                    });
+                                  },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              child: Text(
+                                "Add Text",
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        fontSize: 13.0,
+                                        color:
+                                            editing ? Colors.white : fabColor),
+                              ),
+                              decoration: BoxDecoration(
+                                color: editing ? Colors.grey : iconColor,
+                                borderRadius: BorderRadius.circular(3.0),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: FloatingActionButton(
+                              heroTag: "addText",
+                              child: Icon(
+                                Icons.text_fields,
+                                size: 20.0,
+                                color: iconColor,
+                              ),
+                              backgroundColor: fabColor,
+                              onPressed: editing
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        showTextFieldOptions =
+                                            !showTextFieldOptions;
+                                      });
+                                    },
+                              mini: true,
+                              elevation: 20,
                               //padding: EdgeInsets.all(0.0),
                               //borderRadius: BorderRadius.circular(50.0),
                             ),
@@ -782,42 +775,43 @@ class _SendPostPageState extends State<SendPostPage> {
                     formFields.length,
                     (index) {
                       var field = formFields[index];
-                      {
-                        if (index < 2)
-                          return fieldWidget(field);
-                        else
-                          return Dismissible(
-                            key: new Key(formFields[index].hashCode.toString()),
-                            onDismissed: (dir) async {
-                              formFields.removeAt(index);
-                              setState(() {});
-                            },
-                            direction: DismissDirection.startToEnd,
-                            background: Container(
-                              color: Colors.red,
-                              alignment: Alignment.centerLeft,
-                              child: Icon(
-                                Icons.delete,
-                                color: Colors.white,
-                                size: 30,
-                              ),
-                              margin: EdgeInsets.symmetric(vertical: 20),
-                              padding: EdgeInsets.symmetric(horizontal: 20),
+                      if (index < 2)
+                        return field.fieldWidget;
+                      else
+                        return Dismissible(
+                          key: new Key(formFields[index].hashCode.toString()),
+                          onDismissed: (dir) async {
+                            formFields.removeAt(index);
+                            setState(() {});
+                          },
+                          direction: DismissDirection.startToEnd,
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerLeft,
+                            child: Icon(
+                              Icons.delete,
+                              color: Colors.white,
+                              size: 30,
                             ),
-                            child: fieldWidget(field),
-                          );
-                      }
+                            margin: EdgeInsets.symmetric(vertical: 20),
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                          ),
+                          child: field.fieldWidget,
+                        );
                     },
                   ),
                 )
               : ListView(
+                  physics: BouncingScrollPhysics(),
+                  controller: scrollController,
                   children: List<Widget>.generate(
-                    formFields.length,
-                    (index) {
-                      var field = formFields[index];
-                      return fieldWidget(field);
-                    },
-                  ),
+                        formFields.length,
+                        (index) {
+                          var field = formFields[index];
+                          return field.fieldWidget;
+                        },
+                      ) +
+                      <Widget>[SizedBox(height: 150)],
                 ),
         ),
       ),
@@ -826,7 +820,7 @@ class _SendPostPageState extends State<SendPostPage> {
 }
 
 class TitleFieldBox extends StatefulWidget {
-  String data;
+  Map<String, dynamic> data;
   final Function saveData;
   Key key;
   TitleFieldBox(
@@ -845,7 +839,7 @@ class _TitleFieldBoxState extends State<TitleFieldBox> {
   void initState() {
     super.initState();
     if (widget.data != null) {
-      initialString = json.decode(widget.data)['title'];
+      initialString = widget.data['title'];
     }
   }
 
@@ -875,7 +869,7 @@ class _TitleFieldBoxState extends State<TitleFieldBox> {
           return s == "" ? 'Enter a Title' : null;
         },
         onSaved: (s) {
-          widget.saveData(json.encode({"title": s}));
+          widget.saveData({"title": s});
         },
         style: Theme.of(context)
             .textTheme
@@ -910,7 +904,7 @@ class _TitleFieldBoxState extends State<TitleFieldBox> {
 }
 
 class ContentFieldBox extends StatefulWidget {
-  String data;
+  Map<String, dynamic> data;
   final Function saveData;
   Key key;
   ContentFieldBox(
@@ -929,7 +923,7 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
   void initState() {
     super.initState();
     if (widget.data != null) {
-      initialString = json.decode(widget.data)['content'];
+      initialString = widget.data['content'];
     }
   }
 
@@ -959,7 +953,7 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
           return s == "" ? 'Enter some content' : null;
         },
         onSaved: (s) {
-          widget.saveData(json.encode({"content": s}));
+          widget.saveData({"content": s});
         },
         style: Theme.of(context)
             .textTheme
@@ -995,7 +989,7 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
 }
 
 class PictureUploadBox extends StatefulWidget {
-  String data;
+  Map<String, dynamic> data;
   final Function saveData;
   Key key;
   PictureUploadBox(
@@ -1014,7 +1008,7 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
   void initState() {
     super.initState();
     if (widget.data != null) {
-      image = File(json.decode(widget.data)['picture']);
+      image = File(widget.data['pictureUrl']);
     }
   }
 
@@ -1067,10 +1061,13 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                 onPressed: dis
                     ? null
                     : () async {
-                        image = await ImagePicker.pickImage(
+                        var file = await ImagePicker.pickImage(
                             source: ImageSource.gallery);
-                        setState(() {});
-                        widget.saveData(json.encode({'picture': image.path}));
+                        if (file != null) {
+                          image = file;
+                          setState(() {});
+                          widget.saveData({'pictureUrl': image.path});
+                        }
                       },
               )
             : RaisedButton(
@@ -1088,10 +1085,13 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                 onPressed: dis
                     ? null
                     : () async {
-                        image = await ImagePicker.pickImage(
+                        var file = await ImagePicker.pickImage(
                             source: ImageSource.gallery);
-                        setState(() {});
-                        widget.saveData(json.encode({'picture': image.path}));
+                        if (file != null) {
+                          image = file;
+                          setState(() {});
+                          widget.saveData({'pictureUrl': image.path});
+                        }
                       },
               ),
       ),
@@ -1100,7 +1100,7 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
 }
 
 class MapFieldBox extends StatefulWidget {
-  String data;
+  Map<String, dynamic> data;
   final Function saveData;
   Key key;
   MapFieldBox(
@@ -1124,13 +1124,13 @@ class _MapFieldBoxState extends State<MapFieldBox> {
       labelCont = [TextEditingController()];
 
   void saveMapData() {
-    if (latLongs.length > 0) widget.saveData(json.encode({'map': latLongs}));
+    if (latLongs.length > 0) widget.saveData({'coords': latLongs});
   }
 
   void initState() {
     super.initState();
     if (widget.data != null) {
-      List<dynamic> latLong = json.decode(widget.data)['map'];
+      List<dynamic> latLong = widget.data['coords'];
       latCont = [];
       longCont = [];
       labelCont = [];
@@ -1315,234 +1315,485 @@ class _MapFieldBoxState extends State<MapFieldBox> {
               shrinkWrap: true,
               itemCount: noOfLatLongs,
               itemBuilder: (_, index) {
-                return Row(
-                  mainAxisSize: MainAxisSize.max,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      flex: 1,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 5.0, vertical: 8.0),
-                        child: TextFormField(
-                          controller: latCont[index],
-                          validator: (s) {
-                            return s == "" ? 'Enter Latitude' : null;
-                          },
-                          onSaved: (s) {
-                            if (index == 0) {
-                              latLongs = [];
-                            }
-                            if (s.length != 0)
-                              latLongs.insert(index * 3, double.parse(s));
-                            else
-                              latLongs.insert(index * 3, null);
-                          },
-                          style: Theme.of(context).textTheme.headline1.copyWith(
-                              color:
-                                  dis ? Colors.grey[300] : Color(0xff8baee6)),
-                          enabled: !widget.disabled,
-                          enableInteractiveSelection: false,
-                          cursorColor: Colors.black,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            hoverColor: Colors.amber,
-                            labelText: 'Latitude',
-                            labelStyle: Theme.of(context)
-                                .textTheme
-                                .headline1
-                                .copyWith(
-                                    color:
-                                        dis ? Colors.grey : Color(0xff8baee6)),
-                            filled: true,
-                            isDense: true,
-                            fillColor: Colors.white,
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xff8baee6),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                style: BorderStyle.solid,
-                              ),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            border: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xff8baee6),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xff8baee6),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Flexible(
-                      flex: 1,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 5.0, vertical: 8.0),
-                        child: TextFormField(
-                          controller: longCont[index],
-                          validator: (s) {
-                            return s == "" ? 'Enter Longitude' : null;
-                          },
-                          onSaved: (s) {
-                            if (s.length != 0)
-                              latLongs.insert(index * 3 + 1, double.parse(s));
-                            else
-                              latLongs.insert(index * 3 + 1, null);
-                          },
-                          style: Theme.of(context).textTheme.headline1.copyWith(
-                              color:
-                                  dis ? Colors.grey[300] : Color(0xff81c39f)),
-                          enabled: !widget.disabled,
-                          keyboardType: TextInputType.number,
-                          enableInteractiveSelection: false,
-                          decoration: InputDecoration(
-                            labelText: 'Longitude',
-                            labelStyle: Theme.of(context)
-                                .textTheme
-                                .headline1
-                                .copyWith(
-                                    color:
-                                        dis ? Colors.grey : Color(0xff81c39f)),
-                            focusColor: Colors.red,
-                            filled: true,
-                            isDense: true,
-                            fillColor: Colors.white,
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xff81c39f),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                style: BorderStyle.solid,
-                              ),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            border: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xff81c39f),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xff81c39f),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Flexible(
-                      flex: 1,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 5.0, vertical: 8.0),
-                        child: TextFormField(
-                          controller: labelCont[index],
-                          validator: (s) {
-                            return s == "" ? 'Enter a Label' : null;
-                          },
-                          onSaved: (s) {
-                            if (s.length != 0)
-                              latLongs.insert(index * 3 + 2, s);
-                            else
-                              latLongs.insert(index * 3 + 2, null);
-                            if (index + 1 == noOfLatLongs) {
-                              saveMapData();
-                            }
-                          },
-                          style: Theme.of(context).textTheme.headline1.copyWith(
-                              color:
-                                  dis ? Colors.grey[300] : Color(0xfff3d081)),
-                          enabled: !widget.disabled,
-                          enableInteractiveSelection: false,
-                          cursorColor: Colors.black,
-                          keyboardType: TextInputType.text,
-                          decoration: InputDecoration(
-                            hoverColor: Colors.amber,
-                            labelText: 'Label',
-                            labelStyle: Theme.of(context)
-                                .textTheme
-                                .headline1
-                                .copyWith(
-                                    color:
-                                        dis ? Colors.grey : Color(0xfff3d081)),
-                            filled: true,
-                            isDense: true,
-                            fillColor: Colors.white,
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xfff3d081),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.red,
-                                style: BorderStyle.solid,
-                              ),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            border: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xfff3d081),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Color(0xfff3d081),
-                                  style: BorderStyle.solid,
-                                  width: 2.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    /* IconButton(
-                      icon: Icon(
-                        Icons.close,
-                      ),
-                      color: Colors.redAccent,
-                      disabledColor: Colors.grey,
-                      onPressed: dis || (noOfLatLongs == 1 && index == 0)
-                          ? null
-                          : () {
-                              setState(() {
-                                noOfLatLongs -= 1;
-                                latCont.removeAt(index);
-                                longCont.removeAt(index);
-                              });
+                if (noOfLatLongs == 1)
+                  return Row(
+                    mainAxisSize: MainAxisSize.max,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        flex: 1,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 5.0, vertical: 8.0),
+                          child: TextFormField(
+                            controller: latCont[index],
+                            validator: (s) {
+                              return s == "" ? 'Enter Latitude' : null;
                             },
-                    ) */
-                  ],
-                );
+                            onSaved: (s) {
+                              if (index == 0) {
+                                latLongs = [];
+                              }
+                              if (s.length != 0)
+                                latLongs.insert(index * 3, double.parse(s));
+                              else
+                                latLongs.insert(index * 3, null);
+                            },
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline1
+                                .copyWith(
+                                    color: dis
+                                        ? Colors.grey[300]
+                                        : Color(0xff8baee6)),
+                            enabled: !widget.disabled,
+                            enableInteractiveSelection: false,
+                            cursorColor: Colors.black,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              hoverColor: Colors.amber,
+                              labelText: 'Latitude',
+                              labelStyle: Theme.of(context)
+                                  .textTheme
+                                  .headline1
+                                  .copyWith(
+                                      color: dis
+                                          ? Colors.grey
+                                          : Color(0xff8baee6)),
+                              filled: true,
+                              isDense: true,
+                              fillColor: Colors.white,
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xff8baee6),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.red,
+                                  style: BorderStyle.solid,
+                                ),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xff8baee6),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xff8baee6),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Flexible(
+                        flex: 1,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 5.0, vertical: 8.0),
+                          child: TextFormField(
+                            controller: longCont[index],
+                            validator: (s) {
+                              return s == "" ? 'Enter Longitude' : null;
+                            },
+                            onSaved: (s) {
+                              if (s.length != 0)
+                                latLongs.insert(index * 3 + 1, double.parse(s));
+                              else
+                                latLongs.insert(index * 3 + 1, null);
+                            },
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline1
+                                .copyWith(
+                                    color: dis
+                                        ? Colors.grey[300]
+                                        : Color(0xff81c39f)),
+                            enabled: !widget.disabled,
+                            keyboardType: TextInputType.number,
+                            enableInteractiveSelection: false,
+                            decoration: InputDecoration(
+                              labelText: 'Longitude',
+                              labelStyle: Theme.of(context)
+                                  .textTheme
+                                  .headline1
+                                  .copyWith(
+                                      color: dis
+                                          ? Colors.grey
+                                          : Color(0xff81c39f)),
+                              focusColor: Colors.red,
+                              filled: true,
+                              isDense: true,
+                              fillColor: Colors.white,
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xff81c39f),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.red,
+                                  style: BorderStyle.solid,
+                                ),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xff81c39f),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xff81c39f),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Flexible(
+                        flex: 1,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 5.0, vertical: 8.0),
+                          child: TextFormField(
+                            controller: labelCont[index],
+                            validator: (s) {
+                              return s == "" ? 'Enter a Label' : null;
+                            },
+                            onSaved: (s) {
+                              if (s.length != 0)
+                                latLongs.insert(index * 3 + 2, s);
+                              else
+                                latLongs.insert(index * 3 + 2, null);
+                              if (index + 1 == noOfLatLongs) {
+                                saveMapData();
+                              }
+                            },
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline1
+                                .copyWith(
+                                    color: dis
+                                        ? Colors.grey[300]
+                                        : Color(0xfff3d081)),
+                            enabled: !widget.disabled,
+                            enableInteractiveSelection: false,
+                            cursorColor: Colors.black,
+                            keyboardType: TextInputType.text,
+                            decoration: InputDecoration(
+                              hoverColor: Colors.amber,
+                              labelText: 'Label',
+                              labelStyle: Theme.of(context)
+                                  .textTheme
+                                  .headline1
+                                  .copyWith(
+                                      color: dis
+                                          ? Colors.grey
+                                          : Color(0xfff3d081)),
+                              filled: true,
+                              isDense: true,
+                              fillColor: Colors.white,
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xfff3d081),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.red,
+                                  style: BorderStyle.solid,
+                                ),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xfff3d081),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Color(0xfff3d081),
+                                    style: BorderStyle.solid,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(5.0),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                else
+                  return Dismissible(
+                    key: new Key(latCont[index].hashCode.toString()),
+                    direction: DismissDirection.startToEnd,
+                    onDismissed: (dir) {
+                      setState(() {
+                        noOfLatLongs -= 1;
+                        latCont.removeAt(index);
+                        longCont.removeAt(index);
+                        labelCont.removeAt(index);
+                      });
+                    },
+                    background: Container(
+                      color: Colors.red,
+                      alignment: Alignment.centerLeft,
+                      child: Icon(
+                        Icons.delete,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          flex: 1,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 5.0, vertical: 8.0),
+                            child: TextFormField(
+                              controller: latCont[index],
+                              validator: (s) {
+                                return s == "" ? 'Enter Latitude' : null;
+                              },
+                              onSaved: (s) {
+                                if (index == 0) {
+                                  latLongs = [];
+                                }
+                                if (s.length != 0)
+                                  latLongs.insert(index * 3, double.parse(s));
+                                else
+                                  latLongs.insert(index * 3, null);
+                              },
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headline1
+                                  .copyWith(
+                                      color: dis
+                                          ? Colors.grey[300]
+                                          : Color(0xff8baee6)),
+                              enabled: !widget.disabled,
+                              enableInteractiveSelection: false,
+                              cursorColor: Colors.black,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                hoverColor: Colors.amber,
+                                labelText: 'Latitude',
+                                labelStyle: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        color: dis
+                                            ? Colors.grey
+                                            : Color(0xff8baee6)),
+                                filled: true,
+                                isDense: true,
+                                fillColor: Colors.white,
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xff8baee6),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: Colors.red,
+                                    style: BorderStyle.solid,
+                                  ),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xff8baee6),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xff8baee6),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Flexible(
+                          flex: 1,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 5.0, vertical: 8.0),
+                            child: TextFormField(
+                              controller: longCont[index],
+                              validator: (s) {
+                                return s == "" ? 'Enter Longitude' : null;
+                              },
+                              onSaved: (s) {
+                                if (s.length != 0)
+                                  latLongs.insert(
+                                      index * 3 + 1, double.parse(s));
+                                else
+                                  latLongs.insert(index * 3 + 1, null);
+                              },
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headline1
+                                  .copyWith(
+                                      color: dis
+                                          ? Colors.grey[300]
+                                          : Color(0xff81c39f)),
+                              enabled: !widget.disabled,
+                              keyboardType: TextInputType.number,
+                              enableInteractiveSelection: false,
+                              decoration: InputDecoration(
+                                labelText: 'Longitude',
+                                labelStyle: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        color: dis
+                                            ? Colors.grey
+                                            : Color(0xff81c39f)),
+                                focusColor: Colors.red,
+                                filled: true,
+                                isDense: true,
+                                fillColor: Colors.white,
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xff81c39f),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: Colors.red,
+                                    style: BorderStyle.solid,
+                                  ),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xff81c39f),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xff81c39f),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Flexible(
+                          flex: 1,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 5.0, vertical: 8.0),
+                            child: TextFormField(
+                              controller: labelCont[index],
+                              validator: (s) {
+                                return s == "" ? 'Enter a Label' : null;
+                              },
+                              onSaved: (s) {
+                                if (s.length != 0)
+                                  latLongs.insert(index * 3 + 2, s);
+                                else
+                                  latLongs.insert(index * 3 + 2, null);
+                                if (index + 1 == noOfLatLongs) {
+                                  saveMapData();
+                                }
+                              },
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headline1
+                                  .copyWith(
+                                      color: dis
+                                          ? Colors.grey[300]
+                                          : Color(0xfff3d081)),
+                              enabled: !widget.disabled,
+                              enableInteractiveSelection: false,
+                              cursorColor: Colors.black,
+                              keyboardType: TextInputType.text,
+                              decoration: InputDecoration(
+                                hoverColor: Colors.amber,
+                                labelText: 'Label',
+                                labelStyle: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(
+                                        color: dis
+                                            ? Colors.grey
+                                            : Color(0xfff3d081)),
+                                filled: true,
+                                isDense: true,
+                                fillColor: Colors.white,
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xfff3d081),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: Colors.red,
+                                    style: BorderStyle.solid,
+                                  ),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xfff3d081),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Color(0xfff3d081),
+                                      style: BorderStyle.solid,
+                                      width: 2.0),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
               },
             ),
           ],
@@ -1553,7 +1804,7 @@ class _MapFieldBoxState extends State<MapFieldBox> {
 }
 
 class TableFieldBox extends StatefulWidget {
-  String data;
+  Map<String, dynamic> data;
   final Function saveData;
   Key key;
   TableFieldBox(
@@ -1574,7 +1825,7 @@ class _TableFieldBoxState extends State<TableFieldBox> {
     super.initState();
     controller = new TextEditingController();
     if (widget.data != null) {
-      controller.text = json.decode(widget.data)['table'];
+      controller.text = widget.data['table'];
     }
   }
 
@@ -1609,7 +1860,7 @@ class _TableFieldBoxState extends State<TableFieldBox> {
                 return s == "" ? 'Enter Table data' : null;
               },
               onSaved: (s) {
-                widget.saveData(json.encode({"table": s}));
+                widget.saveData({"table": s});
               },
               style: Theme.of(context)
                   .textTheme
