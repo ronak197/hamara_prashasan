@@ -52,7 +52,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
   void getSubscribedDepartments() async{
     Firestore db = Firestore.instance;
-    results.clear();
+    results?.clear();
     if(UserConfig.lastUserState == UserState.initial){
        db.collection('departments')
            .where('email', whereIn: UserConfig.user.subscribedDepartmentIDs).getDocuments().asStream()
@@ -150,7 +150,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
     query = algolia.instance.index('departments_prod').setHitsPerPage(5);
   }
 
-  Future<Null> onRefresh() async{
+  Future<void> onRefresh() async{
     setState(() {
       getSubscribedDepartments();
     });

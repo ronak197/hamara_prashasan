@@ -117,20 +117,20 @@ class _SendPostPageState extends State<SendPostPage> {
         }
       }
       Feed f = new Feed(
-        FeedInfo(
+        feedInfo: FeedInfo(
           departmentUid: 'andskad',
           description: description,
           creationDateTimeStamp: DateTime.now(),
           title: title,
         ),
-        Department(
+        department: Department(
           areaOfAdministration: 'adnsd',
           category: "health",
           email: 'naksda',
           name: 'Surat Health Department',
           userType: 'department',
         ),
-        FeedInfoDetails(
+        feedInfoDetails: FeedInfoDetails(
           details: contents,
         ),
       );

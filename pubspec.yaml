@@ -36,6 +36,7 @@ dependencies:
   file_picker: ^1.9.0+1
   flutter_fab_dialer: ^0.1.1
   algolia: ^0.1.7
+  intl: ^0.16.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

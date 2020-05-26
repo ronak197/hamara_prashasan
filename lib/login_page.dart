@@ -1,9 +1,60 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/sign_in.dart';
 
 class LoginPage extends StatelessWidget {
+
+  void onSignIn(context) async{
+    _showMyDialog(context);
+    bool val = await signInWithGoogle() ?? false;
+    if(val == true){
+      await FirebaseMethods.getFirestoreUserDataInfo();
+      AppConfigurations.setSigningState = true;
+      Navigator.of(context).pop();
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else {
+      print('ERROR');
+    }
+  }
+
+  void _showMyDialog(context){
+    showDialog(
+        context: context,
+        builder: (context){
+          return StatefulBuilder(
+            builder: (context, setState){
+              return WillPopScope(
+                onWillPop: () async => false,
+                child: AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  title: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        height: 50.0,
+                        width: 50.0,
+                        padding: EdgeInsets.all(8.0),
+                        child: CircularProgressIndicator(
+                        ),
+                      ),
+                      Container(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text("Logging In...", style: Theme.of(context).textTheme.headline3,)
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,14 +96,7 @@ class LoginPage extends StatelessWidget {
                     margin: EdgeInsets.all(20.0),
                     alignment: Alignment.bottomCenter,
                     child: RawMaterialButton(
-                      onPressed: () async {
-                        if(await signInWithGoogle()){
-                          AppConfigurations.setSigningState = true;
-                          Navigator.of(context).pushReplacementNamed('/home');
-                        } else {
-                          print('ERROR');
-                        }
-                      },
+                      onPressed: () => onSignIn(context),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

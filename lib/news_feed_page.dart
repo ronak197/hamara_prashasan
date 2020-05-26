@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -7,6 +8,7 @@ import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/feedInfoPage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hamaraprashasan/classes.dart';
+import 'package:intl/intl.dart';
 
 class NewsFeedPage extends StatefulWidget {
 
@@ -31,12 +33,14 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   StreamController<QuerySnapshot> resultStream = StreamController();
   Map<String, dynamic> departmentDetails = Map();
 
+  String message;
+
   Future<dynamic> getDepartmentInfo() async{
     print('fetching departments');
     Firestore db = Firestore.instance;
     
     var val = db.runTransaction((transaction){
-      db.collection('departments').where('email', whereIn: UserConfig.user.subscribedDepartmentIDs).getDocuments()
+      db.collection('departments').where('email', whereIn: UserConfig.user.subscribedDepartmentIDs).getDocuments(source: Source.server)
           ..then((value){
             value.documents.forEach((element) {
               print(element.data);
@@ -50,6 +54,18 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         return true;
       });
       return null;
+    })..catchError((e){
+      print('this is $e');
+      setState(() {
+        resultStream.addError(message);
+        message = "Some Error Occurred, Make sure you are connected to the internet.";
+      });
+    })..timeout(Duration(seconds: 5), onTimeout: (){
+      setState(() {
+        resultStream.addError(message);
+        message = "Some Error Occurred, Make sure you are connected to the internet.";
+      });
+      return null;
     });
 
     return val;
@@ -58,22 +74,37 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   void getFeeds() async {
     Firestore db = Firestore.instance;
 
+    db.collection('path').add({'temp': 'temp'}).then((value){
+      value.collection('collectionPath').add({'temp':'temp'});
+    });
+    db.runTransaction((transaction) async{
       if(UserConfig.lastUserState == UserState.initial){
         db.collection('feeds')
             .where('creationDateTimeStamp', isLessThanOrEqualTo: UserConfig.user.lastFeedUpdateTime)
             .where('departmentUid', whereIn: UserConfig.user.subscribedDepartmentIDs)
-            .getDocuments().asStream().listen((event) {
-              resultStream.sink.add(event);
+            .getDocuments(source: Source.server).asStream().listen((event) {
+          resultStream.sink.add(event);
         });
-      } else {
+      }
+      else {
         if(await FirebaseMethods.getFirestoreUserDataInfo()){
-          if(UserConfig.lastUserState == UserState.initial){
-            await getDepartmentInfo();
-          }
           print('fetching feeds again');
           getFeeds();
+        }
       }
-    }
+      return null;
+    })..catchError((e){
+      setState(() {
+        message = "Some Error Occurred, Make sure you are connected to the internet.";
+        resultStream.addError(message);
+      });
+    })..timeout(Duration(seconds: 5), onTimeout: (){
+      setState(() {
+        message = "Some Error Occurred, Make sure you are connected to the internet.";
+        resultStream.addError(message);
+      });
+      return null;
+    });
   }
 
   void addTempFields(){
@@ -144,9 +175,17 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       },
       child: RefreshIndicator(
         onRefresh: onRefresh,
+        strokeWidth: 2.5,
         child: StreamBuilder(
           stream: resultStream.stream,
           builder: (context,AsyncSnapshot<QuerySnapshot> snapshot){
+            if(snapshot.connectionState == ConnectionState.waiting){
+              return Container(
+                child: Center(
+                    child: Text('Loading ...', style: Theme.of(context).textTheme.headline2, textAlign: TextAlign.center,)
+                ),
+              );
+            }
             if(snapshot.hasData){
               print('has data');
               return ListView.builder(
@@ -182,11 +221,27 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                       margin: EdgeInsets.symmetric(vertical: 10),
                       child: MessageBox(
                         feed: Feed(
-                            feedInfo: FeedInfo.fromFirestoreJson(snapshot.data.documents[i].data),
-                            department: Department.fromJson(departmentDetails[snapshot.data.documents[i].data['departmentUid']])
+                          feedInfo: FeedInfo.fromFirestoreJson(snapshot.data.documents[i].data),
+                          department: Department.fromJson(departmentDetails[snapshot.data.documents[i].data['departmentUid']]),
                         ),
                         selected: selected[i],
                         canBeSelected: anySelected,
+                      ),
+                    ),
+                  );
+                },
+              );
+            } else if(snapshot.hasError){
+              return ListView.builder(
+                itemCount: 1,
+                itemBuilder: (context,index){
+                  return Container(
+                    height: MediaQuery.of(context).size.height/2 - 60,
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(snapshot.error.toString(), style: Theme.of(context).textTheme.headline2, textAlign: TextAlign.center,),
                       ),
                     ),
                   );
@@ -332,10 +387,7 @@ class MessageBox extends StatelessWidget {
                                 ),
                               ),
                               TextSpan(
-                                text: 'July' + ', ' + feed.feedInfo
-                                    .creationDateTimeStamp.hour.toString() +
-                                    ":" +
-                                    feed.feedInfo.creationDateTimeStamp.minute.toString(),
+                                text: DateFormat('MMM, HH:m').format(feed.feedInfo.creationDateTimeStamp),
                                 style: Theme.of(context).textTheme.bodyText1
                                       .copyWith(color: Color(0xff8C8C8C)),
                               ),
