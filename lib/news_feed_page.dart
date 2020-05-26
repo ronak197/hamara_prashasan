@@ -1,17 +1,13 @@
 import 'dart:async';
-
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/feedInfoPage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
 
 class NewsFeedPage extends StatefulWidget {
-
   final Function anyFeedSelected, allSelectedFeedCleared;
   void clearSelectedFeed() {
     _newsFeedPageState.clearSelectedFeed();
@@ -24,9 +20,7 @@ class NewsFeedPage extends StatefulWidget {
   _NewsFeedPageState createState() => _newsFeedPageState;
 }
 
-
 class _NewsFeedPageState extends State<NewsFeedPage> {
-
   List<Feed> feeds = [];
   List<bool> selected = [];
 
@@ -35,38 +29,47 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   String message;
 
-  Future<dynamic> getDepartmentInfo() async{
+  Future<dynamic> getDepartmentInfo() async {
     print('fetching departments');
     Firestore db = Firestore.instance;
-    
-    var val = db.runTransaction((transaction){
-      db.collection('departments').where('email', whereIn: UserConfig.user.subscribedDepartmentIDs).getDocuments(source: Source.server)
-          ..then((value){
-            value.documents.forEach((element) {
-              print(element.data);
-              if(!departmentDetails.containsKey(element.data['email'])){
-                departmentDetails[element.data['email']] = element.data;
-              }
+
+    var val = db.runTransaction((transaction) {
+      db
+          .collection('departments')
+          .where('email', whereIn: UserConfig.user.subscribedDepartmentIDs)
+          .getDocuments(source: Source.server)
+            ..then((value) {
+              value.documents.forEach((element) {
+                print(element.data);
+                if (!departmentDetails.containsKey(element.data['email'])) {
+                  departmentDetails[element.data['email']] = element.data;
+                }
+              });
+            })
+            ..catchError((e) {
+              return false;
+            })
+            ..whenComplete(() {
+              return true;
             });
-      })..catchError((e){
-        return false;
-      })..whenComplete((){
-        return true;
-      });
       return null;
-    })..catchError((e){
-      print('this is $e');
-      setState(() {
-        resultStream.addError(message);
-        message = "Some Error Occurred, Make sure you are connected to the internet.";
+    })
+      ..catchError((e) {
+        print('this is $e');
+        setState(() {
+          resultStream.addError(message);
+          message =
+              "Some Error Occurred, Make sure you are connected to the internet.";
+        });
+      })
+      ..timeout(Duration(seconds: 5), onTimeout: () {
+        setState(() {
+          resultStream.addError(message);
+          message =
+              "Some Error Occurred, Make sure you are connected to the internet.";
+        });
+        return null;
       });
-    })..timeout(Duration(seconds: 5), onTimeout: (){
-      setState(() {
-        resultStream.addError(message);
-        message = "Some Error Occurred, Make sure you are connected to the internet.";
-      });
-      return null;
-    });
 
     return val;
   }
@@ -74,66 +77,75 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   void getFeeds() async {
     Firestore db = Firestore.instance;
 
-    db.collection('path').add({'temp': 'temp'}).then((value){
-      value.collection('collectionPath').add({'temp':'temp'});
-    });
-    db.runTransaction((transaction) async{
-      if(UserConfig.lastUserState == UserState.initial){
-        db.collection('feeds')
-            .where('creationDateTimeStamp', isLessThanOrEqualTo: UserConfig.user.lastFeedUpdateTime)
-            .where('departmentUid', whereIn: UserConfig.user.subscribedDepartmentIDs)
-            .getDocuments(source: Source.server).asStream().listen((event) {
+    /* db.collection('path').add({'temp': 'temp'}).then((value) {
+      value.collection('collectionPath').add({'temp': 'temp'});
+    }); */
+    db.runTransaction((transaction) async {
+      if (UserConfig.lastUserState == UserState.initial) {
+        db
+            .collection('feeds')
+            .where('creationDateTimeStamp',
+                isLessThanOrEqualTo: UserConfig.user.lastFeedUpdateTime)
+            .where('departmentUid',
+                whereIn: UserConfig.user.subscribedDepartmentIDs)
+            .getDocuments(source: Source.server)
+            .asStream()
+            .listen((event) {
           resultStream.sink.add(event);
         });
-      }
-      else {
-        if(await FirebaseMethods.getFirestoreUserDataInfo()){
+      } else {
+        if (await FirebaseMethods.getFirestoreUserDataInfo()) {
           print('fetching feeds again');
+          getDepartmentInfo();
           getFeeds();
         }
       }
       return null;
-    })..catchError((e){
-      setState(() {
-        message = "Some Error Occurred, Make sure you are connected to the internet.";
-        resultStream.addError(message);
+    })
+      ..catchError((e) {
+        setState(() {
+          message =
+              "Some Error Occurred, Make sure you are connected to the internet.";
+          resultStream.addError(message);
+        });
+      })
+      ..timeout(Duration(seconds: 5), onTimeout: () {
+        setState(() {
+          message =
+              "Some Error Occurred, Make sure you are connected to the internet.";
+          resultStream.addError(message);
+        });
+        return null;
       });
-    })..timeout(Duration(seconds: 5), onTimeout: (){
-      setState(() {
-        message = "Some Error Occurred, Make sure you are connected to the internet.";
-        resultStream.addError(message);
-      });
-      return null;
-    });
   }
 
-  void addTempFields(){
+  void addTempFields() {
     List<String> categories = ['health', 'police', 'muncorp'];
     for (int i = 0; i < 10; i++) {
-      feeds.add(
-          Feed(
-              feedInfo: FeedInfo(
-                  departmentUid: 'andskad',
-                  description: 'Citizens are informed that 10 patients are released from qaurantine',
-                  creationDateTimeStamp: DateTime.now(),
-                  title: 'Patients Released from quarantine are kept under isolation'
-              ),
-              department: Department(
-                  areaOfAdministration: 'adnsd',
-                  category: categories[i%3],
-                  email: 'naksda',
-                  name: 'Surat Health Department',
-                  userType: 'department'
-              ),
-              feedInfoDetails: FeedInfoDetails(
-                  details: [
-                    {'title': 'asnda,'},
-                    {'content' : 'asdnkand'},
-                    {'coords' : [{'latLong' : GeoPoint(12,33), 'label' : 'ansdnak'},{'latLong' : GeoPoint(12,33), 'label' : 'ansdnak'}]}
-                  ]
-              )
-          )
-      );
+      feeds.add(Feed(
+          feedInfo: FeedInfo(
+              departmentUid: 'andskad',
+              description:
+                  'Citizens are informed that 10 patients are released from qaurantine',
+              creationDateTimeStamp: DateTime.now(),
+              title:
+                  'Patients Released from quarantine are kept under isolation'),
+          department: Department(
+              areaOfAdministration: 'adnsd',
+              category: categories[i % 3],
+              email: 'naksda',
+              name: 'Surat Health Department',
+              userType: 'department'),
+          feedInfoDetails: FeedInfoDetails(details: [
+            {'title': 'asnda,'},
+            {'content': 'asdnkand'},
+            {
+              'coords': [
+                {'latLong': GeoPoint(12, 33), 'label': 'ansdnak'},
+                {'latLong': GeoPoint(12, 33), 'label': 'ansdnak'}
+              ]
+            }
+          ])));
       selected.add(false);
     }
   }
@@ -144,7 +156,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     });
   }
 
-  Future<void> onRefresh() async{
+  Future<void> onRefresh() async {
     getFeeds();
   }
 
@@ -178,52 +190,56 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         strokeWidth: 2.5,
         child: StreamBuilder(
           stream: resultStream.stream,
-          builder: (context,AsyncSnapshot<QuerySnapshot> snapshot){
-            if(snapshot.connectionState == ConnectionState.waiting){
+          builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return Container(
                 child: Center(
-                    child: Text('Loading ...', style: Theme.of(context).textTheme.headline2, textAlign: TextAlign.center,)
-                ),
+                    child: Text(
+                  'Loading ...',
+                  style: Theme.of(context).textTheme.headline2,
+                  textAlign: TextAlign.center,
+                )),
               );
             }
-            if(snapshot.hasData){
+            if (snapshot.hasData) {
               print('has data');
               return ListView.builder(
                 itemCount: snapshot.data.documents.length,
-                itemBuilder: (context,i){
+                itemBuilder: (context, i) {
+                  Feed f = Feed(
+                      feedInfo: FeedInfo.fromFirestoreJson(
+                          snapshot.data.documents[i].data),
+                      department: Department.fromJson(departmentDetails[
+                          snapshot.data.documents[i].data['departmentUid']]));
                   return GestureDetector(
                     onLongPress: anySelected
                         ? null
                         : () {
-                      setState(() {
-                        selected[i] = true;
-                        widget.anyFeedSelected();
-                      });
-                    },
+                            setState(() {
+                              selected[i] = true;
+                              widget.anyFeedSelected();
+                            });
+                          },
                     onTap: selected[i] || anySelected
                         ? () {
-                      setState(() {
-                        selected[i] = !selected[i];
-                        if (!(selected.any((element) => element)))
-                          widget.allSelectedFeedCleared();
-                      });
-                    }
+                            setState(() {
+                              selected[i] = !selected[i];
+                              if (!(selected.any((element) => element)))
+                                widget.allSelectedFeedCleared();
+                            });
+                          }
                         : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => FeedInfoPage(
-                            feed: feeds[i],
-                          ),
-                        ),
-                      );
-                    },
+                            Navigator.of(context)
+                                .pushNamed("/feedInfo", arguments: {
+                              "feed": f,
+                              "feedReference":
+                                  snapshot.data.documents[i].reference,
+                            });
+                          },
                     child: Container(
                       margin: EdgeInsets.symmetric(vertical: 10),
                       child: MessageBox(
-                        feed: Feed(
-                          feedInfo: FeedInfo.fromFirestoreJson(snapshot.data.documents[i].data),
-                          department: Department.fromJson(departmentDetails[snapshot.data.documents[i].data['departmentUid']]),
-                        ),
+                        feed: f,
                         selected: selected[i],
                         canBeSelected: anySelected,
                       ),
@@ -231,17 +247,21 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                   );
                 },
               );
-            } else if(snapshot.hasError){
+            } else if (snapshot.hasError) {
               return ListView.builder(
                 itemCount: 1,
-                itemBuilder: (context,index){
+                itemBuilder: (context, index) {
                   return Container(
-                    height: MediaQuery.of(context).size.height/2 - 60,
+                    height: MediaQuery.of(context).size.height / 2 - 60,
                     child: Align(
                       alignment: Alignment.bottomCenter,
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
-                        child: Text(snapshot.error.toString(), style: Theme.of(context).textTheme.headline2, textAlign: TextAlign.center,),
+                        child: Text(
+                          snapshot.error.toString(),
+                          style: Theme.of(context).textTheme.headline2,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   );
@@ -292,17 +312,16 @@ class MessageBox extends StatelessWidget {
                           width: 64.0,
                           height: 64.0,
                           fit: BoxFit.contain,
-                          placeholderBuilder: (context){
+                          placeholderBuilder: (context) {
                             return Container(
                               width: 64.0,
                               height: 64.0,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10.0),
                                 gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [Colors.white, Color(0xfff7f7f7)]
-                                ),
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Colors.white, Color(0xfff7f7f7)]),
                               ),
                             );
                           },
@@ -318,9 +337,11 @@ class MessageBox extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 4.0, vertical: 2.0),
                                 decoration: BoxDecoration(
-                                  color: Color(categoryTagColorMap[feed.department.category]),
+                                  color: Color(categoryTagColorMap[
+                                      feed.department.category]),
                                   borderRadius: BorderRadius.circular(4.0),
                                 ),
                                 child: Text(
@@ -329,8 +350,8 @@ class MessageBox extends StatelessWidget {
                                       .textTheme
                                       .bodyText2
                                       .copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600),
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -340,7 +361,9 @@ class MessageBox extends StatelessWidget {
                                 style: Theme.of(context)
                                     .textTheme
                                     .headline3
-                                    .copyWith(color: Color(0xff303046), fontWeight: FontWeight.w600),
+                                    .copyWith(
+                                        color: Color(0xff303046),
+                                        fontWeight: FontWeight.w600),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -357,7 +380,10 @@ class MessageBox extends StatelessWidget {
                       feed.feedInfo.description,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headline1.copyWith(fontWeight: FontWeight.normal),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headline1
+                          .copyWith(fontWeight: FontWeight.normal),
                     ),
                   ),
                   Row(
@@ -378,21 +404,26 @@ class MessageBox extends StatelessWidget {
                         alignment: Alignment.topRight,
                         margin: EdgeInsets.only(top: 10.0),
                         child: RichText(
-                          text: TextSpan(
-                            children: [
-                              WidgetSpan(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(right: 2.0),
-                                  child: Icon(Icons.access_time, size: 13.0, color: Color(0xff8C8C8C),),
+                          text: TextSpan(children: [
+                            WidgetSpan(
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 2.0),
+                                child: Icon(
+                                  Icons.access_time,
+                                  size: 13.0,
+                                  color: Color(0xff8C8C8C),
                                 ),
                               ),
-                              TextSpan(
-                                text: DateFormat('MMM, HH:m').format(feed.feedInfo.creationDateTimeStamp),
-                                style: Theme.of(context).textTheme.bodyText1
-                                      .copyWith(color: Color(0xff8C8C8C)),
-                              ),
-                            ]
-                          ),
+                            ),
+                            TextSpan(
+                              text: DateFormat('MMM, HH:m')
+                                  .format(feed.feedInfo.creationDateTimeStamp),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyText1
+                                  .copyWith(color: Color(0xff8C8C8C)),
+                            ),
+                          ]),
                         ),
                       ),
                     ],

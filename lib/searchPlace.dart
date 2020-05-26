@@ -36,7 +36,7 @@ class _SearchPlaceState extends State<SearchPlace> {
   void searchPlaces(String s) async {
     double mysearchCode = Random().nextDouble();
     searchCode = mysearchCode;
-    await Future.delayed(Duration(milliseconds: 1000));
+    await Future.delayed(Duration(milliseconds: 500));
     if (mysearchCode == searchCode) {
       s = s.replaceAll(" ", "%20");
       String url =
