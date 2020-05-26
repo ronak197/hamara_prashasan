@@ -53,9 +53,9 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   void getSubscribedDepartments() async{
     Firestore db = Firestore.instance;
     results?.clear();
-    if(UserConfig.lastUserState == UserState.initial){
+    if(User.lastUserState == UserState.initial){
        db.collection('departments')
-           .where('email', whereIn: UserConfig.user.subscribedDepartmentIDs).getDocuments().asStream()
+           .where('email', whereIn: User.userData.subscribedDepartmentIDs).getDocuments().asStream()
            .listen((event) {
              setState(() {
                event.documents.forEach((snapshot) { results.add(Department.fromJson(snapshot.data)); });
@@ -83,28 +83,28 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
     Firestore db = Firestore.instance;
 
     db.runTransaction((transaction) async {
-      if(UserConfig.lastUserState != UserState.subscription){
-        await db.collection('users').document(UserConfig.signedUser.uid).get().then((snapshot){
-          UserConfig.saveUserData(User.fromFirestoreJson(snapshot.data), UserState.subscription);
+      if(User.lastUserState != UserState.subscription){
+        await db.collection('users').document(User.authUser.uid).get().then((snapshot){
+          User.saveUserData(UserData.fromFirestoreJson(snapshot.data), UserState.subscription);
         });
       }
-      if (!UserConfig.user.subscribedDepartmentIDs.contains(toSubscribe)) {
-        UserConfig.user.subscribedDepartmentIDs.add(toSubscribe);
+      if (!User.userData.subscribedDepartmentIDs.contains(toSubscribe)) {
+        User.userData.subscribedDepartmentIDs.add(toSubscribe);
         setState(() {});
         await db
             .collection('users')
-            .document(UserConfig.signedUser.uid)
-            .updateData(UserConfig.user.toFirestoreJson())
+            .document(User.authUser.uid)
+            .updateData(User.userData.toFirestoreJson())
             .catchError((e) {
           return null;
         });
       } else {
-        UserConfig.user.subscribedDepartmentIDs.remove(toSubscribe);
+        User.userData.subscribedDepartmentIDs.remove(toSubscribe);
         setState(() {});
         await db
             .collection('users')
-            .document(UserConfig.signedUser.uid)
-            .updateData(UserConfig.user.toFirestoreJson())
+            .document(User.authUser.uid)
+            .updateData(User.userData.toFirestoreJson())
             .catchError((e) {
           return null;
         });
@@ -203,7 +203,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                   itemBuilder: (context, index) {
                     Department department = results[index];
                     bool hasSubscribed =
-                        (UserConfig.user.subscribedDepartmentIDs ?? [])
+                        (User.userData.subscribedDepartmentIDs ?? [])
                             .contains(department.email) ??
                             false;
                     return DepartmentsMessageBox(

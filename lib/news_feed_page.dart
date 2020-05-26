@@ -27,76 +27,80 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   StreamController<QuerySnapshot> resultStream = StreamController();
   Map<String, dynamic> departmentDetails = Map();
 
-  String message;
+  String displayMessage;
 
-  Future<dynamic> getDepartmentInfo() async {
+  Future<bool> getDepartmentInfo() async {
     print('fetching departments');
     Firestore db = Firestore.instance;
 
-    var val = db.runTransaction((transaction) {
-      db
+    db.runTransaction((transaction) async {
+      await db
           .collection('departments')
-          .where('email', whereIn: UserConfig.user.subscribedDepartmentIDs)
+          .where('email', whereIn: User.userData.subscribedDepartmentIDs)
           .getDocuments(source: Source.server)
-            ..then((value) {
+            .then((value) {
               value.documents.forEach((element) {
-                print(element.data);
                 if (!departmentDetails.containsKey(element.data['email'])) {
                   departmentDetails[element.data['email']] = element.data;
                 }
               });
-            })
-            ..catchError((e) {
-              return false;
-            })
-            ..whenComplete(() {
               return true;
+            })
+            .catchError((e) {
+              print('ERROR: got while running query to fetch subscribed departments');
+            })
+            .whenComplete(() {
+              print('Completed query getDepartmentInfo');
             });
-      return null;
     })
       ..catchError((e) {
-        print('this is $e');
+        print('ERROR: While running transaction getDepartmentInfo $e');
         setState(() {
-          resultStream.addError(message);
-          message =
+          resultStream.addError(displayMessage);
+          displayMessage =
               "Some Error Occurred, Make sure you are connected to the internet.";
         });
       })
       ..timeout(Duration(seconds: 5), onTimeout: () {
         setState(() {
-          resultStream.addError(message);
-          message =
+          resultStream.addError(displayMessage);
+          displayMessage =
               "Some Error Occurred, Make sure you are connected to the internet.";
         });
         return null;
-      });
+      })
+    ..then((value) => print('then in runTransaction'))
+    ..whenComplete(() => print('when complete in runTransaction'));
 
-    return val;
+    return true;
   }
 
   void getFeeds() async {
     Firestore db = Firestore.instance;
 
-    /* db.collection('path').add({'temp': 'temp'}).then((value) {
-      value.collection('collectionPath').add({'temp': 'temp'});
-    }); */
     db.runTransaction((transaction) async {
-      if (UserConfig.lastUserState == UserState.initial) {
+      if (User.lastUserState == UserState.feedUpdate) {
         db
             .collection('feeds')
             .where('creationDateTimeStamp',
-                isLessThanOrEqualTo: UserConfig.user.lastFeedUpdateTime)
+                isLessThanOrEqualTo: User.userData.lastUpdateTime)
             .where('departmentUid',
-                whereIn: UserConfig.user.subscribedDepartmentIDs)
+                whereIn: User.userData.subscribedDepartmentIDs)
             .getDocuments(source: Source.server)
             .asStream()
             .listen((event) {
+              event.documents.forEach((element) {print(element.data);});
           resultStream.sink.add(event);
+        })..onDone(() {
+          print('OnDone');
+          User.lastUserState = UserState.feedUpdate;
+          // update firestore user feed update time
         });
       } else {
-        if (await FirebaseMethods.getFirestoreUserDataInfo()) {
-          print('fetching feeds again');
-          getDepartmentInfo();
+        print('last user state is not feedUpdate');
+        if(await getDepartmentInfo()) {
+          print('Fetched departments info');
+          User.lastUserState = UserState.feedUpdate;
           getFeeds();
         }
       }
@@ -104,19 +108,29 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     })
       ..catchError((e) {
         setState(() {
-          message =
+          displayMessage =
               "Some Error Occurred, Make sure you are connected to the internet.";
-          resultStream.addError(message);
+          resultStream.addError(displayMessage);
         });
       })
       ..timeout(Duration(seconds: 5), onTimeout: () {
         setState(() {
-          message =
+          displayMessage =
               "Some Error Occurred, Make sure you are connected to the internet.";
-          resultStream.addError(message);
+          resultStream.addError(displayMessage);
         });
         return null;
       });
+  }
+
+  void clearSelectedFeed() {
+    setState(() {
+      for (int i = 0; i < selected.length; i++) selected[i] = false;
+    });
+  }
+
+  Future<void> onRefresh() async {
+    getFeeds();
   }
 
   void addTempFields() {
@@ -126,10 +140,10 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           feedInfo: FeedInfo(
               departmentUid: 'andskad',
               description:
-                  'Citizens are informed that 10 patients are released from qaurantine',
+              'Citizens are informed that 10 patients are released from qaurantine',
               creationDateTimeStamp: DateTime.now(),
               title:
-                  'Patients Released from quarantine are kept under isolation'),
+              'Patients Released from quarantine are kept under isolation'),
           department: Department(
               areaOfAdministration: 'adnsd',
               category: categories[i % 3],
@@ -148,16 +162,6 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           ])));
       selected.add(false);
     }
-  }
-
-  void clearSelectedFeed() {
-    setState(() {
-      for (int i = 0; i < selected.length; i++) selected[i] = false;
-    });
-  }
-
-  Future<void> onRefresh() async {
-    getFeeds();
   }
 
   @override
@@ -201,7 +205,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                 )),
               );
             }
-            if (snapshot.hasData) {
+            if (snapshot.hasData && snapshot.data.documents.isNotEmpty) {
               print('has data');
               return ListView.builder(
                 itemCount: snapshot.data.documents.length,

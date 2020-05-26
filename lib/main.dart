@@ -6,18 +6,7 @@ void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
-  String startUpPage;
-  await AppConfigurations.getSharedPrefInstance;
-  if(AppConfigurations.getSigningState){
-    if(UserConfig.getUserAuthInfo()){
-      startUpPage = '/home';
-    } else {
-      signOutGoogle();
-      startUpPage = '/login';
-    }
-  } else {
-    startUpPage = '/login';
-  }
+  String startUpPage = await AppConfigs.getStartUpPage();
 
   runApp(
       MyApp(startUpPage)
@@ -35,7 +24,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       initialRoute: _defaultHome,
-      routes: AppConfigurations.getUserRoutes,
+      routes: AppConfigs.getUserRoutes,
       theme: ThemeData(
         textTheme: TextTheme(
           headline6: TextStyle(

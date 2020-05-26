@@ -93,7 +93,7 @@ class _SendPostPageState extends State<SendPostPage> {
             onPressed: () {
               Firestore.instance.collection("feeds").add({
                 "creationDateTimeStamp": DateTime.now(),
-                "departmentUid": UserConfig.user.email,
+                "departmentUid": User.userData.email,
                 "description": details[1]["content"],
                 "title": details[0]["title"],
               }).then((value) {
@@ -134,7 +134,7 @@ class _SendPostPageState extends State<SendPostPage> {
       }
       Feed f = new Feed(
         feedInfo: FeedInfo(
-          departmentUid: UserConfig.signedUser.uid,
+          departmentUid: User.authUser.uid,
           description: description,
           creationDateTimeStamp: DateTime.now(),
           title: title,
@@ -142,7 +142,7 @@ class _SendPostPageState extends State<SendPostPage> {
         department: Department(
           areaOfAdministration: 'adnsd', //TODO yet to be determined
           category: "health",
-          email: UserConfig.signedUser.email,
+          email: User.authUser.email,
           name: 'Surat Health Department',
           userType: 'department',
         ),

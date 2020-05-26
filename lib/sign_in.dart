@@ -23,7 +23,7 @@ Future<bool> signInWithGoogle() async {
 
   final FirebaseUser user = authResult.user;
 
-  UserConfig.saveUserAuthInfo(user);
+  User.saveUserAuthInfo(user);
 
   user.getIdToken().then((value) => print(value));
   assert(!user.isAnonymous);
@@ -42,7 +42,7 @@ Future<bool> signInWithGoogle() async {
 
 void signOutGoogle() async{
   await googleSignIn.signOut();
-  AppConfigurations.clearAllLocalData();
+  AppConfigs.clearAllLocalData();
 
   print("User Signed Out");
 }
