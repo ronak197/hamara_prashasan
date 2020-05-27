@@ -130,11 +130,6 @@ class User{
     return true;
   }
 
-  // Stream of user state. User states change whenever saving user data i.e calling saveUserData() function.
-  // User States define what was the purpose/event to update the user data.
-  static Stream<UserState> getUserState(){
-//    return UserConfig._controller.stream;
-  }
 }
 
 class FirebaseMethods{

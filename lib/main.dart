@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/sign_in.dart';
 
 void main() async {
 
@@ -15,7 +14,7 @@ void main() async {
 
 class MyApp extends StatelessWidget {
 
-  String _defaultHome;
+  final String _defaultHome;
 
   MyApp(this._defaultHome);
 

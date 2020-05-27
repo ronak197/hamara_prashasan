@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -175,147 +176,135 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        FocusScopeNode currentFocus = FocusScope.of(context);
-        if (!currentFocus.hasPrimaryFocus) {
-          currentFocus.unfocus();
-          setState(() {
-            isSearching = false;
-          });
-        }
-      },
-      child: Container(
-        color: Colors.white,
-        height: double.infinity,
-        child: Stack(
-          alignment: Alignment.topCenter,
-          children: [
-            Positioned(
-              top: 60.0,
-              left: 0.0,
-              right: 0.0,
-              bottom: 0.0,
-              child: results.isNotEmpty ? RefreshIndicator(
-                onRefresh: onRefresh,
-                child: ListView.builder(
-                  itemCount: results?.length,
-                  itemBuilder: (context, index) {
-                    Department department = results[index];
-                    bool hasSubscribed =
-                        (User.userData.subscribedDepartmentIDs ?? [])
-                            .contains(department.email) ??
-                            false;
-                    return DepartmentsMessageBox(
-                      subscribed: hasSubscribed,
-                      department: department,
-                      onSubscribePressed: () =>
-                          onSubscribePressed(results[index].email, hasSubscribed),
-                    );
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.0,
+        excludeHeaderSemantics: true,
+        titleSpacing: 0.0,
+        leading: Container(
+          margin: EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue,
+            image: DecorationImage(
+                fit: BoxFit.cover,
+                image: CachedNetworkImageProvider(
+                  User.authUser.photoUrl,
+                )
+            ),
+          ),
+        ),
+        title: Container(
+          margin: EdgeInsets.only(top: 15.0, bottom: 15.0, left: 0.0, right: 10.0),
+          padding: EdgeInsets.only(right: 10.0, left: 8.0),
+          height: 40.0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30.0),
+            color: Colors.white,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Expanded(
+                flex: 6,
+                child: TextField(
+                  onTap: () {
+                    isSearching = true;
+                    setState(() {});
                   },
-                ),
-              ) : Container(
-                child: Center(
-                    child: Text(message),
+                  onEditingComplete: (){
+                    onPlaceSelected(textEditingController.text);
+                  },
+                  onSubmitted: (s){
+                    print('submit');
+                  },
+                  controller: textEditingController,
+                  cursorColor: Colors.black,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headline2
+                      .copyWith(color: Color(0xff514A4A)),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(0.0),
+                    isDense: true,
+                    hintText: 'Search City, State or Department',
+                    hintStyle: Theme.of(context)
+                        .textTheme
+                        .headline1
+                        .copyWith(color: Color(0xff5f5f5f)),
+                  ),
                 ),
               ),
-            ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 15.0, vertical: 0.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(25.0),
-                    color: Color(0xffF0F0F0),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: TextField(
-                          onTap: () {
-                            isSearching = true;
-                            setState(() {});
-                          },
-                          onEditingComplete: (){
-                            onPlaceSelected(textEditingController.text);
-                          },
-                          onSubmitted: (s){
-                            print('submit');
-                          },
-                          controller: textEditingController,
-                          cursorColor: Colors.black,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headline2
-                              .copyWith(color: Color(0xff514A4A)),
-                          decoration: InputDecoration.collapsed(
-                            hintText: 'Search City, State or Department',
-                            hintStyle: Theme.of(context)
-                                .textTheme
-                                .headline1
-                                .copyWith(color: Color(0xff6F6F6F)),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Icon(isSearching ? Icons.close : Icons.search),
-                      ),
-                    ],
-                  ),
+              Expanded(
+                flex: 1,
+                child: Icon(
+                  isSearching ? Icons.close : Icons.search,
+                  color: Colors.black54,
                 ),
-                isSearching && searchResults?.length != 0
-                    ? Container(
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              offset: Offset(0.0,10.0),
-                              color: Colors.grey,
-                              spreadRadius: 0.1,
-                              blurRadius: 10.0
-                            ),
-                            BoxShadow(
-                              color: Colors.white,
-                              spreadRadius: 5.0
-                            ),
-                          ]
-                        ),
-                        margin: EdgeInsets.symmetric(
-                            horizontal: 15.0, vertical: 0.0),
-                        child: ListView.builder(
-                          padding: EdgeInsets.all(0.0),
-                          scrollDirection: Axis.vertical,
-                          shrinkWrap: true,
-                          itemCount: searchResults.length,
-                          itemBuilder: (context, index) {
-                            return InkWell(
-                              onTap: () => onPlaceSelected(searchResults[index]),
-                              highlightColor: Colors.orange[100],
-                              child: Container(
-                                padding: EdgeInsets.all(9.0),
-                                decoration: BoxDecoration(
-                                    border: Border.symmetric(
-                                        vertical: BorderSide(
-                                            color: Colors.grey, width: 0.2))),
-                                child: Text(
-                                  searchResults[index],
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headline3
-                                      .copyWith(color: Color(0xff6f6f6f)),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                    : SizedBox(),
-              ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: isSearching && searchResults?.length != 0
+          ? ListView.builder(
+        scrollDirection: Axis.vertical,
+        shrinkWrap: true,
+        itemCount: searchResults.length,
+        itemBuilder: (context, index) {
+          return InkWell(
+            onTap: () => onPlaceSelected(searchResults[index]),
+            highlightColor: Colors.orange[100],
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 8.0),
+              decoration: BoxDecoration(
+                  border: Border.symmetric(
+                      vertical: BorderSide(
+                          color: Colors.grey, width: 0.2))),
+              child: Text(
+                searchResults[index],
+                style: Theme.of(context)
+                    .textTheme
+                    .headline3
+                    .copyWith(color: Color(0xff6f6f6f)),
+              ),
             ),
-          ],
+          );
+        },
+      ) : GestureDetector(
+        onTap: () {
+          FocusScopeNode currentFocus = FocusScope.of(context);
+          if (!currentFocus.hasPrimaryFocus) {
+            currentFocus.unfocus();
+            setState(() {
+              isSearching = false;
+            });
+          }
+        },
+        child: results.isNotEmpty ? RefreshIndicator(
+          onRefresh: onRefresh,
+          child: ListView.builder(
+            itemCount: results?.length,
+            itemBuilder: (context, index) {
+              Department department = results[index];
+              bool hasSubscribed =
+                  (User.userData.subscribedDepartmentIDs ?? [])
+                      .contains(department.email) ??
+                      false;
+              return DepartmentsMessageBox(
+                subscribed: hasSubscribed,
+                department: department,
+                onSubscribePressed: () =>
+                    onSubscribePressed(results[index].email, hasSubscribed),
+              );
+            },
+          ),
+        ) : Container(
+          child: Center(
+            child: Text(message),
+          ),
         ),
       ),
     );
@@ -333,7 +322,7 @@ class DepartmentsMessageBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      margin: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
       padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(5.0)),

@@ -1,26 +1,21 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/feedInfoPage.dart';
 import 'package:hamaraprashasan/classes.dart';
 
 class BookmarkPage extends StatefulWidget {
-  final Function anyBookmarkSelected, allSelectedBookmarkCleared;
-  void clearSelectedBookmark() {
-    _newsFeedPageState.clearSelectedBookmark();
-  }
-
-  _BookmarkPageState _newsFeedPageState = new _BookmarkPageState();
-  BookmarkPage(
-      {@required this.anyBookmarkSelected,
-      @required this.allSelectedBookmarkCleared});
   @override
-  _BookmarkPageState createState() => _newsFeedPageState;
+  _BookmarkPageState createState() => _BookmarkPageState();
 }
 
 class _BookmarkPageState extends State<BookmarkPage> {
   List<Feed> bookmarks;
   List<bool> selected;
+
+  bool bookmarkSelected = false;
 
   void getBookmarks() {
     bookmarks = new List();
@@ -61,6 +56,25 @@ class _BookmarkPageState extends State<BookmarkPage> {
     });
   }
 
+  void anyBookmarkSelected() {
+    setState(() {
+      bookmarkSelected = true;
+    });
+  }
+
+  void allSelectedBookmarkCleared() {
+    setState(() {
+      bookmarkSelected = false;
+    });
+  }
+
+//  void clearSelectedBookmark() {
+//    setState(() {
+//      bookmarkSelected = false;
+//    });
+//    bookmarkPage.clearSelectedBookmark();
+//  }
+
   @override
   void initState() {
     super.initState();
@@ -70,42 +84,135 @@ class _BookmarkPageState extends State<BookmarkPage> {
   @override
   Widget build(BuildContext context) {
     bool anySelected = selected.any((element) => element);
-    return SingleChildScrollView(
-      child: Column(
-        children: List<Widget>.generate(
-          bookmarks.length,
-          (i) => GestureDetector(
-            onLongPress: anySelected
-                ? null
-                : () {
-                    setState(() {
-                      selected[i] = true;
-                      widget.anyBookmarkSelected();
-                    });
-                  },
-            onTap: selected[i] || anySelected
-                ? () {
-                    setState(() {
-                      selected[i] = !selected[i];
-                      if (!(selected.any((element) => element)))
-                        widget.allSelectedBookmarkCleared();
-                    });
-                  }
-                : () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => FeedInfoPage(
-                          feed: bookmarks[i],
+    return Scaffold(
+      appBar: bookmarkSelected ? AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.black,
+        ),
+        backgroundColor: Colors.white,
+        elevation: 5.0,
+        titleSpacing: 0.0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.clear,
+            size: 25.0,
+          ),
+          onPressed: clearSelectedBookmark,
+        ),
+        actions: [
+          Container(
+            padding: EdgeInsets.only(right: 5.0),
+            child: IconButton(
+              icon: Icon(
+                Icons.delete_forever,
+                size: 25.0,
+                color: Color(0xffea3953),
+              ),
+              onPressed: () {},
+            ),
+          )
+        ],
+      ) : AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.black,
+        ),
+        leading: Container(
+          margin: EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue,
+            image: DecorationImage(
+                fit: BoxFit.cover,
+                image: CachedNetworkImageProvider(
+                  User.authUser.photoUrl,
+                )
+            ),
+          ),
+        ),
+        automaticallyImplyLeading: true,
+        backgroundColor: Colors.white,
+        elevation: 0.0,
+        titleSpacing: 0.0,
+        actions: [
+          Container(
+            padding: EdgeInsets.all(10.0),
+            child: Icon(
+              Icons.filter_list,
+              size: 20.0,
+            ),
+          )
+        ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Welcome Ronak',
+                style: Theme.of(context).textTheme.headline4.copyWith(fontWeight: FontWeight.w600)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                    height: 16.0,
+                    alignment: Alignment.bottomCenter,
+                    child: Center(
+                        child: Icon(
+                          Icons.location_on,
+                          size: 12.0,
+                          color: Color(0xff6D6D6D),
+                        ))),
+                Container(
+                    height: 16.0,
+                    alignment: Alignment.topLeft,
+                    child: Center(
+                        child: Text('Surat',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyText1
+                                .copyWith(color: Color(0xff6D6D6D)))))
+              ],
+            )
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: List<Widget>.generate(
+            bookmarks.length,
+            (i) => GestureDetector(
+              onLongPress: anySelected
+                  ? null
+                  : () {
+                      setState(() {
+                        selected[i] = true;
+                        anyBookmarkSelected();
+                      });
+                    },
+              onTap: selected[i] || anySelected
+                  ? () {
+                      setState(() {
+                        selected[i] = !selected[i];
+                        if (!(selected.any((element) => element)))
+                          allSelectedBookmarkCleared();
+                      });
+                    }
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => FeedInfoPage(
+                            feed: bookmarks[i],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-            child: Container(
-              margin: EdgeInsets.symmetric(vertical: 10),
-              child: MessageBox(
-                feed: bookmarks[i],
-                selected: selected[i],
-                canBeSelected: anySelected,
+                      );
+                    },
+              child: Container(
+                margin: EdgeInsets.symmetric(vertical: 8.0),
+                child: MessageBox(
+                  feed: bookmarks[i],
+                  selected: selected[i],
+                  canBeSelected: anySelected,
+                ),
               ),
             ),
           ),
@@ -127,8 +234,8 @@ class MessageBox extends StatelessWidget {
     return Stack(
       children: <Widget>[
         Container(
-          margin: EdgeInsets.symmetric(horizontal: 8.0),
-          padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+          margin: EdgeInsets.symmetric(horizontal: 4.0),
+          padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 15.0),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.all(Radius.circular(15.0)),
             color: Color(feed.bgColor),

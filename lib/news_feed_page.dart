@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,19 +9,14 @@ import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
 
 class NewsFeedPage extends StatefulWidget {
-  final Function anyFeedSelected, allSelectedFeedCleared;
-  void clearSelectedFeed() {
-    _newsFeedPageState.clearSelectedFeed();
-  }
-
-  _NewsFeedPageState _newsFeedPageState = new _NewsFeedPageState();
-  NewsFeedPage(
-      {@required this.anyFeedSelected, @required this.allSelectedFeedCleared});
   @override
-  _NewsFeedPageState createState() => _newsFeedPageState;
+  _NewsFeedPageState createState() => _NewsFeedPageState();
 }
 
 class _NewsFeedPageState extends State<NewsFeedPage> {
+
+  bool feedSelected = false;
+
   List<Feed> feeds = [];
   List<bool> selected = [];
 
@@ -164,6 +160,25 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     }
   }
 
+  void anyFeedSelected() {
+    setState(() {
+      feedSelected = true;
+    });
+  }
+
+  void allSelectedFeedCleared() {
+    setState(() {
+      feedSelected = false;
+    });
+  }
+
+//  void clearSelectedFeed() {
+//    setState(() {
+//      feedSelected = false;
+//    });
+//    newsFeedPage.clearSelectedFeed();
+//  }
+
   @override
   void initState() {
     super.initState();
@@ -180,100 +195,193 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   @override
   Widget build(BuildContext context) {
     bool anySelected = selected.any((element) => element);
-    return NotificationListener<ScrollNotification>(
-      onNotification: (ScrollNotification scrollInfo) {
-        if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.atEdge) {
-          print('fetching more');
-          getFeeds();
-          return true;
-        }
-        return false;
-      },
-      child: RefreshIndicator(
-        onRefresh: onRefresh,
-        strokeWidth: 2.5,
-        child: StreamBuilder(
-          stream: resultStream.stream,
-          builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Container(
-                child: Center(
-                    child: Text(
-                  'Loading ...',
-                  style: Theme.of(context).textTheme.headline2,
-                  textAlign: TextAlign.center,
-                )),
-              );
-            }
-            if (snapshot.hasData && snapshot.data.documents.isNotEmpty) {
-              print('has data');
-              return ListView.builder(
-                itemCount: snapshot.data.documents.length,
-                itemBuilder: (context, i) {
-                  Feed f = Feed(
-                      feedInfo: FeedInfo.fromFirestoreJson(
-                          snapshot.data.documents[i].data),
-                      department: Department.fromJson(departmentDetails[
-                          snapshot.data.documents[i].data['departmentUid']]));
-                  return GestureDetector(
-                    onLongPress: anySelected
-                        ? null
-                        : () {
-                            setState(() {
-                              selected[i] = true;
-                              widget.anyFeedSelected();
-                            });
-                          },
-                    onTap: selected[i] || anySelected
-                        ? () {
-                            setState(() {
-                              selected[i] = !selected[i];
-                              if (!(selected.any((element) => element)))
-                                widget.allSelectedFeedCleared();
-                            });
-                          }
-                        : () {
-                            Navigator.of(context)
-                                .pushNamed("/feedInfo", arguments: {
-                              "feed": f,
-                              "feedReference":
-                                  snapshot.data.documents[i].reference,
-                            });
-                          },
-                    child: Container(
-                      margin: EdgeInsets.symmetric(vertical: 10),
-                      child: MessageBox(
-                        feed: f,
-                        selected: selected[i],
-                        canBeSelected: anySelected,
-                      ),
-                    ),
-                  );
-                },
-              );
-            } else if (snapshot.hasError) {
-              return ListView.builder(
-                itemCount: 1,
-                itemBuilder: (context, index) {
-                  return Container(
-                    height: MediaQuery.of(context).size.height / 2 - 60,
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          snapshot.error.toString(),
-                          style: Theme.of(context).textTheme.headline2,
-                          textAlign: TextAlign.center,
+    return Scaffold(
+      appBar: feedSelected ? AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.black,
+        ),
+        backgroundColor: Colors.white,
+        elevation: 5.0,
+        titleSpacing: 0.0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.clear,
+            size: 25.0,
+          ),
+          onPressed: clearSelectedFeed,
+        ),
+        actions: [
+          Container(
+            padding: EdgeInsets.only(right: 5.0),
+            child: IconButton(
+              icon: Icon(
+                Icons.bookmark,
+                size: 25.0,
+                color: Color(0xff393A4E),
+              ),
+              onPressed: () {},
+            ),
+          )
+        ],
+      ) : AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.black,
+        ),
+        leading: Container(
+          margin: EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue,
+            image: DecorationImage(
+                fit: BoxFit.cover,
+                image: CachedNetworkImageProvider(
+                  User.authUser.photoUrl,
+                )
+            ),
+          ),
+        ),
+        automaticallyImplyLeading: true,
+        backgroundColor: Colors.white,
+        elevation: 0.0,
+        titleSpacing: 5.0,
+        actions: [
+          Container(
+            padding: EdgeInsets.all(10.0),
+            child: Icon(
+              Icons.filter_list,
+              size: 20.0,
+            ),
+          )
+        ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Welcome Ronak',
+                style: Theme.of(context).textTheme.headline4.copyWith(fontWeight: FontWeight.w600)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                    height: 16.0,
+                    alignment: Alignment.bottomCenter,
+                    child: Center(
+                        child: Icon(
+                          Icons.location_on,
+                          size: 12.0,
+                          color: Color(0xff6D6D6D),
+                        ))),
+                Container(
+                    height: 16.0,
+                    alignment: Alignment.topLeft,
+                    child: Center(
+                        child: Text('Surat',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyText1
+                                .copyWith(color: Color(0xff6D6D6D)))))
+              ],
+            )
+          ],
+        ),
+      ),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification scrollInfo) {
+          if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.atEdge) {
+            print('fetching more');
+            getFeeds();
+            return true;
+          }
+          return false;
+        },
+        child: RefreshIndicator(
+          onRefresh: onRefresh,
+          strokeWidth: 2.5,
+          child: StreamBuilder(
+            stream: resultStream.stream,
+            builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Container(
+                  child: Center(
+                      child: Text(
+                    'Loading ...',
+                    style: Theme.of(context).textTheme.headline2,
+                    textAlign: TextAlign.center,
+                  )),
+                );
+              }
+              if (snapshot.hasData && snapshot.data.documents.isNotEmpty) {
+                print('has data');
+                return ListView.builder(
+                  itemCount: snapshot.data.documents.length,
+                  itemBuilder: (context, i) {
+                    Feed f = Feed(
+                        feedInfo: FeedInfo.fromFirestoreJson(
+                            snapshot.data.documents[i].data),
+                        department: Department.fromJson(departmentDetails[
+                            snapshot.data.documents[i].data['departmentUid']]));
+                    return GestureDetector(
+                      onLongPress: anySelected
+                          ? null
+                          : () {
+                              setState(() {
+                                selected[i] = true;
+                                anyFeedSelected();
+                              });
+                            },
+                      onTap: selected[i] || anySelected
+                          ? () {
+                              setState(() {
+                                selected[i] = !selected[i];
+                                if (!(selected.any((element) => element)))
+                                  allSelectedFeedCleared();
+                              });
+                            }
+                          : () {
+                              Navigator.of(context)
+                                  .pushNamed("/feedInfo", arguments: {
+                                "feed": f,
+                                "feedReference":
+                                    snapshot.data.documents[i].reference,
+                              });
+                            },
+                      child: Container(
+                        margin: EdgeInsets.symmetric(vertical: 8.0),
+                        child: MessageBox(
+                          feed: f,
+                          selected: selected[i],
+                          canBeSelected: anySelected,
                         ),
                       ),
-                    ),
-                  );
-                },
-              );
-            }
-            return SizedBox();
-          },
+                    );
+                  },
+                );
+              } else if (snapshot.hasError) {
+                return ListView.builder(
+                  itemCount: 1,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      height: MediaQuery.of(context).size.height / 2 - 60,
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            snapshot.error.toString(),
+                            style: Theme.of(context).textTheme.headline2,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+              return SizedBox();
+            },
+          ),
         ),
       ),
     );
@@ -292,8 +400,8 @@ class MessageBox extends StatelessWidget {
     return Stack(
       children: <Widget>[
             Container(
-              margin: EdgeInsets.symmetric(horizontal: 8.0),
-              padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+              margin: EdgeInsets.symmetric(horizontal: 4.0),
+              padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 15.0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.all(Radius.circular(15.0)),
                 color: Color(feed.bgColor),
