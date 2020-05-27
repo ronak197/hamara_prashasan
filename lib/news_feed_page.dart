@@ -71,7 +71,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     return true;
   }
 
-  void getFeeds() async {
+  Future getLatestFeeds() async {
     Firestore db = Firestore.instance;
 
     db.runTransaction((transaction) async {
@@ -82,6 +82,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                 isLessThanOrEqualTo: User.userData.lastUpdateTime)
             .where('departmentUid',
                 whereIn: User.userData.subscribedDepartmentIDs)
+        .orderBy('creationDateTimeStamp', descending: true)
             .getDocuments(source: Source.server)
             .asStream()
             .listen((event) {
@@ -97,7 +98,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         if(await getDepartmentInfo()) {
           print('Fetched departments info');
           User.lastUserState = UserState.feedUpdate;
-          getFeeds();
+          getLatestFeeds();
         }
       }
       return null;
@@ -126,7 +127,8 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   Future<void> onRefresh() async {
-    getFeeds();
+    print('On refresh');
+    await getLatestFeeds();
   }
 
   void addTempFields() {
@@ -183,7 +185,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   void initState() {
     super.initState();
     addTempFields();
-    getFeeds();
+    getLatestFeeds();
   }
 
   @override
@@ -289,9 +291,8 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
-          if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.atEdge) {
-            print('fetching more');
-            getFeeds();
+          if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.maxScrollExtent == scrollInfo.metrics.pixels) {
+            print('Reached Edge, getting more feeds');
             return true;
           }
           return false;
@@ -400,7 +401,7 @@ class MessageBox extends StatelessWidget {
     return Stack(
       children: <Widget>[
             Container(
-              margin: EdgeInsets.symmetric(horizontal: 4.0),
+              margin: EdgeInsets.symmetric(horizontal: 8.0),
               padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 15.0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.all(Radius.circular(15.0)),
@@ -528,7 +529,7 @@ class MessageBox extends StatelessWidget {
                               ),
                             ),
                             TextSpan(
-                              text: DateFormat('MMM, HH:m')
+                              text: DateFormat('MMM d, HH:m')
                                   .format(feed.feedInfo.creationDateTimeStamp),
                               style: Theme.of(context)
                                   .textTheme

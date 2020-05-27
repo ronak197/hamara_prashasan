@@ -166,7 +166,7 @@ class FirebaseMethods{
         subscribedDepartmentIDs: [],
         lastLocation: LatLng(0,0),  // TODO: To change this to more suitable value
         lastUserState: 'initial',
-        lastUpdateTime: null,
+        lastUpdateTime: DateTime.now(),
         bookmarkedFeeds: [],
         userType: 'citizen',
         email: User.authUser.email
