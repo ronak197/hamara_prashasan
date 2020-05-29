@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_fab_dialer/flutter_fab_dialer.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/classes.dart';
@@ -13,34 +12,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 
-class FormField {
-  Map<String, dynamic> data;
-  bool disabled;
-  Type fieldType;
-  Widget fieldWidget;
+abstract class FormField {
+  Map<String, dynamic> data = {};
+  bool disabled = false;
+  Key key;
+  TextEditingController controller;
   void saveData(Map<String, dynamic> data) {
     this.data = data;
-  }
-
-  FormField(this.data, this.disabled, this.fieldType) {
-    setWidget();
-  }
-  void setWidget() {
-    if (this.fieldType == TitleFieldBox)
-      this.fieldWidget = TitleFieldBox(
-          data: this.data, disabled: this.disabled, saveData: this.saveData);
-    else if (this.fieldType == ContentFieldBox)
-      this.fieldWidget = ContentFieldBox(
-          data: this.data, disabled: this.disabled, saveData: this.saveData);
-    else if (this.fieldType == PictureUploadBox)
-      this.fieldWidget = PictureUploadBox(
-          data: this.data, disabled: this.disabled, saveData: this.saveData);
-    else if (this.fieldType == MapFieldBox)
-      this.fieldWidget = MapFieldBox(
-          data: this.data, disabled: this.disabled, saveData: this.saveData);
-    else if (this.fieldType == TableFieldBox)
-      this.fieldWidget = TableFieldBox(
-          data: this.data, disabled: this.disabled, saveData: this.saveData);
   }
 }
 
@@ -55,7 +33,7 @@ class _SendPostPageState extends State<SendPostPage> {
 
   int keyIndex = 1;
 
-  List<FormField> formFields = [];
+  List<dynamic> formFields = [];
   bool showInsertOptions = false;
   bool showTextFieldOptions = false;
   bool editing = false;
@@ -77,7 +55,6 @@ class _SendPostPageState extends State<SendPostPage> {
       for (int i = 2; i < formFields.length; i++) {
         details.add(formFields[i].data);
       }
-      print(details);
       _showSendConfirmationDialog(details);
     }
   }
@@ -162,7 +139,6 @@ class _SendPostPageState extends State<SendPostPage> {
     if (editing) {
       for (int i = 0; i < formFields.length; i++) {
         formFields[i].disabled = false;
-        formFields[i].setWidget();
       }
       editing = false;
     } else {
@@ -171,18 +147,71 @@ class _SendPostPageState extends State<SendPostPage> {
           Colors.green);
       for (int i = 0; i < formFields.length; i++) {
         formFields[i].disabled = true;
-        formFields[i].setWidget();
       }
       editing = true;
     }
     setState(() {});
   }
 
+  Widget floatingButtonListTile(
+      {@required Function onTap,
+      @required String toolTip,
+      @required Color toolTipColor,
+      @required Color toolTipBackgroundColor,
+      @required String iconTag,
+      @required Icon icon,
+      @required Color iconBackgroundColor}) {
+    return Container(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: onTap,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              child: Text(
+                toolTip,
+                style: Theme.of(context)
+                    .textTheme
+                    .headline1
+                    .copyWith(fontSize: 13.0, color: toolTipColor),
+              ),
+              decoration: BoxDecoration(
+                color: toolTipBackgroundColor,
+                borderRadius: BorderRadius.circular(3.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.5),
+                    spreadRadius: 1,
+                    blurRadius: 2,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(2.0),
+            child: FloatingActionButton(
+              heroTag: iconTag,
+              child: icon,
+              onPressed: onTap,
+              backgroundColor: iconBackgroundColor,
+              mini: true,
+              elevation: 5.0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     scrollController = new ScrollController();
-    formFields.add(FormField(null, false, TitleFieldBox));
-    formFields.add(FormField(null, false, ContentFieldBox));
+    formFields.add(TitleFieldBox());
+    formFields.add(ContentFieldBox());
     super.initState();
   }
 
@@ -208,16 +237,15 @@ class _SendPostPageState extends State<SendPostPage> {
         ),
         actions: [
           GestureDetector(
-            onTap: startPreview,
+            onTap: editing ? null : startPreview,
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 10.0),
               child: Center(
                 child: Text(
                   'PREVIEW',
-                  style: Theme.of(context)
-                      .textTheme
-                      .headline2
-                      .copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.headline2.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: editing ? Colors.grey : Colors.black),
                 ),
               ),
             ),
@@ -241,139 +269,45 @@ class _SendPostPageState extends State<SendPostPage> {
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: () {
+                    floatingButtonListTile(
+                      onTap: editing
+                          ? null
+                          : () {
                               setState(() {
-                                formFields.add(
-                                    new FormField(null, false, TitleFieldBox));
+                                formFields.add(new TitleFieldBox());
                                 gotoBottom();
                               });
                             },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Title",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.green : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addTitle",
-                              child: Icon(
-                                Icons.title,
-                                size: 20.0,
-                                color: editing ? Colors.white : iconColor,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  formFields.add(new FormField(
-                                      null, false, TitleFieldBox));
-                                  gotoBottom();
-                                });
-                              },
-                              backgroundColor:
-                                  editing ? Colors.green : fabColor,
-                              mini: true,
-                              elevation: 5.0,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
+                      toolTip: "Add Title",
+                      toolTipColor: editing ? Colors.white : fabColor,
+                      toolTipBackgroundColor: iconColor,
+                      iconTag: "addTitle",
+                      icon: Icon(
+                        Icons.title,
+                        size: 20.0,
+                        color: editing ? Colors.white : iconColor,
                       ),
+                      iconBackgroundColor: fabColor,
                     ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: () {
+                    floatingButtonListTile(
+                      onTap: editing
+                          ? null
+                          : () {
                               setState(() {
-                                formFields.add(new FormField(
-                                    null, false, ContentFieldBox));
+                                formFields.add(new ContentFieldBox());
                                 gotoBottom();
                               });
                             },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Description",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.green : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addContent",
-                              child: Icon(
-                                Icons.content_paste,
-                                size: 20.0,
-                                color: editing ? Colors.white : iconColor,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  formFields.add(new FormField(
-                                      null, false, ContentFieldBox));
-                                  gotoBottom();
-                                });
-                              },
-                              backgroundColor:
-                                  editing ? Colors.green : fabColor,
-                              mini: true,
-                              elevation: 5.0,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
+                      toolTip: "Add Description",
+                      toolTipColor: editing ? Colors.white : fabColor,
+                      toolTipBackgroundColor: iconColor,
+                      iconTag: "addContent",
+                      icon: Icon(
+                        Icons.content_paste,
+                        size: 20.0,
+                        color: editing ? Colors.white : iconColor,
                       ),
+                      iconBackgroundColor: fabColor,
                     ),
                   ],
                 )
@@ -382,350 +316,104 @@ class _SendPostPageState extends State<SendPostPage> {
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: () {
-                              if (!editing) {
-                                showTextFieldOptions = false;
-                                showInsertOptions = false;
-                              }
-                              editForm();
+                    floatingButtonListTile(
+                      onTap: () {
+                        if (!editing) {
+                          showTextFieldOptions = false;
+                          showInsertOptions = false;
+                        }
+                        editForm();
+                      },
+                      toolTip: "Move or Delete Fields",
+                      toolTipColor: editing ? Colors.white : fabColor,
+                      toolTipBackgroundColor:
+                          editing ? Colors.green : iconColor,
+                      iconTag: "edit",
+                      icon: Icon(
+                        Icons.edit,
+                        size: 20.0,
+                        color: editing ? Colors.white : iconColor,
+                      ),
+                      iconBackgroundColor: editing ? Colors.green : fabColor,
+                    ),
+                    floatingButtonListTile(
+                      onTap: editing
+                          ? null
+                          : () {
+                              setState(() {
+                                formFields.add(new TableFieldBox());
+                                gotoBottom();
+                              });
                             },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Move or Delete Fields",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.green : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "edit",
-                              child: Icon(
-                                Icons.edit,
-                                size: 20.0,
-                                color: editing ? Colors.white : iconColor,
-                              ),
-                              onPressed: () {
-                                if (!editing) {
-                                  showTextFieldOptions = false;
-                                  showInsertOptions = false;
-                                }
-                                editForm();
-                              },
-                              backgroundColor:
-                                  editing ? Colors.green : fabColor,
-                              mini: true,
-                              elevation: 5.0,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
+                      toolTip: "Add Table",
+                      toolTipColor: editing ? Colors.white : fabColor,
+                      toolTipBackgroundColor: iconColor,
+                      iconTag: "addTable",
+                      icon: Icon(
+                        Icons.table_chart,
+                        size: 20.0,
+                        color: iconColor,
                       ),
+                      iconBackgroundColor: fabColor,
                     ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: editing
-                                ? null
-                                : () {
-                                    setState(() {
-                                      formFields.add(new FormField(
-                                          null, false, TableFieldBox));
-                                      gotoBottom();
-                                    });
-                                  },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Table",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.grey : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addTable",
-                              child: Icon(
-                                Icons.table_chart,
-                                size: 20.0,
-                                color: iconColor,
-                              ),
-                              backgroundColor: fabColor,
-                              onPressed: editing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        formFields.add(new FormField(
-                                            null, false, TableFieldBox));
-                                        gotoBottom();
-                                      });
-                                    },
-                              mini: true,
-                              elevation: 20,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
+                    floatingButtonListTile(
+                      onTap: editing
+                          ? null
+                          : () {
+                              setState(() {
+                                formFields.add(new MapFieldBox());
+                                gotoBottom();
+                              });
+                            },
+                      toolTip: "Add Map",
+                      toolTipColor: editing ? Colors.white : fabColor,
+                      toolTipBackgroundColor: iconColor,
+                      iconTag: "addMap",
+                      icon: Icon(
+                        Icons.map,
+                        size: 20.0,
+                        color: iconColor,
                       ),
+                      iconBackgroundColor: fabColor,
                     ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: editing
-                                ? null
-                                : () {
-                                    setState(() {
-                                      formFields.add(new FormField(
-                                          null, false, MapFieldBox));
-                                      gotoBottom();
-                                    });
-                                  },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Map",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.grey : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addMap",
-                              child: Icon(
-                                Icons.map,
-                                size: 20.0,
-                                color: iconColor,
-                              ),
-                              backgroundColor: fabColor,
-                              onPressed: editing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        formFields.add(new FormField(
-                                            null, false, MapFieldBox));
-                                        gotoBottom();
-                                      });
-                                    },
-                              mini: true,
-                              elevation: 20,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
+                    floatingButtonListTile(
+                      onTap: editing
+                          ? null
+                          : () {
+                              setState(() {
+                                formFields.add(new PictureUploadBox());
+                                gotoBottom();
+                              });
+                            },
+                      toolTip: "Add Image",
+                      toolTipColor: editing ? Colors.white : fabColor,
+                      toolTipBackgroundColor: iconColor,
+                      iconTag: "addImage",
+                      icon: Icon(
+                        Icons.map,
+                        size: 20.0,
+                        color: iconColor,
                       ),
+                      iconBackgroundColor: fabColor,
                     ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: editing
-                                ? null
-                                : () {
-                                    setState(() {
-                                      formFields.add(new FormField(
-                                          null, false, PictureUploadBox));
-                                      gotoBottom();
-                                    });
-                                  },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Image",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.grey : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addImage",
-                              child: Icon(
-                                Icons.insert_photo,
-                                size: 20.0,
-                                color: iconColor,
-                              ),
-                              backgroundColor: fabColor,
-                              onPressed: editing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        formFields.add(new FormField(
-                                            null, false, PictureUploadBox));
-                                        gotoBottom();
-                                      });
-                                    },
-                              mini: true,
-                              elevation: 20,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
+                    floatingButtonListTile(
+                      onTap: editing
+                          ? null
+                          : () {
+                              setState(() {
+                                showTextFieldOptions = !showTextFieldOptions;
+                              });
+                            },
+                      toolTip: "Add Text",
+                      toolTipColor: editing ? Colors.white : fabColor,
+                      toolTipBackgroundColor: iconColor,
+                      iconTag: "addText",
+                      icon: Icon(
+                        Icons.text_fields,
+                        size: 20.0,
+                        color: iconColor,
                       ),
-                    ),
-                    Container(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: editing
-                                ? null
-                                : () {
-                                    setState(() {
-                                      showTextFieldOptions =
-                                          !showTextFieldOptions;
-                                    });
-                                  },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Text(
-                                "Add Text",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headline1
-                                    .copyWith(
-                                        fontSize: 13.0,
-                                        color:
-                                            editing ? Colors.white : fabColor),
-                              ),
-                              decoration: BoxDecoration(
-                                color: editing ? Colors.grey : iconColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.5),
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(2.0),
-                            child: FloatingActionButton(
-                              heroTag: "addText",
-                              child: Icon(
-                                Icons.text_fields,
-                                size: 20.0,
-                                color: iconColor,
-                              ),
-                              backgroundColor: fabColor,
-                              onPressed: editing
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        showTextFieldOptions =
-                                            !showTextFieldOptions;
-                                      });
-                                    },
-                              mini: true,
-                              elevation: 20,
-                              //padding: EdgeInsets.all(0.0),
-                              //borderRadius: BorderRadius.circular(50.0),
-                            ),
-                          ),
-                        ],
-                      ),
+                      iconBackgroundColor: fabColor,
                     ),
                   ],
                 )
@@ -754,93 +442,107 @@ class _SendPostPageState extends State<SendPostPage> {
       ),
       body: Opacity(
         opacity: showInsertOptions ? 0.2 : 1,
-        child: Form(
-          key: _formKey,
-          child: editing
-              ? ReorderableListView(
-                  onReorder: (oldIndex, newIndex) {
-                    if (oldIndex >= 2 && newIndex > 1) {
-                      if (oldIndex < newIndex) {
-                        newIndex -= 1;
+        child: AbsorbPointer(
+          absorbing: showInsertOptions,
+          child: Form(
+            key: _formKey,
+            child: editing
+                ? ReorderableListView(
+                    onReorder: (oldIndex, newIndex) {
+                      if (oldIndex >= 2 && newIndex > 1) {
+                        if (oldIndex < newIndex) {
+                          newIndex -= 1;
+                        }
+                        var f = formFields.removeAt(oldIndex);
+                        formFields.insert(newIndex, f);
+                        setState(() {});
+                      } else {
+                        showMessage(
+                            "You cannot reorder the first Title and Description fields.");
                       }
-                      var f = formFields.removeAt(oldIndex);
-                      formFields.insert(newIndex, f);
-                      setState(() {});
-                    } else {
-                      showMessage(
-                          "You cannot reorder the first Title and Description fields.");
-                    }
-                  },
-                  children: List<Widget>.generate(
-                    formFields.length,
-                    (index) {
-                      var field = formFields[index];
-                      if (index < 2)
-                        return field.fieldWidget;
-                      else
-                        return Dismissible(
-                          key: new Key(formFields[index].hashCode.toString()),
-                          onDismissed: (dir) async {
-                            formFields.removeAt(index);
-                            setState(() {});
-                          },
-                          direction: DismissDirection.startToEnd,
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerLeft,
-                            child: Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                              size: 30,
-                            ),
-                            margin: EdgeInsets.symmetric(vertical: 20),
-                            padding: EdgeInsets.symmetric(horizontal: 20),
-                          ),
-                          child: field.fieldWidget,
-                        );
                     },
+                    children: List<Widget>.generate(
+                      formFields.length,
+                      (index) {
+                        var field = formFields[index];
+                        if (index < 2)
+                          return field;
+                        else
+                          return Dismissible(
+                            key: new Key(formFields[index].hashCode.toString()),
+                            onDismissed: (dir) async {
+                              formFields.removeAt(index);
+                              setState(() {});
+                            },
+                            direction: DismissDirection.startToEnd,
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerLeft,
+                              child: Icon(
+                                Icons.delete,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                              margin: EdgeInsets.symmetric(vertical: 20),
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                            ),
+                            child: field,
+                          );
+                      },
+                    ),
+                  )
+                : /* ListView(
+                    physics: BouncingScrollPhysics(),
+                    addAutomaticKeepAlives: true,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                        semanticChildCount: 10,
+                    controller: scrollController,
+                    children: List<Widget>.generate(
+                          formFields.length,
+                          (index) {
+                            var field = formFields[index];
+                            return field;
+                          },
+                        ) +
+                        <Widget>[SizedBox(height: 150)],
+                  ), */
+                SingleChildScrollView(
+                    controller: scrollController,
+                    physics: BouncingScrollPhysics(),
+                    child: Column(
+                      children: List<Widget>.generate(
+                            formFields.length,
+                            (index) {
+                              var field = formFields[index];
+                              return field;
+                            },
+                          ) +
+                          <Widget>[SizedBox(height: 150)],
+                    ),
                   ),
-                )
-              : ListView(
-                  physics: BouncingScrollPhysics(),
-                  controller: scrollController,
-                  children: List<Widget>.generate(
-                        formFields.length,
-                        (index) {
-                          var field = formFields[index];
-                          return field.fieldWidget;
-                        },
-                      ) +
-                      <Widget>[SizedBox(height: 150)],
-                ),
+          ),
         ),
       ),
     );
   }
 }
 
-class TitleFieldBox extends StatefulWidget {
-  Map<String, dynamic> data;
-  final Function saveData;
-  Key key;
-  TitleFieldBox(
-      {@required this.data, @required this.disabled, @required this.saveData}) {
+class TitleFieldBox extends StatefulWidget with FormField {
+  TitleFieldBox() {
     key = new Key(this.hashCode.toString());
+    controller = new TextEditingController();
   }
-  final bool disabled;
 
   @override
   _TitleFieldBoxState createState() => _TitleFieldBoxState();
 }
 
 class _TitleFieldBoxState extends State<TitleFieldBox> {
-  String initialString;
   @override
-  void initState() {
-    super.initState();
-    if (widget.data != null) {
-      initialString = widget.data['title'];
-    }
+  void dispose() {
+    print("${widget.runtimeType} disposed");
+    super.dispose();
   }
 
   @override
@@ -865,6 +567,7 @@ class _TitleFieldBoxState extends State<TitleFieldBox> {
         color: Colors.white,
       ),
       child: TextFormField(
+        controller: widget.controller,
         validator: (s) {
           return s == "" ? 'Enter a Title' : null;
         },
@@ -881,7 +584,6 @@ class _TitleFieldBoxState extends State<TitleFieldBox> {
         maxLength: 100,
         maxLengthEnforced: true,
         enabled: !dis,
-        initialValue: initialString,
         decoration: InputDecoration(
           labelText: 'TITLE',
           hintText: 'Enter Title...',
@@ -903,28 +605,22 @@ class _TitleFieldBoxState extends State<TitleFieldBox> {
   }
 }
 
-class ContentFieldBox extends StatefulWidget {
-  Map<String, dynamic> data;
-  final Function saveData;
+class ContentFieldBox extends StatefulWidget with FormField {
   Key key;
-  ContentFieldBox(
-      {@required this.data, @required this.disabled, @required this.saveData}) {
+  ContentFieldBox() {
     key = new Key(this.hashCode.toString());
+    controller = new TextEditingController();
   }
-  final bool disabled;
 
   @override
   _ContentFieldBoxState createState() => _ContentFieldBoxState();
 }
 
 class _ContentFieldBoxState extends State<ContentFieldBox> {
-  String initialString;
   @override
-  void initState() {
-    super.initState();
-    if (widget.data != null) {
-      initialString = widget.data['content'];
-    }
+  void dispose() {
+    print("${widget.runtimeType} disposed");
+    super.dispose();
   }
 
   @override
@@ -949,6 +645,7 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
         color: Colors.white,
       ),
       child: TextFormField(
+        controller: widget.controller,
         validator: (s) {
           return s == "" ? 'Enter some content' : null;
         },
@@ -965,7 +662,6 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
         maxLength: 600,
         maxLengthEnforced: true,
         keyboardType: TextInputType.text,
-        initialValue: initialString,
         enabled: !dis,
         decoration: InputDecoration(
           labelText: 'DESCRIPTION',
@@ -988,15 +684,12 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
   }
 }
 
-class PictureUploadBox extends StatefulWidget {
-  Map<String, dynamic> data;
-  final Function saveData;
+class PictureUploadBox extends StatefulWidget with FormField {
   Key key;
-  PictureUploadBox(
-      {@required this.data, @required this.disabled, @required this.saveData}) {
+  PictureUploadBox() {
     key = new Key(this.hashCode.toString());
+    controller = new TextEditingController();
   }
-  final bool disabled;
 
   @override
   _PictureUploadBoxState createState() => _PictureUploadBoxState();
@@ -1005,10 +698,16 @@ class PictureUploadBox extends StatefulWidget {
 class _PictureUploadBoxState extends State<PictureUploadBox> {
   File image;
   @override
+  void dispose() {
+    print("${widget.runtimeType} disposed");
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
-    if (widget.data != null) {
-      image = File(widget.data['pictureUrl']);
+    if (widget.controller.value.text.isNotEmpty) {
+      image = File(widget.controller.value.text);
     }
   }
 
@@ -1067,6 +766,7 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                           image = file;
                           setState(() {});
                           widget.saveData({'pictureUrl': image.path});
+                          widget.controller.text = image.path;
                         }
                       },
               )
@@ -1091,6 +791,7 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                           image = file;
                           setState(() {});
                           widget.saveData({'pictureUrl': image.path});
+                          widget.controller.text = image.path;
                         }
                       },
               ),
@@ -1099,22 +800,13 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
   }
 }
 
-class MapFieldBox extends StatefulWidget {
-  Map<String, dynamic> data;
-  final Function saveData;
+class MapFieldBox extends StatefulWidget with FormField {
   Key key;
-  MapFieldBox(
-      {@required this.data, @required this.disabled, @required this.saveData}) {
+  MapFieldBox() {
     key = new Key(this.hashCode.toString());
+    controller = new TextEditingController();
   }
 
-  final bool disabled;
-
-  @override
-  _MapFieldBoxState createState() => _MapFieldBoxState();
-}
-
-class _MapFieldBoxState extends State<MapFieldBox> {
   bool searchOptions = false;
 
   int noOfLatLongs = 1;
@@ -1123,37 +815,42 @@ class _MapFieldBoxState extends State<MapFieldBox> {
       longCont = [TextEditingController()],
       labelCont = [TextEditingController()];
 
+  @override
+  _MapFieldBoxState createState() => _MapFieldBoxState();
+}
+
+class _MapFieldBoxState extends State<MapFieldBox> {
+  bool searchOptions;
+
+  int noOfLatLongs;
+  List<dynamic> latLongs;
+  List<TextEditingController> latCont, longCont, labelCont;
+
+  @override
+  void initState() {
+    super.initState();
+    this.searchOptions = widget.searchOptions;
+    this.noOfLatLongs = widget.noOfLatLongs;
+    this.latLongs = widget.latLongs;
+    this.latCont = widget.latCont;
+    this.longCont = widget.longCont;
+    this.labelCont = widget.labelCont;
+  }
+
   void saveMapData() {
     if (latLongs.length > 0) widget.saveData({'coords': latLongs});
   }
 
-  void initState() {
-    super.initState();
-    if (widget.data != null) {
-      List<dynamic> latLong = widget.data['coords'];
-      latCont = [];
-      longCont = [];
-      labelCont = [];
-      for (int i = 0; i < latLong.length; i++) {
-        if (i % 3 == 0) {
-          if (latLong[i] != null)
-            latCont.add(TextEditingController(text: latLong[i].toString()));
-          else
-            latCont.add(TextEditingController());
-        } else if (i % 3 == 1) {
-          if (latLong[i] != null)
-            longCont.add(TextEditingController(text: latLong[i].toString()));
-          else
-            longCont.add(TextEditingController());
-        } else {
-          if (latLong[i] != null)
-            labelCont.add(TextEditingController(text: latLong[i].toString()));
-          else
-            labelCont.add(TextEditingController());
-        }
-      }
-      noOfLatLongs = latCont.length;
-    }
+  @override
+  void dispose() {
+    widget.searchOptions = this.searchOptions;
+    widget.noOfLatLongs = this.noOfLatLongs;
+    widget.latLongs = this.latLongs;
+    widget.latCont = this.latCont;
+    widget.longCont = this.longCont;
+    widget.labelCont = this.labelCont;
+    print("${widget.runtimeType} disposed");
+    super.dispose();
   }
 
   @override
@@ -1315,7 +1012,7 @@ class _MapFieldBoxState extends State<MapFieldBox> {
               shrinkWrap: true,
               itemCount: noOfLatLongs,
               itemBuilder: (_, index) {
-                if (noOfLatLongs == 1)
+                if (noOfLatLongs == 1 || dis)
                   return Row(
                     mainAxisSize: MainAxisSize.max,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1328,7 +1025,13 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                           child: TextFormField(
                             controller: latCont[index],
                             validator: (s) {
-                              return s == "" ? 'Enter Latitude' : null;
+                              if (s == "") return 'Enter Latitude';
+                              try {
+                                double.parse(s);
+                              } catch (e) {
+                                return "Not Valid";
+                              }
+                              return null;
                             },
                             onSaved: (s) {
                               if (index == 0) {
@@ -1348,7 +1051,7 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                                         : Color(0xff8baee6)),
                             enabled: !widget.disabled,
                             enableInteractiveSelection: false,
-                            cursorColor: Colors.black,
+                            cursorColor: Color(0xff8baee6),
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
                               hoverColor: Colors.amber,
@@ -1403,7 +1106,13 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                           child: TextFormField(
                             controller: longCont[index],
                             validator: (s) {
-                              return s == "" ? 'Enter Longitude' : null;
+                              if (s == "") return 'Enter Latitude';
+                              try {
+                                double.parse(s);
+                              } catch (e) {
+                                return "Not Valid";
+                              }
+                              return null;
                             },
                             onSaved: (s) {
                               if (s.length != 0)
@@ -1421,6 +1130,7 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                             enabled: !widget.disabled,
                             keyboardType: TextInputType.number,
                             enableInteractiveSelection: false,
+                            cursorColor: Color(0xff81c39f),
                             decoration: InputDecoration(
                               labelText: 'Longitude',
                               labelStyle: Theme.of(context)
@@ -1494,7 +1204,7 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                                         : Color(0xfff3d081)),
                             enabled: !widget.disabled,
                             enableInteractiveSelection: false,
-                            cursorColor: Colors.black,
+                            cursorColor: Color(0xfff3d081),
                             keyboardType: TextInputType.text,
                             decoration: InputDecoration(
                               hoverColor: Colors.amber,
@@ -1577,7 +1287,13 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                             child: TextFormField(
                               controller: latCont[index],
                               validator: (s) {
-                                return s == "" ? 'Enter Latitude' : null;
+                                if (s == "") return 'Enter Latitude';
+                                try {
+                                  double.parse(s);
+                                } catch (e) {
+                                  return "Not Valid";
+                                }
+                                return null;
                               },
                               onSaved: (s) {
                                 if (index == 0) {
@@ -1652,7 +1368,13 @@ class _MapFieldBoxState extends State<MapFieldBox> {
                             child: TextFormField(
                               controller: longCont[index],
                               validator: (s) {
-                                return s == "" ? 'Enter Longitude' : null;
+                                if (s == "") return 'Enter Latitude';
+                                try {
+                                  double.parse(s);
+                                } catch (e) {
+                                  return "Not Valid";
+                                }
+                                return null;
                               },
                               onSaved: (s) {
                                 if (s.length != 0)
@@ -1803,30 +1525,23 @@ class _MapFieldBoxState extends State<MapFieldBox> {
   }
 }
 
-class TableFieldBox extends StatefulWidget {
-  Map<String, dynamic> data;
-  final Function saveData;
-  Key key;
-  TableFieldBox(
-      {@required this.data, @required this.disabled, @required this.saveData}) {
+class TableFieldBox extends StatefulWidget with FormField {
+  bool csvAdded = false;
+
+  TableFieldBox() {
     key = new Key(this.hashCode.toString());
+    controller = new TextEditingController();
   }
-  final bool disabled;
 
   @override
   _TableFieldBoxState createState() => _TableFieldBoxState();
 }
 
 class _TableFieldBoxState extends State<TableFieldBox> {
-  TextEditingController controller;
-  bool csvAdded = false;
   @override
-  void initState() {
-    super.initState();
-    controller = new TextEditingController();
-    if (widget.data != null) {
-      controller.text = widget.data['table'];
-    }
+  void dispose() {
+    print("${widget.runtimeType} disposed");
+    super.dispose();
   }
 
   @override
@@ -1855,7 +1570,7 @@ class _TableFieldBoxState extends State<TableFieldBox> {
         children: [
           Container(
             child: TextFormField(
-              controller: controller,
+              controller: widget.controller,
               validator: (s) {
                 return s == "" ? 'Enter Table data' : null;
               },
@@ -1892,7 +1607,7 @@ class _TableFieldBoxState extends State<TableFieldBox> {
             alignment: Alignment.centerRight,
             child: RaisedButton(
               child: Text(
-                csvAdded ? "Clear" : "Upload CSV",
+                widget.csvAdded ? "Clear" : "Upload CSV",
                 style: Theme.of(context)
                     .textTheme
                     .headline2
@@ -1904,10 +1619,10 @@ class _TableFieldBoxState extends State<TableFieldBox> {
               ),
               onPressed: dis
                   ? null
-                  : csvAdded
+                  : widget.csvAdded
                       ? () {
-                          controller.clear();
-                          csvAdded = false;
+                          widget.controller.clear();
+                          widget.csvAdded = false;
                           setState(() {});
                         }
                       : () async {
@@ -1927,8 +1642,8 @@ class _TableFieldBoxState extends State<TableFieldBox> {
                               text += ";";
                             });
                             text = text.substring(0, text.length - 1);
-                            controller.text = text;
-                            csvAdded = true;
+                            widget.controller.text = text;
+                            widget.csvAdded = true;
                           }
                           setState(() {});
                         },

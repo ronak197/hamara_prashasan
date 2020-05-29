@@ -52,7 +52,6 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
         getFeedInfoDetails(args['feedReference']);
       }
     }
-    print(content);
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(
