@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,148 +6,178 @@ import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
+import 'package:rxdart/rxdart.dart';
+
+class TempClass{
+  List<Map<String,dynamic>> feedData = List<Map<String,dynamic>>();
+
+  TempClass({this.feedData});
+}
 
 class NewsFeedPage extends StatefulWidget {
-  final Function anyFeedSelected, allSelectedFeedCleared;
-  void clearSelectedFeed() {
-    _newsFeedPageState.clearSelectedFeed();
-  }
-
-  _NewsFeedPageState _newsFeedPageState = new _NewsFeedPageState();
-  NewsFeedPage(
-      {@required this.anyFeedSelected, @required this.allSelectedFeedCleared});
   @override
-  _NewsFeedPageState createState() => _newsFeedPageState;
+  _NewsFeedPageState createState() => _NewsFeedPageState();
 }
 
 class _NewsFeedPageState extends State<NewsFeedPage> {
+
+  bool feedSelected = false;
+
   List<Feed> feeds = [];
   List<bool> selected = [];
 
-  StreamController<QuerySnapshot> resultStream = StreamController();
+  BehaviorSubject<TempClass> resultStream = BehaviorSubject<TempClass>();
+  List<Map<String,dynamic>> feedData = List<Map<String,dynamic>>();
+
   Map<String, dynamic> departmentDetails = Map();
 
-  String message;
+  DateTime startDateTimeAfter;
+  DateTime endDateTimeBefore;
 
-  Future<dynamic> getDepartmentInfo() async {
+  String errorMessage = 'Some Error Occurred, Make sure you are connected to the internet.';
+  String loadingMessage = 'Loading ...';
+
+  bool isRunning = false;
+
+  Future<bool> getDepartmentInfo() async {
     print('fetching departments');
     Firestore db = Firestore.instance;
 
-    var val = db.runTransaction((transaction) {
-      db
-          .collection('departments')
-          .where('email', whereIn: UserConfig.user.subscribedDepartmentIDs)
-          .getDocuments(source: Source.server)
-            ..then((value) {
-              value.documents.forEach((element) {
-                print(element.data);
-                if (!departmentDetails.containsKey(element.data['email'])) {
-                  departmentDetails[element.data['email']] = element.data;
-                }
-              });
-            })
-            ..catchError((e) {
-              return false;
-            })
-            ..whenComplete(() {
-              return true;
-            });
-      return null;
-    })
-      ..catchError((e) {
-        print('this is $e');
-        setState(() {
-          resultStream.addError(message);
-          message =
-              "Some Error Occurred, Make sure you are connected to the internet.";
-        });
-      })
-      ..timeout(Duration(seconds: 5), onTimeout: () {
-        setState(() {
-          resultStream.addError(message);
-          message =
-              "Some Error Occurred, Make sure you are connected to the internet.";
-        });
-        return null;
+    bool success = await db.collection('departments')
+      .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+      .getDocuments()
+      .then((value) {
+        value.documents.forEach((element) {
+          if (!departmentDetails.containsKey(element.data['email'])) {
+            departmentDetails[element.data['email']] = element.data;
+          }
       });
+      return true;
+    }).catchError((e) {
+      resultStream.sink.addError(errorMessage);
+      print('Error in query getDepartmentInfo $e');
+      return false;
+    }).whenComplete(() {
+      print('Completed query getDepartmentInfo');
+      return true;
+    }).timeout(Duration(seconds: 5), onTimeout: (){
+      resultStream.sink.addError(errorMessage);
+      print('Timeout in query getDepartmentInfo');
+      return false;
+    });
 
-    return val;
+    return success;
   }
 
-  void getFeeds() async {
+  Future<bool> getMoreFeeds() async{
     Firestore db = Firestore.instance;
 
-    /* db.collection('path').add({'temp': 'temp'}).then((value) {
-      value.collection('collectionPath').add({'temp': 'temp'});
-    }); */
-    db.runTransaction((transaction) async {
-      if (UserConfig.lastUserState == UserState.initial) {
-        db
-            .collection('feeds')
-            .where('creationDateTimeStamp',
-                isLessThanOrEqualTo: UserConfig.user.lastFeedUpdateTime)
-            .where('departmentUid',
-                whereIn: UserConfig.user.subscribedDepartmentIDs)
-            .getDocuments(source: Source.server)
-            .asStream()
-            .listen((event) {
-          resultStream.sink.add(event);
-        });
-      } else {
-        if (await FirebaseMethods.getFirestoreUserDataInfo()) {
-          print('fetching feeds again');
-          getDepartmentInfo();
-          getFeeds();
-        }
-      }
-      return null;
-    })
-      ..catchError((e) {
-        setState(() {
-          message =
-              "Some Error Occurred, Make sure you are connected to the internet.";
-          resultStream.addError(message);
-        });
-      })
-      ..timeout(Duration(seconds: 5), onTimeout: () {
-        setState(() {
-          message =
-              "Some Error Occurred, Make sure you are connected to the internet.";
-          resultStream.addError(message);
-        });
-        return null;
+    print('fetching more feeds');
+
+    if (User.lastUserState == UserState.feedUpdate) {
+
+      List<Map<String,dynamic>> initialFeedData = feedData;
+
+      startDateTimeAfter = endDateTimeBefore ?? DateTime.now();
+
+      List<DocumentSnapshot> temp = (await db.collection('feeds')
+          .where('creationDateTimeStamp', isLessThanOrEqualTo: User.userData.lastUpdateTime)
+          .where('departmentUid', whereIn: User.userData.subscribedDepartmentIDs)
+          .orderBy('creationDateTimeStamp', descending: true)
+          .startAfter([startDateTimeAfter])
+          .limit(2)
+          .getDocuments()
+          .timeout(Duration(seconds: 3), onTimeout: (){
+            resultStream.sink.addError(errorMessage);
+            return null;
+          })
+          .catchError((e){
+            resultStream.sink.addError(errorMessage);
+            print('onError in query for getLatestFeeds');
+          })
+          .whenComplete(() {
+            print('OnDone in query for getLatestFeeds');
+            User.lastUserState = UserState.feedUpdate;
+            // update firestore user feed update time
+          })
+      ).documents;
+
+
+      List<Map<String,dynamic>> newFeedData = List<Map<String,dynamic>>();
+      temp.forEach((element) {
+        newFeedData.add(element.data);
       });
+
+      if(newFeedData.isNotEmpty){
+        endDateTimeBefore = (newFeedData.last['creationDateTimeStamp'] as Timestamp).toDate();
+        print(endDateTimeBefore);
+        feedData.addAll(newFeedData);
+        resultStream.sink.add(new TempClass(feedData: feedData));
+      }
+    }
+    else {
+      print('last user state is not feedUpdate');
+      if(await getDepartmentInfo()) {
+        print('Fetched departments info');
+        User.lastUserState = UserState.feedUpdate;
+        getLatestFeeds();
+        print('Gonna fetch getLatestFeeds');
+      } else {
+        resultStream.sink.addError(errorMessage);
+      }
+    }
+    return true;
   }
 
-  void addTempFields() {
-    List<String> categories = ['health', 'police', 'muncorp'];
-    for (int i = 0; i < 10; i++) {
-      feeds.add(Feed(
-          feedInfo: FeedInfo(
-              departmentUid: 'andskad',
-              description:
-                  'Citizens are informed that 10 patients are released from qaurantine',
-              creationDateTimeStamp: DateTime.now(),
-              title:
-                  'Patients Released from quarantine are kept under isolation'),
-          department: Department(
-              areaOfAdministration: 'adnsd',
-              category: categories[i % 3],
-              email: 'naksda',
-              name: 'Surat Health Department',
-              userType: 'department'),
-          feedInfoDetails: FeedInfoDetails(details: [
-            {'title': 'asnda,'},
-            {'content': 'asdnkand'},
-            {
-              'coords': [
-                {'latLong': GeoPoint(12, 33), 'label': 'ansdnak'},
-                {'latLong': GeoPoint(12, 33), 'label': 'ansdnak'}
-              ]
-            }
-          ])));
-      selected.add(false);
-    }
+  Future<bool> getLatestFeeds() async {
+      Firestore db = Firestore.instance;
+
+      print('fetching feeds');
+
+      if (User.lastUserState == UserState.feedUpdate) {
+        feedData.clear();
+
+        List<DocumentSnapshot> temp = (await db.collection('feeds')
+            .where('creationDateTimeStamp', isLessThanOrEqualTo: User.userData.lastUpdateTime)
+            .where('departmentUid', whereIn: User.userData.subscribedDepartmentIDs)
+            .orderBy('creationDateTimeStamp', descending: true)
+            .limit(2)
+            .getDocuments()
+            .timeout(Duration(seconds: 3), onTimeout: (){
+              resultStream.sink.addError(errorMessage);
+              return null;
+            })
+            .catchError((e){
+              resultStream.sink.addError(errorMessage);
+              print('onError in query for getLatestFeeds');
+            })
+            .whenComplete(() {
+              print('OnDone in query for getLatestFeeds');
+              User.lastUserState = UserState.feedUpdate;
+              // update firestore user feed update time
+            })
+        ).documents;
+
+        List<Map<String,dynamic>> newFeedData = List<Map<String,dynamic>>();
+        temp.forEach((element) {
+          newFeedData.add(element.data);
+        });
+        endDateTimeBefore = (newFeedData.last['creationDateTimeStamp'] as Timestamp).toDate();
+        feedData.addAll(newFeedData);
+        resultStream.sink.add(new TempClass(feedData: feedData));
+      }
+      else {
+        print('last user state is not feedUpdate');
+        if(await getDepartmentInfo()) {
+          print('Fetched departments info');
+          User.lastUserState = UserState.feedUpdate;
+          getLatestFeeds();
+          print('Gonna fetch getLatestFeeds');
+        } else {
+          resultStream.sink.addError(errorMessage);
+        }
+      }
+      return true;
   }
 
   void clearSelectedFeed() {
@@ -156,15 +186,74 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     });
   }
 
-  Future<void> onRefresh() async {
-    getFeeds();
+
+  Future<void> feedHandler({bool moreFeeds = false, bool latestFeeds = false}) async{
+    assert(moreFeeds != latestFeeds);
+    assert(isRunning == false);
+    if(moreFeeds != latestFeeds && isRunning == false){
+      isRunning = true;
+      print(isRunning);
+      if(moreFeeds){
+        await getMoreFeeds();
+      } else {
+        await getLatestFeeds();
+      }
+      isRunning = false;
+      print(isRunning);
+    }
+  }
+
+  void addTempFields() {
+    for (int i = 0; i < 10; i++) {
+      selected.add(false);
+    }
+  }
+
+  void anyFeedSelected() {
+    setState(() {
+      feedSelected = true;
+    });
+  }
+
+  void allSelectedFeedCleared() {
+    setState(() {
+      feedSelected = false;
+    });
+  }
+
+  void _onLongPress(int i){
+    bool anySelected = selected.any((element) => element);
+    if(!anySelected){
+      setState(() {
+        selected[i] = true;
+        anyFeedSelected();
+      });
+    }
+  }
+
+  void _onTap(int i, Feed f, snapshot){
+    bool anySelected = selected.any((element) => element);
+    if(selected[i] || anySelected){
+      setState(() {
+        selected[i] = !selected[i];
+        if (!(selected.any((element) => element)))
+          allSelectedFeedCleared();
+      });
+    }
+    else {
+      Navigator.of(context)
+          .pushNamed("/feedInfo", arguments: {
+        "feed": f,
+        "feedReference": snapshot.data.feedData[i]['email'],
+      });
+    }
   }
 
   @override
   void initState() {
     super.initState();
     addTempFields();
-    getFeeds();
+    feedHandler(latestFeeds: true, moreFeeds: false);
   }
 
   @override
@@ -175,101 +264,148 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   @override
   Widget build(BuildContext context) {
-    bool anySelected = selected.any((element) => element);
-    return NotificationListener<ScrollNotification>(
-      onNotification: (ScrollNotification scrollInfo) {
-        if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.atEdge) {
-          print('fetching more');
-          getFeeds();
-          return true;
-        }
-        return false;
-      },
-      child: RefreshIndicator(
-        onRefresh: onRefresh,
-        strokeWidth: 2.5,
-        child: StreamBuilder(
-          stream: resultStream.stream,
-          builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Container(
-                child: Center(
-                    child: Text(
-                  'Loading ...',
-                  style: Theme.of(context).textTheme.headline2,
-                  textAlign: TextAlign.center,
-                )),
-              );
-            }
-            if (snapshot.hasData) {
-              print('has data');
-              return ListView.builder(
-                itemCount: snapshot.data.documents.length,
-                itemBuilder: (context, i) {
-                  Feed f = Feed(
-                      feedInfo: FeedInfo.fromFirestoreJson(
-                          snapshot.data.documents[i].data),
-                      department: Department.fromJson(departmentDetails[
-                          snapshot.data.documents[i].data['departmentUid']]));
-                  return GestureDetector(
-                    onLongPress: anySelected
-                        ? null
-                        : () {
-                            setState(() {
-                              selected[i] = true;
-                              widget.anyFeedSelected();
-                            });
-                          },
-                    onTap: selected[i] || anySelected
-                        ? () {
-                            setState(() {
-                              selected[i] = !selected[i];
-                              if (!(selected.any((element) => element)))
-                                widget.allSelectedFeedCleared();
-                            });
-                          }
-                        : () {
-                            Navigator.of(context)
-                                .pushNamed("/feedInfo", arguments: {
-                              "feed": f,
-                              "feedReference":
-                                  snapshot.data.documents[i].reference,
-                            });
-                          },
-                    child: Container(
-                      margin: EdgeInsets.symmetric(vertical: 10),
-                      child: MessageBox(
-                        feed: f,
-                        selected: selected[i],
-                        canBeSelected: anySelected,
-                      ),
-                    ),
-                  );
-                },
-              );
-            } else if (snapshot.hasError) {
-              return ListView.builder(
-                itemCount: 1,
-                itemBuilder: (context, index) {
-                  return Container(
-                    height: MediaQuery.of(context).size.height / 2 - 60,
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          snapshot.error.toString(),
-                          style: Theme.of(context).textTheme.headline2,
-                          textAlign: TextAlign.center,
+    return Scaffold(
+      appBar: feedSelected ? AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.black,
+        ),
+        backgroundColor: Colors.white,
+        elevation: 5.0,
+        titleSpacing: 0.0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.clear,
+            size: 25.0,
+          ),
+          onPressed: clearSelectedFeed,
+        ),
+        actions: [
+          Container(
+            padding: EdgeInsets.only(right: 5.0),
+            child: IconButton(
+              icon: Icon(
+                Icons.bookmark,
+                size: 25.0,
+                color: Color(0xff393A4E),
+              ),
+              onPressed: () {},
+            ),
+          )
+        ],
+      ) : AppBar(
+        iconTheme: IconThemeData(
+          color: Colors.black,
+        ),
+        leading: Container(
+          margin: EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.blue,
+            image: DecorationImage(
+                fit: BoxFit.cover,
+                image: CachedNetworkImageProvider(
+                  User.authUser.photoUrl,
+                )
+            ),
+          ),
+        ),
+        automaticallyImplyLeading: true,
+        backgroundColor: Colors.white,
+        elevation: 0.0,
+        titleSpacing: 5.0,
+        actions: [
+          Container(
+            padding: EdgeInsets.all(10.0),
+            child: Icon(
+              Icons.filter_list,
+              size: 20.0,
+            ),
+          )
+        ],
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Welcome Ronak',
+                style: Theme.of(context).textTheme.headline4.copyWith(fontWeight: FontWeight.w600)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                    height: 16.0,
+                    alignment: Alignment.bottomCenter,
+                    child: Center(
+                        child: Icon(
+                          Icons.location_on,
+                          size: 12.0,
+                          color: Color(0xff6D6D6D),
+                        ))),
+                Container(
+                    height: 16.0,
+                    alignment: Alignment.topLeft,
+                    child: Center(
+                        child: Text('Surat',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyText1
+                                .copyWith(color: Color(0xff6D6D6D)))))
+              ],
+            )
+          ],
+        ),
+      ),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification scrollInfo) {
+          if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.maxScrollExtent == scrollInfo.metrics.pixels) {
+            print('Reached Edge, getting more feeds');
+            feedHandler(moreFeeds: true, latestFeeds: false);
+            return true;
+          }
+          return false;
+        },
+        child: RefreshIndicator(
+          onRefresh: () => feedHandler(latestFeeds: true, moreFeeds: false),
+          strokeWidth: 2.5,
+          child: StreamBuilder(
+            stream: resultStream.stream,
+            builder: (context, AsyncSnapshot<TempClass> snapshot) {
+              print('Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return FeedLoadStatus(displayMessage: loadingMessage,);
+              }
+              else if (snapshot.connectionState == ConnectionState.active) {
+                if(snapshot.hasData && snapshot.data.feedData.isNotEmpty){
+                  return ListView.builder(
+                    itemCount: snapshot.data.feedData.length,
+                    itemBuilder: (context, i) {
+                      Feed f = Feed(
+                          feedInfo: FeedInfo.fromFirestoreJson(
+                              snapshot.data.feedData[i]),
+                          department: Department.fromJson(departmentDetails[
+                          snapshot.data.feedData[i]['departmentUid']]));
+                      return GestureDetector(
+                        onLongPress: () => _onLongPress(i),
+                        onTap: () => _onTap(i,f,snapshot),
+                        child: Container(
+                          margin: EdgeInsets.symmetric(vertical: 8.0),
+                          child: MessageBox(
+                            feed: f,
+                            selected: selected[i],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
-                },
-              );
-            }
-            return SizedBox();
-          },
+                }
+                else if (snapshot.hasError) {
+                  return FeedLoadStatus(displayMessage: errorMessage,);
+                }
+              }
+              return SizedBox();
+            },
+          ),
         ),
       ),
     );
@@ -289,7 +425,7 @@ class MessageBox extends StatelessWidget {
       children: <Widget>[
             Container(
               margin: EdgeInsets.symmetric(horizontal: 8.0),
-              padding: EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+              padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 15.0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.all(Radius.circular(15.0)),
                 color: Color(feed.bgColor),
@@ -416,7 +552,7 @@ class MessageBox extends StatelessWidget {
                               ),
                             ),
                             TextSpan(
-                              text: DateFormat('MMM, HH:m')
+                              text: DateFormat('MMM d, HH:m')
                                   .format(feed.feedInfo.creationDateTimeStamp),
                               style: Theme.of(context)
                                   .textTheme
@@ -452,6 +588,37 @@ class MessageBox extends StatelessWidget {
                   )
                 ]
               : <Widget>[]),
+    );
+  }
+}
+
+class FeedLoadStatus extends StatelessWidget {
+
+  final String displayMessage;
+
+  FeedLoadStatus({@required this.displayMessage});
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) => SingleChildScrollView(
+        physics: AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: constraints.maxHeight,
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(displayMessage,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headline2,
+                  )
+                ],
+              ),
+            ),
+          ),
+        )
+    )
     );
   }
 }

@@ -8,14 +8,16 @@ class LoginPage extends StatelessWidget {
 
   void onSignIn(context) async{
     _showMyDialog(context);
-    bool val = await signInWithGoogle() ?? false;
-    if(val == true){
-      await FirebaseMethods.getFirestoreUserDataInfo();
-      AppConfigurations.setSigningState = true;
+    bool signed = await signInWithGoogle() ?? false;
+    bool fetchedData = await FirebaseMethods.getFirestoreUserDataInfo() ?? false;
+    if(signed && fetchedData){
+      print('Signed into google');
+      AppConfigs.setSigningState = true;
       Navigator.of(context).pop();
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
-      print('ERROR');
+      print('ERROR: you did not selected any account');
+      Navigator.of(context).pop();
     }
   }
 

@@ -93,44 +93,49 @@ class FeedInfoDetails {
       };
 }
 
-class User {
+class UserData {
   List<String> bookmarkedFeeds;
   String email;
-  DateTime lastFeedUpdateTime;
+  DateTime lastUpdateTime;
+  String lastUserState;
   LatLng lastLocation;
   List<String> subscribedDepartmentIDs;
   String userType;
 
-  User(
+  UserData(
       {this.bookmarkedFeeds,
       this.email,
-      this.lastFeedUpdateTime,
+      this.lastUpdateTime,
+      this.lastUserState,
       this.lastLocation,
       this.subscribedDepartmentIDs,
       this.userType});
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
+  factory UserData.fromJson(Map<String, dynamic> json) => UserData(
       bookmarkedFeeds : List<String>.from((json["bookmarkedFeeds"]?? List<dynamic>()).map((x) => x)),
       email : json["email"] as String,
-      lastFeedUpdateTime : json["lastFeedUpdateTime"] != null ? (json["lastFeedUpdateTime"].runtimeType == Timestamp ? (json["lastFeedUpdateTime"] as Timestamp)?.toDate() : DateTime.parse(json["lastFeedUpdateTime"])) : DateTime.now(),
-      lastLocation : LatLng((json["lastLocation"] as GeoPoint).latitude ?? 0,(json["lastLocation"] as GeoPoint).longitude ?? 0) ,
+      lastUpdateTime : json["lastUpdateTime"] != null ? (json["lastUpdateTime"].runtimeType == Timestamp ? (json["lastUpdateTime"] as Timestamp)?.toDate() : DateTime.parse(json["lastUpdateTime"])) : DateTime.now(),
+      lastUserState : json["lastUserState"] as String,
+      lastLocation : LatLng.fromJson(json["lastLocation"]),
       subscribedDepartmentIDs : List<String>.from((json["subscribedDepartmentIDs"] ?? List<dynamic>()).map((x) => x)),
-      userType : json["userType"] as String,
+      userType : json["userType "] as String,
   );
 
   Map<String, dynamic> toJson() => {
     "bookmarkedFeeds" : bookmarkedFeeds,
     "email" : email,
-    "lastFeedUpdateTime" : lastFeedUpdateTime?.toIso8601String(),
-    "lastLocation" : lastLocation,
+    "lastUpdateTime" : lastUpdateTime?.toIso8601String(),
+    "lastUserState" : lastUserState,
+    "lastLocation" : lastLocation.toJson(),
     "subscribedDepartmentIDs" : subscribedDepartmentIDs,
     "userType" : userType,
   };
 
-  factory User.fromFirestoreJson(Map<String, dynamic> json) => User(
+  factory UserData.fromFirestoreJson(Map<String, dynamic> json) => UserData(
     bookmarkedFeeds : List<String>.from((json["bookmarkedFeeds"]?? List<dynamic>()).map((x) => x)),
     email : json["email"] as String,
-    lastFeedUpdateTime : json["lastFeedUpdateTime"] != null ? (json["lastFeedUpdateTime"].runtimeType == Timestamp ? (json["lastFeedUpdateTime"] as Timestamp)?.toDate() : DateTime.parse(json["lastFeedUpdateTime"])) : DateTime.now(),
+    lastUpdateTime : json["lastUpdateTime"] != null ? (json["lastUpdateTime"].runtimeType == Timestamp ? (json["lastUpdateTime"] as Timestamp)?.toDate() : DateTime.parse(json["lastUpdateTime"])) : DateTime.now(),
+    lastUserState : json["lastUserState"] as String,
     lastLocation : LatLng((json["lastLocation"] as GeoPoint).latitude ?? 0,(json["lastLocation"] as GeoPoint).longitude ?? 0) ,
     subscribedDepartmentIDs : List<String>.from((json["subscribedDepartmentIDs"] ?? List<dynamic>()).map((x) => x)),
     userType : json["userType"] as String,
@@ -139,7 +144,8 @@ class User {
   Map<String, dynamic> toFirestoreJson() => {
     "bookmarkedFeeds" : bookmarkedFeeds,
     "email" : email,
-    "lastFeedUpdateTime" : lastFeedUpdateTime?.toIso8601String(),
+    "lastUpdateTime" : Timestamp.fromDate(lastUpdateTime ?? DateTime.now()),
+    "lastUserState" : lastUserState,
     "lastLocation" : GeoPoint(lastLocation.latitude,lastLocation.longitude),
     "subscribedDepartmentIDs" : subscribedDepartmentIDs,
     "userType" : userType,

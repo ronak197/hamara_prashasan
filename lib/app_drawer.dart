@@ -25,7 +25,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
               margin: EdgeInsets.only(top: 12.0, bottom: 8.0),
               child: CircleAvatar(
                 backgroundImage: CachedNetworkImageProvider(
-                    UserConfig.signedUser.photoUrl ?? '',
+                    User.authUser.photoUrl ?? '',
                   errorListener: (){
                       setState(() {
                         imageLoadFailed = true;
@@ -40,11 +40,11 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                   ) : SizedBox(),
               ),
             ),
-            Text(UserConfig.signedUser.displayName ?? '',
+            Text(User.authUser.displayName ?? '',
                 style: Theme.of(context).textTheme.headline2.copyWith(
                     fontWeight: FontWeight.w600, color: Color(0xff303046))),
             Text(
-              UserConfig.signedUser.email ?? '',
+              User.authUser.email ?? '',
               style: Theme.of(context)
                   .textTheme
                   .headline1
@@ -183,7 +183,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                   InkWell(
                     onTap: () async{
                       signOutGoogle();
-                      AppConfigurations.setSigningState = false;
+                      AppConfigs.setSigningState = false;
                       Navigator.of(context).pushReplacementNamed('/login');
                     },
                     child: Row(
