@@ -1,56 +1,68 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart' as cs;
 
-class TempClass{
-  List<Map<String,dynamic>> feedData = List<Map<String,dynamic>>();
+class TempClass {
+  List<Map<String, dynamic>> feedData = List<Map<String, dynamic>>();
 
   TempClass({this.feedData});
 }
 
 class NewsFeedPage extends StatefulWidget {
+  final Function(Widget Function(BuildContext) builder,
+      {double elevation,
+      ShapeBorder shape,
+      Color backgroundColor}) showBottomSheet;
+  NewsFeedPage({this.showBottomSheet});
   @override
   _NewsFeedPageState createState() => _NewsFeedPageState();
 }
 
 class _NewsFeedPageState extends State<NewsFeedPage> {
-
   bool feedSelected = false;
 
   List<Feed> feeds = [];
   List<bool> selected = [];
 
   BehaviorSubject<TempClass> resultStream = BehaviorSubject<TempClass>();
-  List<Map<String,dynamic>> feedData = List<Map<String,dynamic>>();
+  List<Map<String, dynamic>> feedData = List<Map<String, dynamic>>();
 
   Map<String, dynamic> departmentDetails = Map();
 
   DateTime startDateTimeAfter;
   DateTime endDateTimeBefore;
 
-  String errorMessage = 'Some Error Occurred, Make sure you are connected to the internet.';
+  String errorMessage =
+      'Some Error Occurred, Make sure you are connected to the internet.';
   String loadingMessage = 'Loading ...';
 
   bool isRunning = false;
+
+  cs.DefaultCacheManager cacheManager = new cs.DefaultCacheManager();
 
   Future<bool> getDepartmentInfo() async {
     print('fetching departments');
     Firestore db = Firestore.instance;
 
-    bool success = await db.collection('departments')
-      .where('email', whereIn: User.userData.subscribedDepartmentIDs)
-      .getDocuments()
-      .then((value) {
-        value.documents.forEach((element) {
-          if (!departmentDetails.containsKey(element.data['email'])) {
-            departmentDetails[element.data['email']] = element.data;
-          }
+    bool success = await db
+        .collection('departments')
+        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+        .getDocuments()
+        .then((value) {
+      value.documents.forEach((element) {
+        if (!departmentDetails.containsKey(element.data['email'])) {
+          departmentDetails[element.data['email']] = element.data;
+        }
       });
       return true;
     }).catchError((e) {
@@ -60,7 +72,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     }).whenComplete(() {
       print('Completed query getDepartmentInfo');
       return true;
-    }).timeout(Duration(seconds: 5), onTimeout: (){
+    }).timeout(Duration(seconds: 5), onTimeout: () {
       resultStream.sink.addError(errorMessage);
       print('Timeout in query getDepartmentInfo');
       return false;
@@ -69,55 +81,56 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     return success;
   }
 
-  Future<bool> getMoreFeeds() async{
+  Future<bool> getMoreFeeds() async {
     Firestore db = Firestore.instance;
 
     print('fetching more feeds');
 
     if (User.lastUserState == UserState.feedUpdate) {
-
-      List<Map<String,dynamic>> initialFeedData = feedData;
+      List<Map<String, dynamic>> initialFeedData = feedData;
 
       startDateTimeAfter = endDateTimeBefore ?? DateTime.now();
 
-      List<DocumentSnapshot> temp = (await db.collection('feeds')
-          .where('creationDateTimeStamp', isLessThanOrEqualTo: User.userData.lastUpdateTime)
-          .where('departmentUid', whereIn: User.userData.subscribedDepartmentIDs)
-          .orderBy('creationDateTimeStamp', descending: true)
-          .startAfter([startDateTimeAfter])
-          .limit(2)
-          .getDocuments()
-          .timeout(Duration(seconds: 3), onTimeout: (){
-            resultStream.sink.addError(errorMessage);
-            return null;
-          })
-          .catchError((e){
-            resultStream.sink.addError(errorMessage);
-            print('onError in query for getLatestFeeds');
-          })
-          .whenComplete(() {
-            print('OnDone in query for getLatestFeeds');
-            User.lastUserState = UserState.feedUpdate;
-            // update firestore user feed update time
-          })
-      ).documents;
+      List<DocumentSnapshot> temp = (await db
+              .collection('feeds')
+              .where('creationDateTimeStamp',
+                  isLessThanOrEqualTo: User.userData.lastUpdateTime)
+              .where('departmentUid',
+                  whereIn: User.userData.subscribedDepartmentIDs)
+              .orderBy('creationDateTimeStamp', descending: true)
+              .startAfter([startDateTimeAfter])
+              .limit(2)
+              .getDocuments()
+              .timeout(Duration(seconds: 3), onTimeout: () {
+                resultStream.sink.addError(errorMessage);
+                return null;
+              })
+              .catchError((e) {
+                resultStream.sink.addError(errorMessage);
+                print('onError in query for getLatestFeeds');
+              })
+              .whenComplete(() {
+                print('OnDone in query for getLatestFeeds');
+                User.lastUserState = UserState.feedUpdate;
+                // update firestore user feed update time
+              }))
+          .documents;
 
-
-      List<Map<String,dynamic>> newFeedData = List<Map<String,dynamic>>();
+      List<Map<String, dynamic>> newFeedData = List<Map<String, dynamic>>();
       temp.forEach((element) {
         newFeedData.add(element.data);
       });
 
-      if(newFeedData.isNotEmpty){
-        endDateTimeBefore = (newFeedData.last['creationDateTimeStamp'] as Timestamp).toDate();
+      if (newFeedData.isNotEmpty) {
+        endDateTimeBefore =
+            (newFeedData.last['creationDateTimeStamp'] as Timestamp).toDate();
         print(endDateTimeBefore);
         feedData.addAll(newFeedData);
         resultStream.sink.add(new TempClass(feedData: feedData));
       }
-    }
-    else {
+    } else {
       print('last user state is not feedUpdate');
-      if(await getDepartmentInfo()) {
+      if (await getDepartmentInfo()) {
         print('Fetched departments info');
         User.lastUserState = UserState.feedUpdate;
         getLatestFeeds();
@@ -130,54 +143,55 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   Future<bool> getLatestFeeds() async {
-      Firestore db = Firestore.instance;
+    Firestore db = Firestore.instance;
 
-      print('fetching feeds');
+    print('fetching feeds');
 
-      if (User.lastUserState == UserState.feedUpdate) {
-        feedData.clear();
+    if (User.lastUserState == UserState.feedUpdate) {
+      feedData.clear();
 
-        List<DocumentSnapshot> temp = (await db.collection('feeds')
-            .where('creationDateTimeStamp', isLessThanOrEqualTo: User.userData.lastUpdateTime)
-            .where('departmentUid', whereIn: User.userData.subscribedDepartmentIDs)
-            .orderBy('creationDateTimeStamp', descending: true)
-            .limit(2)
-            .getDocuments()
-            .timeout(Duration(seconds: 3), onTimeout: (){
-              resultStream.sink.addError(errorMessage);
-              return null;
-            })
-            .catchError((e){
-              resultStream.sink.addError(errorMessage);
-              print('onError in query for getLatestFeeds');
-            })
-            .whenComplete(() {
-              print('OnDone in query for getLatestFeeds');
-              User.lastUserState = UserState.feedUpdate;
-              // update firestore user feed update time
-            })
-        ).documents;
+      List<DocumentSnapshot> temp = (await db
+              .collection('feeds')
+              .where('creationDateTimeStamp',
+                  isLessThanOrEqualTo: User.userData.lastUpdateTime)
+              .where('departmentUid',
+                  whereIn: User.userData.subscribedDepartmentIDs)
+              .orderBy('creationDateTimeStamp', descending: true)
+              .limit(2)
+              .getDocuments()
+              .timeout(Duration(seconds: 3), onTimeout: () {
+        resultStream.sink.addError(errorMessage);
+        return null;
+      }).catchError((e) {
+        resultStream.sink.addError(errorMessage);
+        print('onError in query for getLatestFeeds');
+      }).whenComplete(() {
+        print('OnDone in query for getLatestFeeds');
+        User.lastUserState = UserState.feedUpdate;
+        // update firestore user feed update time
+      }))
+          .documents;
 
-        List<Map<String,dynamic>> newFeedData = List<Map<String,dynamic>>();
-        temp.forEach((element) {
-          newFeedData.add(element.data);
-        });
-        endDateTimeBefore = (newFeedData.last['creationDateTimeStamp'] as Timestamp).toDate();
-        feedData.addAll(newFeedData);
-        resultStream.sink.add(new TempClass(feedData: feedData));
+      List<Map<String, dynamic>> newFeedData = List<Map<String, dynamic>>();
+      temp.forEach((element) {
+        newFeedData.add(element.data);
+      });
+      endDateTimeBefore =
+          (newFeedData.last['creationDateTimeStamp'] as Timestamp).toDate();
+      feedData.addAll(newFeedData);
+      resultStream.sink.add(new TempClass(feedData: feedData));
+    } else {
+      print('last user state is not feedUpdate');
+      if (await getDepartmentInfo()) {
+        print('Fetched departments info');
+        User.lastUserState = UserState.feedUpdate;
+        getLatestFeeds();
+        print('Gonna fetch getLatestFeeds');
+      } else {
+        resultStream.sink.addError(errorMessage);
       }
-      else {
-        print('last user state is not feedUpdate');
-        if(await getDepartmentInfo()) {
-          print('Fetched departments info');
-          User.lastUserState = UserState.feedUpdate;
-          getLatestFeeds();
-          print('Gonna fetch getLatestFeeds');
-        } else {
-          resultStream.sink.addError(errorMessage);
-        }
-      }
-      return true;
+    }
+    return true;
   }
 
   void clearSelectedFeed() {
@@ -185,7 +199,6 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       for (int i = 0; i < selected.length; i++) selected[i] = false;
     });
   }
-
 
   Future<void> feedHandler({bool moreFeeds = false, bool latestFeeds = false}) async{
 //    assert(moreFeeds != latestFeeds);
@@ -224,9 +237,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     });
   }
 
-  void _onLongPress(int i){
+  void _onLongPress(int i) {
     bool anySelected = selected.any((element) => element);
-    if(!anySelected){
+    if (!anySelected) {
       setState(() {
         selected[i] = true;
         anyFeedSelected();
@@ -234,22 +247,27 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     }
   }
 
-  void _onTap(int i, Feed f, snapshot){
+  void _onTap(int i, Feed f, snapshot) {
     bool anySelected = selected.any((element) => element);
-    if(selected[i] || anySelected){
+    if (selected[i] || anySelected) {
       setState(() {
         selected[i] = !selected[i];
-        if (!(selected.any((element) => element)))
-          allSelectedFeedCleared();
+        if (!(selected.any((element) => element))) allSelectedFeedCleared();
       });
-    }
-    else {
-      Navigator.of(context)
-          .pushNamed("/feedInfo", arguments: {
+    } else {
+      Navigator.of(context).pushNamed("/feedInfo", arguments: {
         "feed": f,
         "feedReference": snapshot.data.feedData[i]['email'],
       });
     }
+  }
+
+  void storeProfilePic() async {
+    var f = await cacheManager.getFileFromCache(User.authUser.photoUrl);
+    final bytes = await f.file.readAsBytes();
+    var encStr = base64.encode(bytes);
+    User.authUser.setPhotoString(encStr);
+    print("Stored");
   }
 
   @override
@@ -268,97 +286,132 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: feedSelected ? AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.black,
-        ),
-        backgroundColor: Colors.white,
-        elevation: 5.0,
-        titleSpacing: 0.0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.clear,
-            size: 25.0,
-          ),
-          onPressed: clearSelectedFeed,
-        ),
-        actions: [
-          Container(
-            padding: EdgeInsets.only(right: 5.0),
-            child: IconButton(
-              icon: Icon(
-                Icons.bookmark,
-                size: 25.0,
-                color: Color(0xff393A4E),
+      appBar: feedSelected
+          ? AppBar(
+              iconTheme: IconThemeData(
+                color: Colors.black,
               ),
-              onPressed: () {},
-            ),
-          )
-        ],
-      ) : AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.black,
-        ),
-        leading: Container(
-          margin: EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.blue,
-            image: DecorationImage(
-                fit: BoxFit.cover,
-                image: CachedNetworkImageProvider(
-                  User.authUser.photoUrl,
+              backgroundColor: Colors.white,
+              elevation: 5.0,
+              titleSpacing: 0.0,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.clear,
+                  size: 25.0,
+                ),
+                onPressed: clearSelectedFeed,
+              ),
+              actions: [
+                Container(
+                  padding: EdgeInsets.only(right: 5.0),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.bookmark,
+                      size: 25.0,
+                      color: Color(0xff393A4E),
+                    ),
+                    onPressed: () {},
+                  ),
                 )
-            ),
-          ),
-        ),
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 0.0,
-        titleSpacing: 5.0,
-        actions: [
-          Container(
-            padding: EdgeInsets.all(10.0),
-            child: Icon(
-              Icons.filter_list,
-              size: 20.0,
-            ),
-          )
-        ],
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Welcome Ronak',
-                style: Theme.of(context).textTheme.headline4.copyWith(fontWeight: FontWeight.w600)),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Container(
-                    height: 16.0,
-                    alignment: Alignment.bottomCenter,
-                    child: Center(
-                        child: Icon(
-                          Icons.location_on,
-                          size: 12.0,
-                          color: Color(0xff6D6D6D),
-                        ))),
-                Container(
-                    height: 16.0,
-                    alignment: Alignment.topLeft,
-                    child: Center(
-                        child: Text('Surat',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyText1
-                                .copyWith(color: Color(0xff6D6D6D)))))
               ],
             )
-          ],
-        ),
-      ),
+          : AppBar(
+              iconTheme: IconThemeData(
+                color: Colors.black,
+              ),
+              leading: GestureDetector(
+                onTap: () {
+                  Scaffold.of(context).openDrawer();
+                },
+                child: Container(
+                  margin: EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.blue,
+                  ),
+                  child: ClipOval(
+                    child: User.authUser.photoString != null
+                        ? Image.memory(
+                            base64.decode(User.authUser.photoString),
+                            fit: BoxFit.contain,
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: User.authUser.photoUrl,
+                            cacheManager: cacheManager,
+                            fit: BoxFit.contain,
+                            placeholder: (context, s) {
+                              print("Profile Url" + s);
+                              return Container();
+                            },
+                          ),
+                  ),
+                ),
+              ),
+              automaticallyImplyLeading: true,
+              backgroundColor: Colors.white,
+              elevation: 0.0,
+              titleSpacing: 5.0,
+              actions: [
+                GestureDetector(
+                  onTap: () async {
+                    widget.showBottomSheet(
+                      (context) {
+                        return FilterBottomSheet();
+                      },
+                      elevation: 40,
+                      backgroundColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(10)),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(10.0),
+                    child: Icon(
+                      Icons.filter_list,
+                      size: 20.0,
+                    ),
+                  ),
+                ),
+              ],
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Welcome ${User.authUser.displayName.split(" ")[0]}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headline4
+                          .copyWith(fontWeight: FontWeight.w600)),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Container(
+                          height: 16.0,
+                          alignment: Alignment.bottomCenter,
+                          child: Center(
+                              child: Icon(
+                            Icons.location_on,
+                            size: 12.0,
+                            color: Color(0xff6D6D6D),
+                          ))),
+                      Container(
+                          height: 16.0,
+                          alignment: Alignment.topLeft,
+                          child: Center(
+                              child: Text('Surat',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyText1
+                                      .copyWith(color: Color(0xff6D6D6D)))))
+                    ],
+                  )
+                ],
+              ),
+            ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
           if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.pixels >= (scrollInfo.metrics.maxScrollExtent - 60.0) ) {
@@ -374,12 +427,14 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           child: StreamBuilder(
             stream: resultStream.stream,
             builder: (context, AsyncSnapshot<TempClass> snapshot) {
-              print('Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+              print(
+                  'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return FeedLoadStatus(displayMessage: loadingMessage,);
-              }
-              else if (snapshot.connectionState == ConnectionState.active) {
-                if(snapshot.hasData && snapshot.data.feedData.isNotEmpty){
+                return FeedLoadStatus(
+                  displayMessage: loadingMessage,
+                );
+              } else if (snapshot.connectionState == ConnectionState.active) {
+                if (snapshot.hasData && snapshot.data.feedData.isNotEmpty) {
                   return ListView.builder(
                     itemCount: snapshot.data.feedData.length,
                     itemBuilder: (context, i) {
@@ -387,24 +442,25 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                           feedInfo: FeedInfo.fromFirestoreJson(
                               snapshot.data.feedData[i]),
                           department: Department.fromJson(departmentDetails[
-                          snapshot.data.feedData[i]['departmentUid']]));
+                              snapshot.data.feedData[i]['departmentUid']]));
                       return GestureDetector(
                         onLongPress: () => _onLongPress(i),
-                        onTap: () => _onTap(i,f,snapshot),
+                        onTap: () => _onTap(i, f, snapshot),
                         child: Container(
                           margin: EdgeInsets.symmetric(vertical: 8.0),
                           child: MessageBox(
                             feed: f,
                             selected: selected[i],
-                            canBeSelected: false,
+                            canBeSelected: feedSelected,
                           ),
                         ),
                       );
                     },
                   );
-                }
-                else if (snapshot.hasError) {
-                  return FeedLoadStatus(displayMessage: errorMessage,);
+                } else if (snapshot.hasError) {
+                  return FeedLoadStatus(
+                    displayMessage: errorMessage,
+                  );
                 }
               }
               return SizedBox();
@@ -597,32 +653,31 @@ class MessageBox extends StatelessWidget {
 }
 
 class FeedLoadStatus extends StatelessWidget {
-
   final String displayMessage;
 
   FeedLoadStatus({@required this.displayMessage});
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) => SingleChildScrollView(
-        physics: AlwaysScrollableScrollPhysics(),
-        child: SizedBox(
-          height: constraints.maxHeight,
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(displayMessage,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headline2,
-                  )
-                ],
+    return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        displayMessage,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headline2,
+                      )
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-        )
-    )
-    );
+            )));
   }
 }

@@ -2,16 +2,21 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
+import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/drawer_icons_icons.dart';
 import 'package:hamaraprashasan/sign_in.dart';
 
 class MyAppDrawer extends StatefulWidget {
+  final Function(Widget Function(BuildContext) builder,
+      {double elevation,
+      ShapeBorder shape,
+      Color backgroundColor}) showBottomSheet;
+  MyAppDrawer({this.showBottomSheet});
   @override
   _MyAppDrawerState createState() => _MyAppDrawerState();
 }
 
 class _MyAppDrawerState extends State<MyAppDrawer> {
-
   bool imageLoadFailed = false;
 
   @override
@@ -25,19 +30,22 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
               margin: EdgeInsets.only(top: 12.0, bottom: 8.0),
               child: CircleAvatar(
                 backgroundImage: CachedNetworkImageProvider(
-                    User.authUser.photoUrl ?? '',
-                  errorListener: (){
-                      setState(() {
-                        imageLoadFailed = true;
-                      });
-                  }
-                ),
+                    User.authUser.photoUrl ?? '', errorListener: () {
+                  setState(() {
+                    imageLoadFailed = true;
+                  });
+                }),
                 radius: 40.0,
-                child: imageLoadFailed ?
-                  Text(
-                    'RJ',
-                    style: Theme.of(context).textTheme.headline4.copyWith(color: Colors.white)
-                  ) : SizedBox(),
+                child: imageLoadFailed
+                    ? Text(
+                        User.authUser.displayName
+                            .split(" ")
+                            .reduce((value, element) => value[0] + element[0]),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline4
+                            .copyWith(color: Colors.white))
+                    : SizedBox(),
               ),
             ),
             Text(User.authUser.displayName ?? '',
@@ -99,18 +107,31 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                     ),
                   ),
                   InkWell(
-                    onTap: () {},
+                    onTap: () async {
+                      widget.showBottomSheet(
+                        (context) {
+                          return AccountBottomSheet();
+                        },
+                        elevation: 20,
+                        backgroundColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(10)),
+                        ),
+                      );
+                    },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       mainAxisSize: MainAxisSize.max,
                       children: [
                         Container(
-                            padding: EdgeInsets.all(20.0),
-                            child: Icon(
-                              DrawerIcons.account,
-                              color: Color(0xff303046),
-                              size: 18.0,
-                            )),
+                          padding: EdgeInsets.all(20.0),
+                          child: Icon(
+                            DrawerIcons.account,
+                            color: Color(0xff303046),
+                            size: 18.0,
+                          ),
+                        ),
                         Text(
                           'Account',
                           style: Theme.of(context).textTheme.headline2,
@@ -181,7 +202,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                   ),
                   Divider(),
                   InkWell(
-                    onTap: () async{
+                    onTap: () async {
                       signOutGoogle();
                       AppConfigs.setSigningState = false;
                       Navigator.of(context).pushReplacementNamed('/login');
