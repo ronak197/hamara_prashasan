@@ -188,18 +188,21 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
 
   Future<void> feedHandler({bool moreFeeds = false, bool latestFeeds = false}) async{
-    assert(moreFeeds != latestFeeds);
-    assert(isRunning == false);
-    if(moreFeeds != latestFeeds && isRunning == false){
+//    assert(moreFeeds != latestFeeds);
+//    assert(isRunning == false);
+    if(moreFeeds == latestFeeds || isRunning == true){
+      return;
+    }
+    else if(moreFeeds != latestFeeds && isRunning == false){
       isRunning = true;
-      print(isRunning);
+      print('isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
       if(moreFeeds){
         await getMoreFeeds();
       } else {
         await getLatestFeeds();
       }
       isRunning = false;
-      print(isRunning);
+      print('isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
     }
   }
 
@@ -358,7 +361,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
-          if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.maxScrollExtent == scrollInfo.metrics.pixels) {
+          if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.pixels >= (scrollInfo.metrics.maxScrollExtent - 60.0) ) {
             print('Reached Edge, getting more feeds');
             feedHandler(moreFeeds: true, latestFeeds: false);
             return true;
@@ -393,6 +396,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                           child: MessageBox(
                             feed: f,
                             selected: selected[i],
+                            canBeSelected: false,
                           ),
                         ),
                       );
