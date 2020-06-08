@@ -30,14 +30,27 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
     if (feed != null) content = feed.feedInfoDetails.details;
   }
 
-  void getFeedInfoDetails(DocumentReference feedReference) {
-    feedReference
-        .collection("feedInfoDetails")
-        .getDocuments()
-        .then((QuerySnapshot qs) {
-      if (qs.documents.isNotEmpty) {
-        setState(() {
-          content = List.from(qs.documents[0].data["details"]);
+  void getFeedInfoDetails(Feed f) {
+    Firestore.instance
+        .collection("feeds")
+        .where("feedId", isEqualTo: f.feedId)
+        .limit(1)
+        .getDocuments(source: Source.server)
+        .then((sp) {
+      if (sp.documents.isNotEmpty) {
+        var doc = sp.documents.first;
+        doc.reference.collection("feedInfoDetails").getDocuments().then(
+            (QuerySnapshot qs) {
+          if (qs.documents.isNotEmpty) {
+            setState(() {
+              content = List.from(qs.documents[0].data["details"]);
+            });
+          }
+        }, onError: () {
+          setState(() {
+            content = [];
+          });
+          print("Error while getting feedInfoDetails!!");
         });
       }
     });
@@ -51,7 +64,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
       if (feed.feedInfoDetails != null)
         content = feed.feedInfoDetails.details;
       else {
-        getFeedInfoDetails(args['feedReference']);
+        getFeedInfoDetails(args['feed']);
       }
     }
     return Scaffold(
