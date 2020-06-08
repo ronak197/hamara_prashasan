@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
@@ -10,12 +11,10 @@ import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart' as cs;
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class Feeds {
-
   List<Feed> feeds = List<Feed>();
-
 }
 
 class NewsFeedPage extends StatefulWidget {
@@ -29,25 +28,30 @@ class NewsFeedPage extends StatefulWidget {
 }
 
 class _NewsFeedPageState extends State<NewsFeedPage> {
-
   bool feedSelected = false;
-  List<bool> selected = [];
+  List<Feed> feeds = [];
+  Set<String> selectedFeed = new Set<String>();
 
   BehaviorSubject<Feeds> resultStream = BehaviorSubject<Feeds>();
 
   Feeds newFeeds = new Feeds();
 
   Map<String, dynamic> departmentDetails = Map();
+  SortingType sortingType = SortingType.None;
+  List<Department> departments = [], selectedDepartments = [];
+  List<String> categories = [], selectedCategories = [];
 
-  DateTime startDateTimeAfter;
-  DateTime endDateTimeBefore;
+  DocumentSnapshot lastFeedDetails;
 
-  String errorMessage = 'Some Error Occurred, Make sure you are connected to the internet.';
+  String errorMessage =
+      'Some Error Occurred, Make sure you are connected to the internet.';
   String loadingMessage = 'Loading ...';
 
   bool isRunning = false;
 
-  cs.DefaultCacheManager cacheManager = new cs.DefaultCacheManager();
+  DateTime startDateTimeAfter, endDateTimeBefore;
+
+  DefaultCacheManager cacheManager = new DefaultCacheManager();
 
   Future<bool> getDepartmentInfo() async {
     print('fetching departments');
@@ -63,6 +67,17 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           departmentDetails[element.data['email']] = element.data;
         }
       });
+      departmentDetails.forEach((key, value) {
+        departments.add(new Department.fromJson(value));
+      });
+      selectedDepartments = List.from(departments);
+      Set<String> cat = new Set<String>();
+      departments.forEach((d) {
+        cat.add(d.category);
+      });
+      categories = cat.toList();
+      selectedCategories = new List.from(categories);
+      if (this.mounted) setState(() {});
       return true;
     }).catchError((e) {
       resultStream.sink.addError(errorMessage);
@@ -81,51 +96,49 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   Future<bool> getMoreFeeds() async {
-
     Firestore db = Firestore.instance;
     print('fetching more feeds');
 
     if (User.lastUserState == UserState.feedUpdate) {
-
       startDateTimeAfter = endDateTimeBefore ?? DateTime.now();
 
       await db
-        .collection('feeds')
-        .where('creationDateTimeStamp',
-            isLessThanOrEqualTo: User.userData.lastUpdateTime)
-        .where('departmentUid',
-            whereIn: User.userData.subscribedDepartmentIDs)
-        .orderBy('creationDateTimeStamp', descending: true)
-        .startAfter([startDateTimeAfter])
-        .limit(2)
-        .getDocuments()
-        .then((value){
+          .collection('feeds')
+          .where('creationDateTimeStamp',
+              isLessThanOrEqualTo: User.userData.lastUpdateTime)
+          .where('departmentUid',
+              whereIn: User.userData.subscribedDepartmentIDs)
+          .orderBy('creationDateTimeStamp', descending: true)
+          .startAfter([startDateTimeAfter])
+          .limit(2)
+          .getDocuments()
+          .then((value) {
             value.documents.forEach((element) {
-              newFeeds.feeds.add(
-                Feed(
-                  feedInfo: FeedInfo.fromFirestoreJson(element.data),
-                  department: Department.fromJson(departmentDetails[element.data['departmentUid']]),
-                )
-              );
+              newFeeds.feeds.add(Feed(
+                feedId: element.data['feedId'],
+                feedInfo: FeedInfo.fromFirestoreJson(element.data),
+                department: Department.fromJson(
+                    departmentDetails[element.data['departmentUid']]),
+              ));
             });
-        })
-        .timeout(Duration(seconds: 3), onTimeout: () {
-          resultStream.sink.addError(errorMessage);
-          return null;
-        })
-        .catchError((e) {
-          resultStream.sink.addError(errorMessage);
-          print('onError in query for getLatestFeeds');
-        })
-        .whenComplete(() {
-          print('OnDone in query for getLatestFeeds');
-          User.lastUserState = UserState.feedUpdate;
-          // update firestore user feed update time
-        });
+          })
+          .timeout(Duration(seconds: 3), onTimeout: () {
+            resultStream.sink.addError(errorMessage);
+            return null;
+          })
+          .catchError((e) {
+            resultStream.sink.addError(errorMessage);
+            print('onError in query for getLatestFeeds');
+          })
+          .whenComplete(() {
+            print('OnDone in query for getLatestFeeds');
+            User.lastUserState = UserState.feedUpdate;
+            // update firestore user feed update time
+          });
 
-        endDateTimeBefore = newFeeds.feeds.last.feedInfo.creationDateTimeStamp;
-        print(endDateTimeBefore);
-        resultStream.sink.add(newFeeds);
+      endDateTimeBefore = newFeeds.feeds.last.feedInfo.creationDateTimeStamp;
+      print(endDateTimeBefore);
+      resultStream.sink.add(newFeeds);
     } else {
       print('last user state is not feedUpdate');
       if (await getDepartmentInfo()) {
@@ -141,38 +154,35 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   Future<bool> getLatestFeeds() async {
-
     Firestore db = Firestore.instance;
     print('fetching feeds');
 
     if (User.lastUserState == UserState.feedUpdate) {
-
       newFeeds.feeds.clear();
 
       await db
-        .collection('feeds')
-        .where('creationDateTimeStamp',
-            isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid',
-            whereIn: User.userData.subscribedDepartmentIDs)
-        .orderBy('creationDateTimeStamp', descending: true)
-        .limit(2)
-        .getDocuments().then((value){
-          value.documents.forEach((element) {
-            newFeeds.feeds.add(
-              Feed(
-                feedInfo: FeedInfo.fromFirestoreJson(element.data),
-                department: Department.fromJson(departmentDetails[element.data['departmentUid']]),
-              )
-            );
-          });
-      }).whenComplete((){
+          .collection('feeds')
+          .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
+          .where('departmentUid',
+              whereIn: User.userData.subscribedDepartmentIDs)
+          .orderBy('creationDateTimeStamp', descending: true)
+          .limit(2)
+          .getDocuments()
+          .then((value) {
+        value.documents.forEach((element) {
+          newFeeds.feeds.add(Feed(
+            feedId: element.data['feedId'],
+            feedInfo: FeedInfo.fromFirestoreJson(element.data),
+            department: Department.fromJson(
+                departmentDetails[element.data['departmentUid']]),
+          ));
+        });
+      }).whenComplete(() {
         User.lastUserState = UserState.feedUpdate;
       });
 
       endDateTimeBefore = newFeeds.feeds.last.feedInfo.creationDateTimeStamp;
       resultStream.sink.add(newFeeds);
-
     } else {
       print('last user state is not feedUpdate');
       if (await getDepartmentInfo()) {
@@ -189,32 +199,28 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   void clearSelectedFeed() {
     setState(() {
-      for (int i = 0; i < selected.length; i++) selected[i] = false;
+      selectedFeed.clear();
     });
   }
 
-  Future<void> feedHandler({bool moreFeeds = false, bool latestFeeds = false}) async{
+  Future<void> feedHandler(
+      {bool moreFeeds = false, bool latestFeeds = false}) async {
 //    assert(moreFeeds != latestFeeds);
 //    assert(isRunning == false);
-    if(moreFeeds == latestFeeds || isRunning == true){
+    if (moreFeeds == latestFeeds || isRunning == true) {
       return;
-    }
-    else if(moreFeeds != latestFeeds && isRunning == false){
+    } else if (moreFeeds != latestFeeds && isRunning == false) {
       isRunning = true;
-      print('isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
-      if(moreFeeds){
+      print(
+          'isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
+      if (moreFeeds) {
         await getMoreFeeds();
       } else {
         await getLatestFeeds();
       }
       isRunning = false;
-      print('isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
-    }
-  }
-
-  void addTempFields() {
-    for (int i = 0; i < 10; i++) {
-      selected.add(false);
+      print(
+          'isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
     }
   }
 
@@ -230,29 +236,43 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     });
   }
 
-  void _onLongPress(int i) {
-    bool anySelected = selected.any((element) => element);
+  void _onLongPress(String feedId) {
+    bool anySelected = selectedFeed.isNotEmpty;
     if (!anySelected) {
       setState(() {
-        selected[i] = true;
+        selectedFeed.add(feedId);
         anyFeedSelected();
       });
     }
   }
 
-  void _onTap(int i, Feed f, snapshot) {
-    bool anySelected = selected.any((element) => element);
-    if (selected[i] || anySelected) {
+  void _onTap(int i, Feed f) {
+    bool anySelected = selectedFeed.isNotEmpty;
+    if (anySelected) {
       setState(() {
-        selected[i] = !selected[i];
-        if (!(selected.any((element) => element))) allSelectedFeedCleared();
+        if (selectedFeed.contains(f.feedId)) {
+          selectedFeed.remove(f.feedId);
+        } else {
+          selectedFeed.add(f.feedId);
+        }
+        if (selectedFeed.isEmpty) allSelectedFeedCleared();
       });
     } else {
       Navigator.of(context).pushNamed("/feedInfo", arguments: {
         "feed": f,
-        "feedReference": snapshot.data.feedData[i]['email'],
       });
     }
+  }
+
+  void saveBookmarkedFeeds() async {
+    var selIds = User.userData.bookmarkedFeeds + selectedFeed.toList();
+    selectedFeed.clear();
+    allSelectedFeedCleared();
+    bool saved = await FirebaseMethods.saveBookmarks(selIds);
+    if (saved)
+      print("Bookmarks Saved");
+    else
+      print("Some Error in saving bookmarks");
   }
 
   void storeProfilePic() async {
@@ -263,10 +283,22 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     print("Stored");
   }
 
+  void applyFilters(SortingType sortingType, List<Department> departments,
+      List<String> categories) {
+    print("filtering");
+    if (this.sortingType != sortingType) {
+      this.sortingType = sortingType;
+      feedHandler(latestFeeds: true, moreFeeds: false);
+    } else {
+      this.selectedDepartments = departments;
+      this.selectedCategories = categories;
+      setState(() {});
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    addTempFields();
     feedHandler(latestFeeds: true, moreFeeds: false);
   }
 
@@ -278,6 +310,10 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   @override
   Widget build(BuildContext context) {
+    bool filtered = this.sortingType != SortingType.None ||
+        !listEquals(this.selectedDepartments, this.departments) ||
+        !listEquals(this.selectedCategories, this.categories);
+    List<String> selDepIds = selectedDepartments.map((e) => e.email).toList();
     return Scaffold(
       appBar: feedSelected
           ? AppBar(
@@ -303,7 +339,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                       size: 25.0,
                       color: Color(0xff393A4E),
                     ),
-                    onPressed: () {},
+                    onPressed: saveBookmarkedFeeds,
                   ),
                 )
               ],
@@ -349,7 +385,10 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                   onTap: () async {
                     widget.showBottomSheet(
                       (context) {
-                        return FilterBottomSheet();
+                        return FilterBottomSheet(
+                          departments: departmentDetails,
+                          applyFilters: applyFilters,
+                        );
                       },
                       elevation: 40,
                       backgroundColor: Colors.transparent,
@@ -407,7 +446,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
             ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
-          if (scrollInfo is ScrollEndNotification && scrollInfo.metrics.pixels >= (scrollInfo.metrics.maxScrollExtent - 60.0) ) {
+          if (scrollInfo is ScrollEndNotification &&
+              scrollInfo.metrics.pixels >=
+                  (scrollInfo.metrics.maxScrollExtent - 60.0)) {
             print('Reached Edge, getting more feeds');
             feedHandler(moreFeeds: true, latestFeeds: false);
             return true;
@@ -420,7 +461,8 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           child: StreamBuilder(
             stream: resultStream.stream,
             builder: (context, AsyncSnapshot<Feeds> snapshot) {
-              print('Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+              print(
+                  'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return FeedLoadStatus(
                   displayMessage: loadingMessage,
@@ -431,13 +473,15 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                     itemCount: snapshot.data.feeds?.length,
                     itemBuilder: (context, i) {
                       return GestureDetector(
-                        onLongPress: () => _onLongPress(i),
-                        onTap: () => _onTap(i, snapshot.data.feeds[i], snapshot),
+                        onLongPress: () =>
+                            _onLongPress(snapshot.data.feeds[i].feedId),
+                        onTap: () => _onTap(i, snapshot.data.feeds[i]),
                         child: Container(
                           margin: EdgeInsets.symmetric(vertical: 8.0),
                           child: FeedBox(
                             feed: snapshot.data.feeds[i],
-                            selected: selected[i],
+                            selected: selectedFeed
+                                .contains(snapshot.data.feeds[i].feedId),
                             canBeSelected: feedSelected,
                           ),
                         ),
@@ -460,7 +504,6 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 }
 
 class FeedBox extends StatelessWidget {
-
   final Feed feed;
   final bool selected, canBeSelected;
   FeedBox(
@@ -647,25 +690,27 @@ class FeedLoadStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-            physics: AlwaysScrollableScrollPhysics(),
-            child: SizedBox(
-              height: constraints.maxHeight,
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        displayMessage,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headline2,
-                      )
-                    ],
-                  ),
-                ),
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: constraints.maxHeight,
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    displayMessage,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headline2,
+                  )
+                ],
               ),
-            )));
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

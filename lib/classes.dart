@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 Map<String, String> avatarLocMap = {
@@ -25,16 +26,19 @@ class Feed {
   FeedInfoDetails feedInfoDetails;
   String profileAvatar;
   int bgColor;
+  String feedId;
 
   Feed(
       {FeedInfo feedInfo,
       Department department,
-      FeedInfoDetails feedInfoDetails}) {
+      FeedInfoDetails feedInfoDetails,
+      String feedId}) {
     this.feedInfo = feedInfo;
     this.department = department;
     this.feedInfoDetails = feedInfoDetails;
     this.profileAvatar = "assets/${department.category}_avatar.svg";
     this.bgColor = avatarColorMap['${department.category}'];
+    this.feedId = feedId;
   }
 }
 
@@ -240,4 +244,10 @@ class TableData {
   List<String> headers;
   List<List<String>> contents;
   TableData({this.headers, this.contents});
+}
+
+class TempClass {
+  List<Map<String, dynamic>> feedData = List<Map<String, dynamic>>();
+
+  TempClass({this.feedData});
 }
