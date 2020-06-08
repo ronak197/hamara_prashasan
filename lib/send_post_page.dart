@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -45,9 +47,21 @@ class _SendPostPageState extends State<SendPostPage> {
         new SnackBar(backgroundColor: color, content: new Text(message)));
   }
 
+  bool validateForm() {
+    final FormState form = _formKey.currentState;
+    bool textFieldsValid = form.validate();
+    bool pictureFieldsValid = formFields
+        .where((field) => field.runtimeType == PictureUploadBox)
+        .every((picture) => (picture as PictureUploadBox).validate());
+    bool tableFieldsValid = formFields
+        .where((field) => field.runtimeType == TableFieldBox)
+        .every((picture) => (picture as TableFieldBox).validate());
+    return textFieldsValid && pictureFieldsValid && tableFieldsValid;
+  }
+
   void _sendPost() async {
     final FormState form = _formKey.currentState;
-    if (!form.validate()) {
+    if (!validateForm()) {
       showMessage('Form is not valid!  Please review and correct.');
     } else {
       form.save();
@@ -68,18 +82,20 @@ class _SendPostPageState extends State<SendPostPage> {
         actions: [
           FlatButton(
             onPressed: () {
-              Firestore.instance.collection("feeds").add({
+              var feedRef = Firestore.instance.collection("feeds").document();
+              feedRef.setData({
+                "feedId": feedRef.documentID,
                 "creationDateTimeStamp": DateTime.now(),
                 "departmentUid": User.userData.email,
                 "description": details[1]["content"],
                 "title": details[0]["title"],
               }).then((value) {
                 print("Uploaded Feed Info");
-                value
-                    .collection("feedInfoDetails")
-                    .add({"details": details}).then((value) {
-                  print("Uploaded Feed Info Details");
-                });
+              });
+              feedRef
+                  .collection("feedInfoDetails")
+                  .add({"details": details}).then((value) {
+                print("Uploaded Feed Info Details");
               });
               Navigator.pop(context);
               Navigator.pop(context);
@@ -99,7 +115,7 @@ class _SendPostPageState extends State<SendPostPage> {
 
   void startPreview() {
     final FormState form = _formKey.currentState;
-    if (!form.validate()) {
+    if (!validateForm()) {
       showMessage('Form is not valid!  Please review and correct.');
     } else {
       form.save();
@@ -236,8 +252,8 @@ class _SendPostPageState extends State<SendPostPage> {
           style: Theme.of(context).textTheme.headline2,
         ),
         actions: [
-          GestureDetector(
-            onTap: editing ? null : startPreview,
+          FlatButton(
+            onPressed: editing ? null : startPreview,
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 10.0),
               child: Center(
@@ -471,6 +487,11 @@ class _SendPostPageState extends State<SendPostPage> {
                           return Dismissible(
                             key: new Key(formFields[index].hashCode.toString()),
                             onDismissed: (dir) async {
+                              if (formFields[index].runtimeType ==
+                                  PictureUploadBox) {
+                                PictureUploadBox pic = formFields[index];
+                                pic.deleteImage(pic.data['pictureUrl']);
+                              }
                               formFields.removeAt(index);
                               setState(() {});
                             },
@@ -686,6 +707,25 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
 
 class PictureUploadBox extends StatefulWidget with FormField {
   Key key;
+  ValueNotifier<bool> valid = ValueNotifier(true);
+  bool validate() {
+    if (controller.value.text.isEmpty) valid.value = false;
+    this.createState();
+    return valid.value;
+  }
+
+  Future<void> deleteImage(String url) async {
+    print(url);
+    try {
+      var imageRef = await FirebaseStorage.instance.getReferenceFromUrl(url);
+      await imageRef.delete().then((_) {
+        print("Image deleted");
+      });
+    } catch (e) {
+      print("Error ${e.code}  Image under the url does not exists");
+    }
+  }
+
   PictureUploadBox() {
     key = new Key(this.hashCode.toString());
     controller = new TextEditingController();
@@ -697,6 +737,7 @@ class PictureUploadBox extends StatefulWidget with FormField {
 
 class _PictureUploadBoxState extends State<PictureUploadBox> {
   File image;
+  bool uploading = false;
   @override
   void dispose() {
     print("${widget.runtimeType} disposed");
@@ -709,6 +750,33 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
     if (widget.controller.value.text.isNotEmpty) {
       image = File(widget.controller.value.text);
     }
+  }
+
+  @override
+  void didUpdateWidget(PictureUploadBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    print("Valid  ${widget.valid}");
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    print("Hello");
+  }
+
+  Future<String> uploadImage(File image) async {
+    if (await image.exists()) {
+      String ext = image.path.split(".").last;
+      String path = DateTime.now().toIso8601String() + "." + ext;
+      final data = await image.readAsBytes();
+      final uploadTask =
+          FirebaseStorage.instance.ref().child(path).putData(data);
+      final taskSp = await uploadTask.onComplete;
+      final url = await taskSp.ref.getDownloadURL();
+
+      return uploadTask.isSuccessful ? url : null;
+    }
+    return null;
   }
 
   @override
@@ -732,69 +800,134 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
           )
         ],
       ),
-      child: ListTile(
-        title: Text(
-          'PICTURE',
-          style: Theme.of(context).textTheme.headline2.copyWith(
-              fontWeight: FontWeight.bold,
-              color: dis ? Colors.grey : Colors.black),
-        ),
-        subtitle: image != null
-            ? Text(
-                image.path.split("/").last,
-              )
-            : SizedBox(),
-        trailing: image != null
-            ? RaisedButton(
-                child: Text(
-                  "Uploaded",
-                  style: Theme.of(context)
-                      .textTheme
-                      .headline2
-                      .copyWith(color: Colors.white),
-                ),
-                color: Color(0xff2d334c),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                onPressed: dis
-                    ? null
-                    : () async {
-                        var file = await ImagePicker.pickImage(
-                            source: ImageSource.gallery);
-                        if (file != null) {
-                          image = file;
-                          setState(() {});
-                          widget.saveData({'pictureUrl': image.path});
-                          widget.controller.text = image.path;
-                        }
-                      },
-              )
-            : RaisedButton(
-                child: Text(
-                  "Upload",
-                  style: Theme.of(context)
-                      .textTheme
-                      .headline2
-                      .copyWith(color: Colors.white),
-                ),
-                color: Color(0xfff69264),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                onPressed: dis
-                    ? null
-                    : () async {
-                        var file = await ImagePicker.pickImage(
-                            source: ImageSource.gallery);
-                        if (file != null) {
-                          image = file;
-                          setState(() {});
-                          widget.saveData({'pictureUrl': image.path});
-                          widget.controller.text = image.path;
-                        }
-                      },
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            title: Text(
+              'PICTURE',
+              style: Theme.of(context).textTheme.headline2.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: dis ? Colors.grey : Colors.black),
+            ),
+            subtitle: image != null
+                ? Text(
+                    image.path.split("/").last,
+                  )
+                : SizedBox(),
+            trailing: image != null
+                ? RaisedButton(
+                    child: uploading
+                        ? SizedBox(
+                            height: 15,
+                            width: 15,
+                            child: CircularProgressIndicator(
+                              backgroundColor: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            "Uploaded",
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline2
+                                .copyWith(color: Colors.white),
+                          ),
+                    color: Color(0xff2d334c),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    onPressed: dis
+                        ? null
+                        : () async {
+                            var file = await ImagePicker.pickImage(
+                                source: ImageSource.gallery);
+                            if (file != null) {
+                              if (file.path != image.path) {
+                                setState(() {
+                                  uploading = true;
+                                });
+                                String url = await uploadImage(file);
+                                if (url != null) {
+                                  await widget
+                                      .deleteImage(widget.data['pictureUrl']);
+                                  image = file;
+                                  setState(() {});
+                                  widget.saveData({'pictureUrl': url});
+                                  widget.controller.text = image.path;
+                                  widget.valid.value = true;
+                                }
+                                setState(() {
+                                  uploading = false;
+                                });
+                              }
+                            }
+                          },
+                  )
+                : RaisedButton(
+                    child: uploading
+                        ? SizedBox(
+                            height: 15,
+                            width: 15,
+                            child: CircularProgressIndicator(
+                              backgroundColor: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            "Upload",
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline2
+                                .copyWith(color: Colors.white),
+                          ),
+                    color: Color(0xfff69264),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    onPressed: dis
+                        ? null
+                        : () async {
+                            var file = await ImagePicker.pickImage(
+                                source: ImageSource.gallery);
+                            if (file != null) {
+                              setState(() {
+                                uploading = false;
+                              });
+                              String url = await uploadImage(file);
+                              if (url != null) {
+                                image = file;
+                                setState(() {});
+                                widget.saveData({'pictureUrl': url});
+                                widget.controller.text = image.path;
+                                widget.valid.value = true;
+                              }
+                              setState(() {
+                                uploading = false;
+                              });
+                            }
+                          },
+                  ),
+          ),
+          ValueListenableBuilder(
+              valueListenable: widget.valid,
+              builder: (context, valid, child) {
+                if (valid)
+                  return SizedBox();
+                else
+                  return Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: Text(
+                      "Upload a Picture",
+                      textAlign: TextAlign.left,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headline1
+                          .copyWith(color: Colors.red),
+                    ),
+                  );
+              }),
+        ],
       ),
     );
   }
@@ -1527,6 +1660,29 @@ class _MapFieldBoxState extends State<MapFieldBox> {
 
 class TableFieldBox extends StatefulWidget with FormField {
   bool csvAdded = false;
+  ValueNotifier<bool> valid = ValueNotifier(true);
+  String errorMessage;
+
+  bool validate() {
+    var rows = controller.text.split(";");
+    List<int> noOfCols = [];
+    for (var r in rows) {
+      if (rows.indexOf(r) == 34) print(r);
+      noOfCols.add(r.split(",").length);
+    }
+    List<int> notEqualCols = [];
+    int headersLen = noOfCols[0];
+    for (int i = 1; i < noOfCols.length; i++) {
+      if (noOfCols[i] != headersLen) notEqualCols.add(i);
+    }
+    valid.value = notEqualCols.length == 0;
+    if (!valid.value) {
+      errorMessage = "Number of columns not equal in rows:";
+      for (var i in notEqualCols) errorMessage += " $i,";
+      errorMessage = errorMessage.substring(0, errorMessage.length - 1);
+    }
+    return valid.value;
+  }
 
   TableFieldBox() {
     key = new Key(this.hashCode.toString());
@@ -1568,40 +1724,46 @@ class _TableFieldBoxState extends State<TableFieldBox> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            child: TextFormField(
-              controller: widget.controller,
-              validator: (s) {
-                return s == "" ? 'Enter Table data' : null;
-              },
-              onSaved: (s) {
-                widget.saveData({"table": s});
-              },
-              style: Theme.of(context)
-                  .textTheme
-                  .headline2
-                  .copyWith(color: dis ? Colors.grey : Colors.black),
-              cursorColor: Colors.black54,
-              minLines: 3,
-              maxLines: 10,
-              enabled: !widget.disabled,
-              decoration: InputDecoration(
-                labelText: 'TABLE',
-                hintText:
-                    "Enter Data...", //'Separate column with \',\' and row with \';\'',
-                hintStyle: Theme.of(context)
-                    .textTheme
-                    .headline2
-                    .copyWith(color: Colors.grey, fontSize: 15.0),
-                labelStyle: Theme.of(context).textTheme.headline1.copyWith(
-                    color: dis ? Colors.grey : Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15.0),
-                contentPadding: EdgeInsets.all(12.0),
-                floatingLabelBehavior: FloatingLabelBehavior.auto,
-                border: InputBorder.none,
-              ),
-            ),
+          ValueListenableBuilder(
+            valueListenable: widget.valid,
+            builder: (context, valid, child) {
+              return Container(
+                child: TextFormField(
+                  controller: widget.controller,
+                  validator: (s) {
+                    return s == "" ? 'Enter Table data' : null;
+                  },
+                  onSaved: (s) {
+                    widget.saveData({"table": s});
+                  },
+                  style: Theme.of(context)
+                      .textTheme
+                      .headline2
+                      .copyWith(color: dis ? Colors.grey : Colors.black),
+                  cursorColor: Colors.black54,
+                  minLines: 3,
+                  maxLines: 10,
+                  enabled: !widget.disabled,
+                  decoration: InputDecoration(
+                    errorText: valid ? null : widget.errorMessage,
+                    labelText: 'TABLE',
+                    hintText:
+                        "Enter Data...", //'Separate column with \',\' and row with \';\'',
+                    hintStyle: Theme.of(context)
+                        .textTheme
+                        .headline2
+                        .copyWith(color: Colors.grey, fontSize: 15.0),
+                    labelStyle: Theme.of(context).textTheme.headline1.copyWith(
+                        color: dis ? Colors.grey : Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15.0),
+                    contentPadding: EdgeInsets.all(12.0),
+                    floatingLabelBehavior: FloatingLabelBehavior.auto,
+                    border: InputBorder.none,
+                  ),
+                ),
+              );
+            },
           ),
           Align(
             alignment: Alignment.centerRight,
@@ -1623,6 +1785,7 @@ class _TableFieldBoxState extends State<TableFieldBox> {
                       ? () {
                           widget.controller.clear();
                           widget.csvAdded = false;
+                          widget.valid.value = true;
                           setState(() {});
                         }
                       : () async {

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
+import 'package:hamaraprashasan/classes.dart';
 import 'package:hamaraprashasan/editAccount.dart';
 
 class AccountBottomSheet extends StatefulWidget {
@@ -130,21 +131,52 @@ class _AccountBottomSheetState extends State<AccountBottomSheet> {
 }
 
 class FilterBottomSheet extends StatefulWidget {
+  final Map<String, dynamic> departments;
+  final Function(SortingType sortingType, List<Department> departments,
+      List<String> categories) applyFilters;
+  FilterBottomSheet({@required this.departments, @required this.applyFilters});
   @override
   _FilterBottomSheetState createState() => _FilterBottomSheetState();
 }
 
+enum SortingType { Department, Category, None }
+
+enum FilterType { All, Department, Category }
+
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
-  int selectedIndex = 0, sortSelectedIndex;
-  List<String> sortingList = ["Date", "Department", "Ratings", "City"],
-      departmentList = [
-    "Surat Health Department",
-    "Delhi Health Department",
-    "Delhi Municipal Department",
-    "Surat Police Department",
-    "Delhi Police Department"
+  int selectedIndex = 0;
+  SortingType _sortingType = SortingType.None;
+  List<String> sortingList = [
+    "Department",
+    "Category",
   ];
-  List<bool> departmentSelected = [true, true, true, true, true];
+  List<Department> departments = [];
+  List<String> categories = [];
+  List<bool> departmentSelected = [], categoriesSelected = [];
+
+  void getDepartments() {
+    widget.departments.forEach((key, value) {
+      departments.add(new Department.fromJson(value));
+    });
+    departmentSelected = new List.generate(departments.length, (index) => true);
+  }
+
+  void getCategories() {
+    Set<String> cat = new Set<String>();
+    departments.forEach((d) {
+      cat.add(d.category);
+    });
+    categories = cat.toList();
+    categoriesSelected = new List.generate(categories.length, (index) => true);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getDepartments();
+    getCategories();
+  }
+
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
@@ -196,62 +228,111 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 5),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 4,
+                    flex: 2,
                     child: Container(
+                      height: double.maxFinite,
                       color: Colors.grey[200],
-                      child: Column(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                selectedIndex = 0;
-                              });
-                            },
-                            child: Container(
-                              alignment: Alignment.centerLeft,
-                              decoration: BoxDecoration(
-                                color: selectedIndex == 0
-                                    ? Colors.white
-                                    : Colors.transparent,
-                              ),
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 20),
-                              child: Text(
-                                "Sort by",
-                                style: Theme.of(context).textTheme.headline3,
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                selectedIndex = 1;
-                              });
-                            },
-                            child: Container(
-                              alignment: Alignment.centerLeft,
-                              decoration: BoxDecoration(
-                                color: selectedIndex == 1
-                                    ? Colors.white
-                                    : Colors.transparent,
-                              ),
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 20),
-                              child: Text(
-                                "Department",
-                                style: Theme.of(context).textTheme.headline3,
+                      child: SingleChildScrollView(
+                        physics: BouncingScrollPhysics(),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  selectedIndex = 0;
+                                });
+                              },
+                              child: Container(
+                                alignment: Alignment.centerLeft,
+                                decoration: BoxDecoration(
+                                  color: selectedIndex == 0
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 15, vertical: 20),
+                                child: Text(
+                                  "Sort by",
+                                  style: Theme.of(context).textTheme.headline2,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  selectedIndex = 1;
+                                });
+                              },
+                              child: Container(
+                                alignment: Alignment.centerLeft,
+                                decoration: BoxDecoration(
+                                  color: selectedIndex == 1
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 15, vertical: 20),
+                                child: Text(
+                                  "Department",
+                                  style: Theme.of(context).textTheme.headline2,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  selectedIndex = 2;
+                                });
+                              },
+                              child: Container(
+                                alignment: Alignment.centerLeft,
+                                decoration: BoxDecoration(
+                                  color: selectedIndex == 2
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 15, vertical: 20),
+                                child: Text(
+                                  "Category",
+                                  style: Theme.of(context).textTheme.headline2,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  selectedIndex = 3;
+                                });
+                              },
+                              child: Container(
+                                alignment: Alignment.centerLeft,
+                                decoration: BoxDecoration(
+                                  color: selectedIndex == 3
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 15, vertical: 20),
+                                child: Text(
+                                  "Date",
+                                  style: Theme.of(context).textTheme.headline2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   Expanded(
-                    flex: 6,
-                    child: Column(
+                    flex: 3,
+                    child: ListView(
+                      physics: BouncingScrollPhysics(),
                       children: selectedIndex == 0
                           ? new List<Widget>.generate(
                               sortingList.length,
@@ -259,7 +340,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                 return InkWell(
                                   onTap: () {
                                     setState(() {
-                                      sortSelectedIndex = index;
+                                      _sortingType = SortingType.values[index];
                                     });
                                   },
                                   child: Container(
@@ -273,13 +354,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                       sortingList[index],
                                       style: Theme.of(context)
                                           .textTheme
-                                          .headline2
+                                          .headline1
                                           .copyWith(
                                             fontWeight:
-                                                sortSelectedIndex == index
+                                                index == _sortingType.index
                                                     ? FontWeight.bold
                                                     : FontWeight.normal,
-                                            color: sortSelectedIndex == index
+                                            color: index == _sortingType.index
                                                 ? Colors.green
                                                 : Colors.black,
                                           ),
@@ -290,7 +371,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                             )
                           : selectedIndex == 1
                               ? new List<Widget>.generate(
-                                  departmentList.length,
+                                  departments.length,
                                   (index) {
                                     return InkWell(
                                       onTap: () {
@@ -307,10 +388,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                             left: 15,
                                             right: 15),
                                         child: Text(
-                                          departmentList[index],
+                                          departments[index].name,
                                           style: Theme.of(context)
                                               .textTheme
-                                              .headline2
+                                              .headline1
                                               .copyWith(
                                                 /* fontWeight:
                                                     departmentSelected[index]
@@ -325,7 +406,47 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                     );
                                   },
                                 )
-                              : <Widget>[],
+                              : selectedIndex == 2
+                                  ? new List<Widget>.generate(
+                                      categories.length,
+                                      (index) {
+                                        return InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              categoriesSelected[index] =
+                                                  !categoriesSelected[index];
+                                            });
+                                          },
+                                          child: Container(
+                                            alignment: Alignment.centerLeft,
+                                            padding: EdgeInsets.only(
+                                                bottom: 15,
+                                                top: 15,
+                                                left: 15,
+                                                right: 15),
+                                            child: Text(
+                                              categories[index],
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .headline1
+                                                  .copyWith(
+                                                    /* fontWeight:
+                                                    departmentSelected[index]
+                                                        ? FontWeight.bold
+                                                        : FontWeight.normal, */
+                                                    color: categoriesSelected[
+                                                            index]
+                                                        ? Colors.green
+                                                        : Colors.black,
+                                                  ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : selectedIndex == 3
+                                      ? <Widget>[]
+                                      : <Widget>[],
                     ),
                   ),
                 ],
@@ -333,7 +454,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             ),
           ),
           Container(
-            height: 80,
+            height: 70,
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
@@ -351,9 +472,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 FlatButton(
                   onPressed: () {
                     setState(() {
-                      sortSelectedIndex = null;
+                      _sortingType = SortingType.None;
                       for (int i = 0; i < departmentSelected.length; i++) {
-                        departmentSelected[i] = false;
+                        departmentSelected[i] = true;
+                      }
+                      for (int i = 0; i < categoriesSelected.length; i++) {
+                        categoriesSelected[i] = true;
                       }
                     });
                   },
@@ -366,6 +490,20 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 ),
                 RaisedButton(
                   onPressed: () {
+                    List<Department> selectedDepartments = [];
+                    List<String> selectedCategories = [];
+                    for (int i = 0; i < departmentSelected.length; i++) {
+                      if (departmentSelected[i]) {
+                        selectedDepartments.add(departments[i]);
+                      }
+                    }
+                    for (int i = 0; i < categoriesSelected.length; i++) {
+                      if (categoriesSelected[i]) {
+                        selectedCategories.add(categories[i]);
+                      }
+                    }
+                    widget.applyFilters(
+                        _sortingType, selectedDepartments, selectedCategories);
                     Navigator.pop(context);
                   },
                   child: Text(

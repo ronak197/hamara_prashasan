@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/feedInfoPage.dart';
+import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/classes.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:rxdart/subjects.dart';
 
 class BookmarkPage extends StatefulWidget {
   @override
@@ -12,47 +16,212 @@ class BookmarkPage extends StatefulWidget {
 }
 
 class _BookmarkPageState extends State<BookmarkPage> {
-  List<Feed> bookmarks;
-  List<bool> selected;
+  List<Feed> bookmarks = [];
+  Set<String> selectedBookmarks = new Set<String>();
 
   bool bookmarkSelected = false;
+  bool isRunning = false;
+  SortingType sortingType = SortingType.None;
+  BehaviorSubject<TempClass> resultStream = BehaviorSubject<TempClass>();
+  List<Map<String, dynamic>> feedData = List<Map<String, dynamic>>();
+  DocumentSnapshot lastFeedDetails;
+  Map<String, dynamic> departmentDetails = Map();
+  List<Department> departments = [], selectedDepartments = [];
+  List<String> categories = [], selectedCategories = [];
 
-  void getBookmarks() {
-    bookmarks = new List();
-    selected = new List();
-    List<String> categories = ['health', 'police', 'muncorp'];
-    for (int i = 0; i < 4; i++) {
-      bookmarks.add(
-          Feed(
-              feedInfo: FeedInfo(
-                  departmentUid: 'andskad',
-                  description: 'Citizens are informed that 10 patients are released from qaurantine',
-                  creationDateTimeStamp: DateTime.now(),
-                  title: 'Patients Released from quarantine are kept under isolation'
-              ),
-              department: Department(
-                  areaOfAdministration: 'adnsd',
-                  category: categories[i%3],
-                  email: 'naksda',
-                  name: 'Surat Health Department',
-                  userType: 'department'
-              ),
-              feedInfoDetails: FeedInfoDetails(
-                  details: [
-                    {'title': 'asnda,'},
-                    {'content' : 'asdnkand'},
-                    {'coords' : [{'latLong' : LatLng(12,33), 'label' : 'ansdnak'},{'latLong' : LatLng(12,33), 'label' : 'ansdnak'}]}
-                  ]
-              )
-          )
-      );
-      selected.add(false);
+  String errorMessage =
+          'Some Error Occurred, Make sure you are connected to the internet.',
+      loadingMessage = 'Loading ...',
+      noBookmarkMessage = "No Bookmarked Feeds.";
+
+  Future<bool> getDepartmentInfo() async {
+    print('fetching departments');
+    Firestore db = Firestore.instance;
+
+    bool success = await db
+        .collection('departments')
+        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+        .getDocuments()
+        .then((value) {
+      value.documents.forEach((element) {
+        if (!departmentDetails.containsKey(element.data['email'])) {
+          departmentDetails[element.data['email']] = element.data;
+        }
+      });
+      departmentDetails.forEach((key, value) {
+        departments.add(new Department.fromJson(value));
+      });
+      selectedDepartments = List.from(departments);
+      Set<String> cat = new Set<String>();
+      departments.forEach((d) {
+        cat.add(d.category);
+      });
+      categories = cat.toList();
+      selectedCategories = new List.from(categories);
+      if (this.mounted) setState(() {});
+      return true;
+    }).catchError((e) {
+      resultStream.sink.addError(errorMessage);
+      print('Error in query getDepartmentInfo $e');
+      return false;
+    }).whenComplete(() {
+      print('Completed query getDepartmentInfo');
+      return true;
+    }).timeout(Duration(seconds: 5), onTimeout: () {
+      resultStream.sink.addError(errorMessage);
+      print('Timeout in query getDepartmentInfo');
+      return false;
+    });
+
+    return success;
+  }
+
+  Future<bool> getMoreBookmarks() async {
+    Firestore db = Firestore.instance;
+
+    print('fetching more bookmarks');
+
+    List<Map<String, dynamic>> initialFeedData = feedData;
+
+    if (User.userData.bookmarkedFeeds.isEmpty) {
+      resultStream.sink.addError(noBookmarkMessage);
+      return true;
+    }
+
+    Query resQuery;
+    if (sortingType == SortingType.Category) {
+    } else if (sortingType == SortingType.Department) {
+      resQuery = db
+          .collection('feeds')
+          .where('feedId', whereIn: User.userData.bookmarkedFeeds)
+          .orderBy('departmentUid', descending: false);
+    } else {
+      resQuery = db
+          .collection('feeds')
+          .where('feedId', whereIn: User.userData.bookmarkedFeeds);
+    }
+    List<DocumentSnapshot> temp = (await resQuery
+            .startAfterDocument(lastFeedDetails)
+            .limit(2)
+            .getDocuments()
+            .timeout(Duration(seconds: 3), onTimeout: () {
+      resultStream.sink.addError(errorMessage);
+      return null;
+    }).catchError((e) {
+      resultStream.sink.addError(errorMessage);
+      print('onError in query for getMoreBookmarks');
+    }).whenComplete(() {
+      print('OnDone in query for getMoreBookmarks');
+    }))
+        .documents;
+
+    List<Map<String, dynamic>> newFeedData = List<Map<String, dynamic>>();
+    temp.forEach((element) {
+      var data = new Map<String, dynamic>();
+      data.addAll(element.data);
+      data.addAll({"feedReference": element.reference});
+      newFeedData.add(data);
+    });
+
+    if (newFeedData.isNotEmpty) {
+      if (sortingType == SortingType.Category) {
+      } else if (sortingType == SortingType.Department) {
+        lastFeedDetails = temp.last;
+      } else {
+        lastFeedDetails = temp.last;
+      }
+      feedData.addAll(newFeedData);
+      resultStream.sink.add(new TempClass(feedData: feedData));
+    }
+
+    return true;
+  }
+
+  Future<bool> getLatestBookmarks() async {
+    Firestore db = Firestore.instance;
+
+    print('fetching Bookmarks');
+
+    feedData.clear();
+
+    if (User.userData.bookmarkedFeeds.isEmpty) {
+      resultStream.sink.addError(noBookmarkMessage);
+      return true;
+    }
+
+    Query resQuery;
+    if (sortingType == SortingType.Category) {
+    } else if (sortingType == SortingType.Department) {
+      resQuery = db
+          .collection('feeds')
+          .where('feedId', whereIn: User.userData.bookmarkedFeeds)
+          .orderBy('departmentUid', descending: false);
+    } else {
+      resQuery = db
+          .collection('feeds')
+          .where('feedId', whereIn: User.userData.bookmarkedFeeds);
+    }
+
+    List<DocumentSnapshot> temp = (await resQuery
+            .limit(2)
+            .getDocuments()
+            .timeout(Duration(seconds: 3), onTimeout: () {
+      print("onTimeout in query for getLatestBookmarks");
+      resultStream.sink.addError(errorMessage);
+      return null;
+    }).catchError((e) {
+      print(e);
+      resultStream.sink.addError(errorMessage);
+      print('onError in query for getLatestBookmarks');
+    }).whenComplete(() {
+      print('OnDone in query for getLatestBookmarks');
+    }))
+        .documents;
+
+    List<Map<String, dynamic>> newFeedData = List<Map<String, dynamic>>();
+    temp.forEach((element) {
+      var data = new Map<String, dynamic>();
+      data.addAll(element.data);
+      data.addAll({"feedReference": element.reference});
+      newFeedData.add(data);
+    });
+    if (sortingType == SortingType.Category) {
+    } else if (sortingType == SortingType.Department) {
+      lastFeedDetails = temp.last;
+    } else {
+      lastFeedDetails = temp.last;
+    }
+
+    feedData.addAll(newFeedData);
+    resultStream.sink.add(new TempClass(feedData: feedData));
+
+    return true;
+  }
+
+  Future<void> feedHandler(
+      {bool moreFeeds = false, bool latestFeeds = false}) async {
+//    assert(moreFeeds != latestFeeds);
+//    assert(isRunning == false);
+    if (moreFeeds == latestFeeds || isRunning == true) {
+      return;
+    } else if (moreFeeds != latestFeeds && isRunning == false) {
+      isRunning = true;
+      print(
+          'isRunning ${latestFeeds ? 'latestBookmarks' : 'moreBookmarks'} $isRunning');
+      if (moreFeeds) {
+        await getMoreBookmarks();
+      } else {
+        await getLatestBookmarks();
+      }
+      isRunning = false;
+      print(
+          'isRunning ${latestFeeds ? 'latestBookmarks' : 'moreBookmarks'} $isRunning');
     }
   }
 
   void clearSelectedBookmark() {
     setState(() {
-      for (int i = 0; i < selected.length; i++) selected[i] = false;
+      selectedBookmarks.clear();
     });
   }
 
@@ -68,153 +237,236 @@ class _BookmarkPageState extends State<BookmarkPage> {
     });
   }
 
-//  void clearSelectedBookmark() {
-//    setState(() {
-//      bookmarkSelected = false;
-//    });
-//    bookmarkPage.clearSelectedBookmark();
-//  }
+  void _onLongPress(String feedId) {
+    bool anySelected = selectedBookmarks.isNotEmpty;
+    if (!anySelected) {
+      setState(() {
+        selectedBookmarks.add(feedId);
+        anyBookmarkSelected();
+      });
+    }
+  }
+
+  void _onTap(int i, Feed f, Map<String, dynamic> feedData) {
+    bool anySelected = selectedBookmarks.isNotEmpty;
+    if (anySelected) {
+      setState(() {
+        if (selectedBookmarks.contains(f.feedId)) {
+          selectedBookmarks.remove(f.feedId);
+        } else {
+          selectedBookmarks.add(f.feedId);
+        }
+        if (selectedBookmarks.isEmpty) allSelectedBookmarkCleared();
+      });
+    } else {
+      Navigator.of(context).pushNamed("/feedInfo", arguments: {
+        "feed": f,
+        "feedReference": feedData['feedReference'],
+      });
+    }
+  }
+
+  DefaultCacheManager cacheManager = new DefaultCacheManager();
 
   @override
   void initState() {
     super.initState();
-    getBookmarks();
+    getDepartmentInfo();
+    feedHandler(latestFeeds: true, moreFeeds: false);
+  }
+
+  @override
+  void dispose() {
+    resultStream.close();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    bool anySelected = selected.any((element) => element);
+    bool filtered = this.sortingType != SortingType.None ||
+        !listEquals(this.selectedDepartments, this.departments) ||
+        !listEquals(this.selectedCategories, this.categories);
+    List<String> selDepIds = selectedDepartments.map((e) => e.email).toList();
     return Scaffold(
-      appBar: bookmarkSelected ? AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.black,
-        ),
-        backgroundColor: Colors.white,
-        elevation: 5.0,
-        titleSpacing: 0.0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.clear,
-            size: 25.0,
-          ),
-          onPressed: clearSelectedBookmark,
-        ),
-        actions: [
-          Container(
-            padding: EdgeInsets.only(right: 5.0),
-            child: IconButton(
-              icon: Icon(
-                Icons.delete_forever,
-                size: 25.0,
-                color: Color(0xffea3953),
+      appBar: bookmarkSelected
+          ? AppBar(
+              iconTheme: IconThemeData(
+                color: Colors.black,
               ),
-              onPressed: () {},
-            ),
-          )
-        ],
-      ) : AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.black,
-        ),
-        leading: Container(
-          margin: EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.blue,
-            image: DecorationImage(
-                fit: BoxFit.cover,
-                image: CachedNetworkImageProvider(
-                  User.authUser.photoUrl,
+              backgroundColor: Colors.white,
+              elevation: 5.0,
+              titleSpacing: 0.0,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.clear,
+                  size: 25.0,
+                ),
+                onPressed: clearSelectedBookmark,
+              ),
+              actions: [
+                Container(
+                  padding: EdgeInsets.only(right: 5.0),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.delete_forever,
+                      size: 25.0,
+                      color: Color(0xffea3953),
+                    ),
+                    onPressed: () {},
+                  ),
                 )
-            ),
-          ),
-        ),
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 0.0,
-        titleSpacing: 0.0,
-        actions: [
-          Container(
-            padding: EdgeInsets.all(10.0),
-            child: Icon(
-              Icons.filter_list,
-              size: 20.0,
-            ),
-          )
-        ],
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Welcome Ronak',
-                style: Theme.of(context).textTheme.headline4.copyWith(fontWeight: FontWeight.w600)),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Container(
-                    height: 16.0,
-                    alignment: Alignment.bottomCenter,
-                    child: Center(
-                        child: Icon(
-                          Icons.location_on,
-                          size: 12.0,
-                          color: Color(0xff6D6D6D),
-                        ))),
-                Container(
-                    height: 16.0,
-                    alignment: Alignment.topLeft,
-                    child: Center(
-                        child: Text('Surat',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyText1
-                                .copyWith(color: Color(0xff6D6D6D)))))
               ],
             )
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: List<Widget>.generate(
-            bookmarks.length,
-            (i) => GestureDetector(
-              onLongPress: anySelected
-                  ? null
-                  : () {
-                      setState(() {
-                        selected[i] = true;
-                        anyBookmarkSelected();
-                      });
-                    },
-              onTap: selected[i] || anySelected
-                  ? () {
-                      setState(() {
-                        selected[i] = !selected[i];
-                        if (!(selected.any((element) => element)))
-                          allSelectedBookmarkCleared();
-                      });
-                    }
-                  : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => FeedInfoPage(
-                            feed: bookmarks[i],
+          : AppBar(
+              iconTheme: IconThemeData(
+                color: Colors.black,
+              ),
+              leading: GestureDetector(
+                onTap: () {
+                  Scaffold.of(context).openDrawer();
+                },
+                child: Container(
+                  margin: EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.blue,
+                  ),
+                  child: ClipOval(
+                    child: User.authUser.photoString != null
+                        ? Image.memory(
+                            base64.decode(User.authUser.photoString),
+                            fit: BoxFit.contain,
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: User.authUser.photoUrl,
+                            cacheManager: cacheManager,
+                            fit: BoxFit.contain,
+                            placeholder: (context, s) {
+                              print("Profile Url" + s);
+                              return Container();
+                            },
                           ),
-                        ),
-                      );
-                    },
-              child: Container(
-                margin: EdgeInsets.symmetric(vertical: 8.0),
-                child: MessageBox(
-                  feed: bookmarks[i],
-                  selected: selected[i],
-                  canBeSelected: anySelected,
+                  ),
                 ),
               ),
+              automaticallyImplyLeading: true,
+              backgroundColor: Colors.white,
+              elevation: 0.0,
+              titleSpacing: 0.0,
+              actions: [
+                Container(
+                  padding: EdgeInsets.all(10.0),
+                  child: Icon(
+                    Icons.filter_list,
+                    size: 20.0,
+                  ),
+                )
+              ],
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Welcome ${User.authUser.displayName.split(" ")[0]}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headline4
+                          .copyWith(fontWeight: FontWeight.w600)),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Container(
+                          height: 16.0,
+                          alignment: Alignment.bottomCenter,
+                          child: Center(
+                              child: Icon(
+                            Icons.location_on,
+                            size: 12.0,
+                            color: Color(0xff6D6D6D),
+                          ))),
+                      Container(
+                          height: 16.0,
+                          alignment: Alignment.topLeft,
+                          child: Center(
+                              child: Text('Surat',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyText1
+                                      .copyWith(color: Color(0xff6D6D6D)))))
+                    ],
+                  )
+                ],
+              ),
             ),
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification scrollInfo) {
+          if (scrollInfo is ScrollEndNotification &&
+              scrollInfo.metrics.pixels >=
+                  (scrollInfo.metrics.maxScrollExtent - 60.0)) {
+            print('Reached Edge, getting more bookmarks');
+            feedHandler(moreFeeds: true, latestFeeds: false);
+            return true;
+          }
+          return false;
+        },
+        child: RefreshIndicator(
+          onRefresh: () => feedHandler(latestFeeds: true, moreFeeds: false),
+          strokeWidth: 2.5,
+          child: StreamBuilder(
+            stream: resultStream.stream,
+            builder: (context, AsyncSnapshot<TempClass> snapshot) {
+              print(
+                  'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return BookmarkLoadStatus(
+                  displayMessage: loadingMessage,
+                );
+              } else if (snapshot.connectionState == ConnectionState.active) {
+                if (snapshot.hasData && snapshot.data.feedData.isNotEmpty) {
+                  print(snapshot.data);
+                  return ListView.builder(
+                    itemCount: snapshot.data.feedData.length,
+                    itemBuilder: (context, i) {
+                      if (departmentDetails.containsKey(
+                          snapshot.data.feedData[i]['departmentUid'])) {
+                        Feed f = Feed(
+                            feedInfo: FeedInfo.fromFirestoreJson(
+                                snapshot.data.feedData[i]),
+                            department: Department.fromJson(departmentDetails[
+                                snapshot.data.feedData[i]['departmentUid']]));
+                        if (selDepIds.contains(f.department.email) &&
+                            selectedCategories
+                                .contains(f.department.category)) {
+                          return GestureDetector(
+                            onLongPress: () => _onLongPress(f.feedId),
+                            onTap: () =>
+                                _onTap(i, f, snapshot.data.feedData[i]),
+                            child: Container(
+                              margin: EdgeInsets.symmetric(vertical: 8.0),
+                              child: MessageBox(
+                                feed: f,
+                                selected: selectedBookmarks.contains(f.feedId),
+                                canBeSelected: bookmarkSelected,
+                              ),
+                            ),
+                          );
+                        } else {
+                          return SizedBox();
+                        }
+                      } else {
+                        return SizedBox();
+                      }
+                    },
+                  );
+                } else if (snapshot.hasError) {
+                  return BookmarkLoadStatus(
+                    displayMessage: snapshot.error,
+                  );
+                }
+              }
+              return SizedBox();
+            },
           ),
         ),
       ),
@@ -233,143 +485,156 @@ class MessageBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: <Widget>[
-        Container(
-          margin: EdgeInsets.symmetric(horizontal: 4.0),
-          padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 15.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.all(Radius.circular(15.0)),
-            color: Color(feed.bgColor),
-          ),
-          foregroundDecoration: selected || canBeSelected
-              ? BoxDecoration(
-            borderRadius: BorderRadius.all(Radius.circular(15.0)),
-            color: Colors.grey.withOpacity(selected ? 0.4 : 0.1),
-          )
-              : null,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.max,
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 4.0),
+              padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 15.0),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.all(Radius.circular(15.0)),
+                color: Color(feed.bgColor),
+              ),
+              foregroundDecoration: selected || canBeSelected
+                  ? BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(15.0)),
+                      color: Colors.grey.withOpacity(selected ? 0.4 : 0.1),
+                    )
+                  : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Container(
-                    child: SvgPicture.asset(
-                      feed.profileAvatar,
-                      width: 64.0,
-                      height: 64.0,
-                      fit: BoxFit.contain,
-                      placeholderBuilder: (context){
-                        return Container(
+                  Row(
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      Container(
+                        child: SvgPicture.asset(
+                          feed.profileAvatar,
                           width: 64.0,
                           height: 64.0,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10.0),
-                            gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Colors.white, Color(0xfff7f7f7)]
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      alignment: Alignment.topLeft,
-                      margin: EdgeInsets.only(left: 10.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                            decoration: BoxDecoration(
-                              color: Color(categoryTagColorMap[feed.department.category]),
-                              borderRadius: BorderRadius.circular(4.0),
-                            ),
-                            child: Text(
-                              feed.department.category,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyText2
-                                  .copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Container(
-                            child: Text(
-                              feed.feedInfo.title,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headline3
-                                  .copyWith(color: Color(0xff303046), fontWeight: FontWeight.w600),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                          fit: BoxFit.contain,
+                          placeholderBuilder: (context) {
+                            return Container(
+                              width: 64.0,
+                              height: 64.0,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10.0),
+                                gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Colors.white, Color(0xfff7f7f7)]),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
+                      Expanded(
+                        child: Container(
+                          alignment: Alignment.topLeft,
+                          margin: EdgeInsets.only(left: 10.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 4.0, vertical: 2.0),
+                                decoration: BoxDecoration(
+                                  color: Color(categoryTagColorMap[
+                                      feed.department.category]),
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                                child: Text(
+                                  feed.department.category,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyText2
+                                      .copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                child: Text(
+                                  feed.feedInfo.title,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headline3
+                                      .copyWith(
+                                          color: Color(0xff303046),
+                                          fontWeight: FontWeight.w600),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              Container(
-                alignment: Alignment.topLeft,
-                margin: EdgeInsets.only(top: 10.0),
-                child: Text(
-                  feed.feedInfo.description,
-                  style: Theme.of(context).textTheme.headline1.copyWith(fontWeight: FontWeight.normal),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
                   Container(
-                    alignment: Alignment.topRight,
+                    alignment: Alignment.topLeft,
                     margin: EdgeInsets.only(top: 10.0),
                     child: Text(
-                      feed.department.name,
+                      feed.feedInfo.description,
                       style: Theme.of(context)
                           .textTheme
-                          .bodyText1
-                          .copyWith(color: Color(0xff8C8C8C)),
+                          .headline1
+                          .copyWith(fontWeight: FontWeight.normal),
                     ),
                   ),
-                  Container(
-                    alignment: Alignment.topRight,
-                    margin: EdgeInsets.only(top: 10.0),
-                    child: RichText(
-                      text: TextSpan(
-                          children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        alignment: Alignment.topRight,
+                        margin: EdgeInsets.only(top: 10.0),
+                        child: Text(
+                          feed.department.name,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyText1
+                              .copyWith(color: Color(0xff8C8C8C)),
+                        ),
+                      ),
+                      Container(
+                        alignment: Alignment.topRight,
+                        margin: EdgeInsets.only(top: 10.0),
+                        child: RichText(
+                          text: TextSpan(children: [
                             WidgetSpan(
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 2.0),
-                                child: Icon(Icons.access_time, size: 13.0, color: Color(0xff8C8C8C),),
+                                child: Icon(
+                                  Icons.access_time,
+                                  size: 13.0,
+                                  color: Color(0xff8C8C8C),
+                                ),
                               ),
                             ),
                             TextSpan(
-                              text: 'July' + ', ' + feed.feedInfo
-                                  .creationDateTimeStamp.hour.toString() +
+                              text: 'July' +
+                                  ', ' +
+                                  feed.feedInfo.creationDateTimeStamp.hour
+                                      .toString() +
                                   ":" +
-                                  feed.feedInfo.creationDateTimeStamp.minute.toString(),
-                              style: Theme.of(context).textTheme.bodyText1
+                                  feed.feedInfo.creationDateTimeStamp.minute
+                                      .toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyText1
                                   .copyWith(color: Color(0xff8C8C8C)),
                             ),
-                          ]
+                          ]),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
           ] +
           (canBeSelected
               ? <Widget>[
@@ -391,6 +656,38 @@ class MessageBox extends StatelessWidget {
                   )
                 ]
               : <Widget>[]),
+    );
+  }
+}
+
+class BookmarkLoadStatus extends StatelessWidget {
+  final String displayMessage;
+
+  BookmarkLoadStatus({@required this.displayMessage});
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: constraints.maxHeight,
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    displayMessage,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headline2,
+                  )
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -111,40 +113,42 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
         ],
       ),
       body: Container(
-        padding: EdgeInsets.symmetric(horizontal: 25),
         margin: EdgeInsets.only(top: 10),
         child: ListView(
           shrinkWrap: true,
           physics: BouncingScrollPhysics(),
           children: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-                      decoration: BoxDecoration(
-                        color: Color(
-                            categoryTagColorMap[feed.department.category]),
-                        borderRadius: BorderRadius.circular(4.0),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 25),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 4.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: Color(
+                              categoryTagColorMap[feed.department.category]),
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: Text(
+                          feed.department.category,
+                          style: Theme.of(context).textTheme.bodyText2.copyWith(
+                              color: Colors.white, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      child: Text(
-                        feed.department.category,
-                        style: Theme.of(context).textTheme.bodyText2.copyWith(
-                            color: Colors.white, fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                        feed.department.areaOfAdministration +
-                            ", " +
-                            feed.feedInfo.creationDateTimeStamp
-                                .toIso8601String()
-                                .substring(11, 16),
-                        style: Theme.of(context).textTheme.bodyText1),
-                  ],
-                )
+                      Text(
+                          feed.department.areaOfAdministration +
+                              ", " +
+                              feed.feedInfo.creationDateTimeStamp
+                                  .toIso8601String()
+                                  .substring(11, 16),
+                          style: Theme.of(context).textTheme.bodyText1),
+                    ],
+                  ),
+                ),
               ] +
               <Widget>[
                 TitleBox(feed.feedInfo.title),
@@ -195,7 +199,7 @@ class TitleBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 20),
+      padding: EdgeInsets.symmetric(vertical: 20, horizontal: 25),
       child: Text(title,
           style: Theme.of(context)
               .textTheme
@@ -211,7 +215,7 @@ class ContentBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 15),
+      margin: EdgeInsets.symmetric(vertical: 15, horizontal: 25),
       child: RichText(
         text: TextSpan(
           children: [
@@ -260,6 +264,7 @@ class PictureBox extends StatelessWidget {
                 fit: BoxFit.contain,
                 placeholder: (context, s) => Container(
                   alignment: Alignment.center,
+                  height: 50,
                   child: CircularProgressIndicator(),
                 ),
               ),
@@ -308,6 +313,7 @@ class _MapBoxState extends State<MapBox> {
         new Marker(
           markerId: MarkerId(labels[i]),
           position: LatLng(latitudes[i], longitudes[i]),
+          infoWindow: InfoWindow(title: labels[i]),
         ),
       );
     }
@@ -327,22 +333,20 @@ class _MapBoxState extends State<MapBox> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      color: Colors.yellow,
       margin: EdgeInsets.symmetric(vertical: 20),
       height: 250,
-      decoration: BoxDecoration(
-        border: Border.all(),
-        borderRadius: BorderRadius.circular(5.0),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(5.0),
-        child: GoogleMap(
-          initialCameraPosition: _myLocation,
-          mapType: MapType.normal,
-          onMapCreated: (controller) {
-            _controller.complete(controller);
-          },
-          markers: places,
-        ),
+      child: GoogleMap(
+        initialCameraPosition: _myLocation,
+        mapType: MapType.normal,
+        onMapCreated: (controller) {
+          _controller.complete(controller);
+        },
+        markers: places,
+        zoomControlsEnabled: true,
+        zoomGesturesEnabled: true,
+        gestureRecognizers: Set()
+          ..add(Factory<PanGestureRecognizer>(() => PanGestureRecognizer())),
       ),
     );
   }
@@ -357,11 +361,47 @@ class TableBox extends StatelessWidget {
     int n = t.contents.length + 1;
     return Container(
       margin: EdgeInsets.symmetric(vertical: 15),
+      padding: EdgeInsets.only(left: 25),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: List<Widget>.generate(t.headers.length, (j) {
+          children: List<Widget>.generate(t.headers.length + 1, (j) {
+            if (j == 0)
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                      Container(
+                        height: tileHeight,
+                        width: 40,
+                        margin: EdgeInsets.all(margin),
+                        padding: EdgeInsets.only(left: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(5.0),
+                        ),
+                        alignment: Alignment.centerLeft,
+                      ),
+                    ] +
+                    List<Widget>.generate(n - 1, (k) {
+                      return Container(
+                        height: tileHeight,
+                        width: 40,
+                        margin: EdgeInsets.all(margin),
+                        padding: EdgeInsets.only(left: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(5.0),
+                        ),
+                        alignment: Alignment.centerLeft,
+                        child: Text((k + 1).toString(),
+                            style: Theme.of(context).textTheme.headline2),
+                      );
+                    }),
+              );
+            j -= 1;
             int colWidth = t.headers[j].length;
             for (int i = 0; i < n - 1; i++) {
               colWidth = max(t.contents[i][j].length, colWidth);

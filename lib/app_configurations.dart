@@ -12,46 +12,48 @@ import 'package:hamaraprashasan/news_feed_page.dart';
 import 'package:hamaraprashasan/feedInfoPage.dart';
 import 'package:hamaraprashasan/classes.dart';
 
-enum UserState{
+enum UserState {
   none, // State when user launched the app
   initial, // State when the user has fetched user data from firestore
   subscription, // State when the user has subscribed/unsubscribed a department
-  feedUpdate // State when the user has updated the feed
+  feedUpdate, // State when the user has updated the feed
+  bookmark//State when the user has updated the bookmark id list
 }
 
-class AppConfigs{
-
+class AppConfigs {
   static SharedPreferences prefs;
   static String userType = 'user';
 
-  static Future<SharedPreferences> get initializeSharedPref async{
+  static Future<SharedPreferences> get initializeSharedPref async {
     prefs = await SharedPreferences.getInstance();
     return prefs;
   }
 
-  static SharedPreferences get getSharedPref{
-    if(prefs == null){
+  static SharedPreferences get getSharedPref {
+    if (prefs == null) {
       initializeSharedPref;
     }
     return prefs;
   }
 
-  static set setSigningState(bool value){
+  static set setSigningState(bool value) {
     prefs.setBool('signingState', value);
   }
 
-  static bool get getSigningState{
+  static bool get getSigningState {
     return prefs.getBool('signingState') ?? false;
   }
 
-  static clearAllLocalData(){
+  static clearAllLocalData() {
     prefs.clear();
   }
 
-  static Future<String> getStartUpPage() async{
+  static Future<String> getStartUpPage() async {
     String startUpPage;
     await AppConfigs.initializeSharedPref;
-    if(AppConfigs.getSigningState && User.getUserAuthInfo() && User.getUserData()){
+    if (AppConfigs.getSigningState &&
+        User.getUserAuthInfo() &&
+        User.getUserData()) {
       print('perfect credential combo');
       startUpPage = '/home';
     } else {
@@ -62,50 +64,48 @@ class AppConfigs{
     return startUpPage;
   }
 
-  static get getUserRoutes{
-    if(userType == 'admin'){
+  static get getUserRoutes {
+    if (userType == 'admin') {
       return {
-        '/home' : (context) => HomePage(),
-        '/login' : (context) => LoginPage(),
-        '/sendPost' : (context) => SendPostPage(),
-        '/newsFeed' : (context) => NewsFeedPage(),
-        '/feedInfo' : (context) => FeedInfoPage(),
-        '/bookmarks' : (context) => BookmarkPage()
+        '/home': (context) => HomePage(),
+        '/login': (context) => LoginPage(),
+        '/sendPost': (context) => SendPostPage(),
+        '/newsFeed': (context) => NewsFeedPage(),
+        '/feedInfo': (context) => FeedInfoPage(),
+        '/bookmarks': (context) => BookmarkPage()
       };
     }
     return {
-      '/home' : (context) => HomePage(),
-      '/login' : (context) => LoginPage(),
-      '/sendPost' : (context) => SendPostPage(),
-      '/newsFeed' : (context) => NewsFeedPage(),
-      '/feedInfo' : (context) => FeedInfoPage(),
-      '/bookmarks' : (context) => BookmarkPage(),
+      '/home': (context) => HomePage(),
+      '/login': (context) => LoginPage(),
+      '/sendPost': (context) => SendPostPage(),
+      '/newsFeed': (context) => NewsFeedPage(),
+      '/feedInfo': (context) => FeedInfoPage(),
+      '/bookmarks': (context) => BookmarkPage(),
     };
   }
 }
 
-class User{
-
+class User {
   static AuthUser authUser;
   static UserData userData;
   static UserState lastUserState = UserState.initial;
 
   // Saving authentication credentials received from google_sign_in into shared pref and authUser
-  static saveUserAuthInfo(FirebaseUser firebaseUser){
+  static saveUserAuthInfo(FirebaseUser firebaseUser) {
     authUser = AuthUser(
         displayName: firebaseUser.displayName,
         email: firebaseUser.email,
         phoneNumber: firebaseUser.phoneNumber,
         photoUrl: firebaseUser.photoUrl,
-        uid: firebaseUser.uid
-    );
+        uid: firebaseUser.uid);
     AppConfigs.prefs.setString('authUserDetails', jsonEncode(authUser));
   }
 
   // Fetching authentication credentials received from google_sign_in from shared pref
-  static bool getUserAuthInfo(){
+  static bool getUserAuthInfo() {
     var jsonData = AppConfigs.prefs.getString('authUserDetails') ?? false;
-    if(jsonData == false){
+    if (jsonData == false) {
       return false;
     }
     authUser = AuthUser.fromJson(jsonDecode(jsonData));
@@ -113,74 +113,108 @@ class User{
   }
 
   // Saving user data locally in shared pref and also in UserConfig static user variable
-  static saveUserData(UserData data, UserState newUserState){
+  static saveUserData(UserData data, UserState newUserState) {
     userData = data;
     lastUserState = newUserState;
     AppConfigs.prefs.setString('userData', jsonEncode(userData.toJson()));
   }
 
   // To fetch the user data from the shared pref and store it in UserConfig static user variable
-  static bool getUserData(){
+  static bool getUserData() {
     var jsonData = AppConfigs.prefs.getString('userData') ?? false;
-    if(jsonData == false){
+    if (jsonData == false) {
       return false;
     }
     userData = UserData.fromJson(jsonDecode(jsonData));
     lastUserState = UserState.initial;
     return true;
   }
-
 }
 
-class FirebaseMethods{
-
+class FirebaseMethods {
   /* Fetch user data from the firestore. This function is mainly evoked when
   * app is first started or the user has first time logged in.
   */
-  static Future<bool> getFirestoreUserDataInfo() async{
+  static Future<bool> getFirestoreUserDataInfo() async {
     Firestore db = Firestore.instance;
-    bool val = await db.collection('users').document(User.authUser.uid).get()
-        .then((snapshot) async{
-          print('User doc Exists : ${snapshot.exists}');
-          if(snapshot.data != null){
-            print('Registered user data: ${snapshot.data}');
-            User.saveUserData(UserData.fromFirestoreJson(snapshot.data), UserState.initial);
-          } else{
-            print('user not registered, going to create new user doc');
-            return await createNewFirestoreUserDocument();
-          }
-          return true;
-        },
-        onError: (e){
-          print('Some error occurred');
-          return false;
-        });
+    bool val = await db
+        .collection('users')
+        .document(User.authUser.uid)
+        .get()
+        .then((snapshot) async {
+      print('User doc Exists : ${snapshot.exists}');
+      if (snapshot.data != null) {
+        print('Registered user data: ${snapshot.data}');
+        User.saveUserData(
+            UserData.fromFirestoreJson(snapshot.data), UserState.initial);
+      } else {
+        print('user not registered, going to create new user doc');
+        return await createNewFirestoreUserDocument();
+      }
+      return true;
+    }, onError: (e) {
+      print('Some error occurred');
+      return false;
+    });
     print('Got outside of query, gonna return $val');
     return val;
   }
 
   // To create new firestore user document when the user first time logged in.
-  static Future<bool> createNewFirestoreUserDocument() async{
+  static Future<bool> createNewFirestoreUserDocument() async {
     Firestore db = Firestore.instance;
     UserData userData = UserData(
         subscribedDepartmentIDs: [],
-        lastLocation: LatLng(0,0),  // TODO: To change this to more suitable value
+        lastLocation:
+            LatLng(0, 0), // TODO: To change this to more suitable value
         lastUserState: 'initial',
         lastUpdateTime: DateTime.now(),
         bookmarkedFeeds: [],
         userType: 'citizen',
-        email: User.authUser.email
-    );
-    bool val = await db.collection('users').document(User.authUser.uid).setData(
-      userData.toFirestoreJson(),
-    ).then((value){
+        email: User.authUser.email);
+    bool val = await db
+        .collection('users')
+        .document(User.authUser.uid)
+        .setData(
+          userData.toFirestoreJson(),
+        )
+        .then((value) {
       print('successfully created new user doc in firestore');
       User.saveUserData(userData, UserState.initial);
       return true;
-    }, onError: (e){
+    }, onError: (e) {
       print('ERROR: could not create new user doc in firestore');
       return false;
     });
+    return val;
+  }
+
+  static Future<bool> saveBookmarks(List<String> allBookmarkedFeedIds) async {
+    Firestore db = Firestore.instance;
+    bool val = await db
+        .collection('users')
+        .document(User.authUser.uid)
+        .get()
+        .then((snapshot) async {
+      if (snapshot.data != null) {
+        print('User doc Exists : ${snapshot.exists}');
+        bool error = false;
+        await snapshot.reference.updateData(
+            {"bookmarkedFeeds": allBookmarkedFeedIds}).catchError((e) {
+          error = true;
+        });
+        return !error;
+      } else {
+        return false;
+      }
+    }, onError: (e) {
+      print('Some error occurred');
+      return false;
+    });
+    if (val) {
+      User.userData.bookmarkedFeeds = allBookmarkedFeedIds;
+      User.saveUserData(User.userData, User.lastUserState);
+    }
     return val;
   }
 }
