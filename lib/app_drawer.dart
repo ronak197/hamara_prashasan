@@ -169,26 +169,6 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                         Container(
                             padding: EdgeInsets.all(20.0),
                             child: Icon(
-                              DrawerIcons.privacy,
-                              color: Color(0xff303046),
-                              size: 18.0,
-                            )),
-                        Text(
-                          'Privacy',
-                          style: Theme.of(context).textTheme.headline2,
-                        )
-                      ],
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () {},
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        Container(
-                            padding: EdgeInsets.all(20.0),
-                            child: Icon(
                               DrawerIcons.help,
                               color: Color(0xff303046),
                               size: 18.0,
@@ -223,6 +203,28 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                           style: Theme.of(context).textTheme.headline2,
                         )
                       ],
+                    ),
+                  ),
+                  Divider(),
+                  Container(
+                    padding: EdgeInsets.all(20.0),
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: Theme.of(context).textTheme.headline1.copyWith(color: Colors.grey,),
+                          ),
+                          TextSpan(
+                            text: '  ᛫  ',
+                            style: Theme.of(context).textTheme.headline1.copyWith(color: Colors.grey),
+                          ),
+                          TextSpan(
+                            text: 'v1.0.0',
+                            style: Theme.of(context).textTheme.headline1.copyWith(color: Colors.grey),
+                          ),
+                        ]
+                      ),
                     ),
                   ),
                 ],

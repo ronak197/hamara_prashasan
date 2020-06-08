@@ -17,6 +17,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
   Algolia algolia;
 
+  FocusNode searchFocusNode;
   bool isSearching = false;
   List<String> searchResults = List<String>();
   AlgoliaQuery query;
@@ -24,13 +25,14 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
   bool showResults = false;
   List<Department> results = List<Department>();
+  List<Department> subscribedResults = List<Department>();
   String message = "Fetching Subscribed Departments";
 
   void getAvailableDepartments(String searchQuery){
     Firestore db = Firestore.instance;
     results.clear();
     setState(() {
-      message = "Fetching";
+      message = "Searching";
     });
     db.collection('departments')
         .where('areaOfAdministration', isEqualTo: searchQuery).getDocuments().asStream()
@@ -39,82 +41,88 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
             event.documents.forEach((snapshot) { results.add(Department.fromJson(snapshot.data)); });
           });
         })..onDone(() {
-      setState(() {
-        message = results.isEmpty ? 'No Available Departments' : '';
-        print(message);
-      });
-    })..onError((e){
-      setState(() {
-        message = "Error Occurred";
-        print(message);
-      });
+          if(results.isEmpty){
+            setState(() {
+              message = 'No Available Departments';
+              print(message);
+            });
+          }
+        })..onError((e){
+            setState(() {
+              message = "Error Occurred";
+              print(message);
+        });
     });
   }
 
   void getSubscribedDepartments() async{
     Firestore db = Firestore.instance;
-    results?.clear();
-    if(User.lastUserState == UserState.initial){
+    subscribedResults?.clear();
        db.collection('departments')
            .where('email', whereIn: User.userData.subscribedDepartmentIDs).getDocuments().asStream()
            .listen((event) {
              setState(() {
-               event.documents.forEach((snapshot) { results.add(Department.fromJson(snapshot.data)); });
+               event.documents.forEach((snapshot) { subscribedResults.add(Department.fromJson(snapshot.data)); });
              });
        })..onDone(() {
-         setState(() {
-           message = results.isEmpty ? 'No subscribed Departments' : '';
-           print(message);
-         });
+         if(subscribedResults.isEmpty){
+           setState(() {
+             message = 'No Subscribed Departments';
+             print(message);
+           });
+         } else {
+           setState(() {
+             results = subscribedResults;
+           });
+         }
        })..onError((e){
          setState(() {
            message = "Error Occurred";
            print(message);
          });
        });
-    } else {
-      if(await FirebaseMethods.getFirestoreUserDataInfo()){
-        getSubscribedDepartments();
-      }
-    }
-
   }
 
   void onSubscribePressed(String toSubscribe, bool hasSubscribed) async {
     Firestore db = Firestore.instance;
 
-    db.runTransaction((transaction) async {
-      if(User.lastUserState != UserState.subscription){
-        await db.collection('users').document(User.authUser.uid).get().then((snapshot){
-          User.saveUserData(UserData.fromFirestoreJson(snapshot.data), UserState.subscription);
-        });
-      }
-      if (!User.userData.subscribedDepartmentIDs.contains(toSubscribe)) {
+    if(User.lastUserState != UserState.initial){
+      await FirebaseMethods.getFirestoreUserDataInfo();
+    }
+    if (!User.userData.subscribedDepartmentIDs.contains(toSubscribe)) {
+      setState(() {
         User.userData.subscribedDepartmentIDs.add(toSubscribe);
-        setState(() {});
-        await db
-            .collection('users')
-            .document(User.authUser.uid)
-            .updateData(User.userData.toFirestoreJson())
-            .catchError((e) {
-          return null;
-        });
-      } else {
+      });
+      await db
+          .collection('users')
+          .document(User.authUser.uid)
+          .updateData(User.userData.toFirestoreJson())
+          .catchError((e) {
+            setState(() {
+              message = 'Error Occurred';
+            });
+        return null;
+      });
+    } else {
+      setState(() {
         User.userData.subscribedDepartmentIDs.remove(toSubscribe);
-        setState(() {});
-        await db
-            .collection('users')
-            .document(User.authUser.uid)
-            .updateData(User.userData.toFirestoreJson())
-            .catchError((e) {
-          return null;
-        });
-      }
-      return null;
-    });
+      });
+      await db
+          .collection('users')
+          .document(User.authUser.uid)
+          .updateData(User.userData.toFirestoreJson())
+          .catchError((e) {
+            setState(() {
+              message = 'Error Occurred';
+            });
+        return null;
+      });
+    }
+    return null;
   }
 
   void search(String textToSearch) async {
+    print('called search');
     if (textToSearch.isNotEmpty) {
       query = query.search(textToSearch);
       searchResults.clear();
@@ -128,6 +136,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
         searchResults = textEditingController.text.isNotEmpty ? result : [];
       });
     } else {
+      print('empty string');
       setState(() {
         searchResults.clear();
       });
@@ -135,7 +144,6 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   }
 
   void onPlaceSelected(String place) async{
-    textEditingController.text = place;
     setState(() {
       isSearching = false;
     });
@@ -160,6 +168,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
   @override
   void initState() {
+    searchFocusNode = FocusNode();
     setupAlgolia();
     textEditingController.addListener(() {
       search(textEditingController.text);
@@ -171,6 +180,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   @override
   void dispose() {
     textEditingController.dispose();
+    searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -182,41 +192,42 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
         elevation: 0.0,
         excludeHeaderSemantics: true,
         titleSpacing: 0.0,
-        leading: Container(
-          margin: EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.blue,
-            image: DecorationImage(
-                fit: BoxFit.cover,
-                image: CachedNetworkImageProvider(
-                  User.authUser.photoUrl,
-                )
+        leading: GestureDetector(
+          onTap: (){
+            Scaffold.of(context).openDrawer();
+          },
+          child: Container(
+            margin: EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.blue,
+              image: DecorationImage(
+                  fit: BoxFit.cover,
+                  image: CachedNetworkImageProvider(
+                    User.authUser.photoUrl,
+                  )
+              ),
             ),
           ),
         ),
-        title: Container(
-          margin: EdgeInsets.only(top: 15.0, bottom: 15.0, left: 0.0, right: 10.0),
-          padding: EdgeInsets.only(right: 10.0, left: 8.0),
-          height: 40.0,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30.0),
-            color: Colors.white,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Expanded(
-                flex: 6,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Expanded(
+              flex: 6,
+              child: Container(
                 child: TextField(
                   onTap: () {
-                    isSearching = true;
-                    setState(() {});
+                    setState(() {
+                      isSearching = true;
+                    });
                   },
                   onEditingComplete: (){
+                    print('completed');
                     onPlaceSelected(textEditingController.text);
                   },
                   onSubmitted: (s){
+                    searchFocusNode.unfocus();
                     print('submit');
                   },
                   controller: textEditingController,
@@ -225,6 +236,8 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                       .textTheme
                       .headline2
                       .copyWith(color: Color(0xff514A4A)),
+                  focusNode: searchFocusNode,
+                  autofocus: false,
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.all(0.0),
@@ -237,15 +250,25 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                   ),
                 ),
               ),
-              Expanded(
-                flex: 1,
-                child: Icon(
-                  isSearching ? Icons.close : Icons.search,
-                  color: Colors.black54,
-                ),
+            ),
+            Expanded(
+              flex: 1,
+              child: IconButton(
+                icon: Icon(isSearching ? Icons.close : Icons.search),
+                color: Colors.black54,
+                onPressed: (){
+                  if(isSearching){
+                    searchFocusNode.unfocus();
+                  } else {
+                    searchFocusNode.requestFocus();
+                  }
+                  setState(() {
+                    isSearching = !isSearching;
+                  });
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       body: isSearching && searchResults?.length != 0
@@ -275,9 +298,8 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
         },
       ) : GestureDetector(
         onTap: () {
-          FocusScopeNode currentFocus = FocusScope.of(context);
-          if (!currentFocus.hasPrimaryFocus) {
-            currentFocus.unfocus();
+          if(searchFocusNode.hasFocus){
+            searchFocusNode.unfocus();
             setState(() {
               isSearching = false;
             });
@@ -285,6 +307,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
         },
         child: results.isNotEmpty ? RefreshIndicator(
           onRefresh: onRefresh,
+          strokeWidth: 2.5,
           child: ListView.builder(
             itemCount: results?.length,
             itemBuilder: (context, index) {

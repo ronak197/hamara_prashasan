@@ -12,10 +12,10 @@ import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart' as cs;
 
-class TempClass {
-  List<Map<String, dynamic>> feedData = List<Map<String, dynamic>>();
+class Feeds {
 
-  TempClass({this.feedData});
+  List<Feed> feeds = List<Feed>();
+
 }
 
 class NewsFeedPage extends StatefulWidget {
@@ -29,21 +29,20 @@ class NewsFeedPage extends StatefulWidget {
 }
 
 class _NewsFeedPageState extends State<NewsFeedPage> {
-  bool feedSelected = false;
 
-  List<Feed> feeds = [];
+  bool feedSelected = false;
   List<bool> selected = [];
 
-  BehaviorSubject<TempClass> resultStream = BehaviorSubject<TempClass>();
-  List<Map<String, dynamic>> feedData = List<Map<String, dynamic>>();
+  BehaviorSubject<Feeds> resultStream = BehaviorSubject<Feeds>();
+
+  Feeds newFeeds = new Feeds();
 
   Map<String, dynamic> departmentDetails = Map();
 
   DateTime startDateTimeAfter;
   DateTime endDateTimeBefore;
 
-  String errorMessage =
-      'Some Error Occurred, Make sure you are connected to the internet.';
+  String errorMessage = 'Some Error Occurred, Make sure you are connected to the internet.';
   String loadingMessage = 'Loading ...';
 
   bool isRunning = false;
@@ -82,52 +81,51 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   Future<bool> getMoreFeeds() async {
-    Firestore db = Firestore.instance;
 
+    Firestore db = Firestore.instance;
     print('fetching more feeds');
 
     if (User.lastUserState == UserState.feedUpdate) {
-      List<Map<String, dynamic>> initialFeedData = feedData;
 
       startDateTimeAfter = endDateTimeBefore ?? DateTime.now();
 
-      List<DocumentSnapshot> temp = (await db
-              .collection('feeds')
-              .where('creationDateTimeStamp',
-                  isLessThanOrEqualTo: User.userData.lastUpdateTime)
-              .where('departmentUid',
-                  whereIn: User.userData.subscribedDepartmentIDs)
-              .orderBy('creationDateTimeStamp', descending: true)
-              .startAfter([startDateTimeAfter])
-              .limit(2)
-              .getDocuments()
-              .timeout(Duration(seconds: 3), onTimeout: () {
-                resultStream.sink.addError(errorMessage);
-                return null;
-              })
-              .catchError((e) {
-                resultStream.sink.addError(errorMessage);
-                print('onError in query for getLatestFeeds');
-              })
-              .whenComplete(() {
-                print('OnDone in query for getLatestFeeds');
-                User.lastUserState = UserState.feedUpdate;
-                // update firestore user feed update time
-              }))
-          .documents;
+      await db
+        .collection('feeds')
+        .where('creationDateTimeStamp',
+            isLessThanOrEqualTo: User.userData.lastUpdateTime)
+        .where('departmentUid',
+            whereIn: User.userData.subscribedDepartmentIDs)
+        .orderBy('creationDateTimeStamp', descending: true)
+        .startAfter([startDateTimeAfter])
+        .limit(2)
+        .getDocuments()
+        .then((value){
+            value.documents.forEach((element) {
+              newFeeds.feeds.add(
+                Feed(
+                  feedInfo: FeedInfo.fromFirestoreJson(element.data),
+                  department: Department.fromJson(departmentDetails[element.data['departmentUid']]),
+                )
+              );
+            });
+        })
+        .timeout(Duration(seconds: 3), onTimeout: () {
+          resultStream.sink.addError(errorMessage);
+          return null;
+        })
+        .catchError((e) {
+          resultStream.sink.addError(errorMessage);
+          print('onError in query for getLatestFeeds');
+        })
+        .whenComplete(() {
+          print('OnDone in query for getLatestFeeds');
+          User.lastUserState = UserState.feedUpdate;
+          // update firestore user feed update time
+        });
 
-      List<Map<String, dynamic>> newFeedData = List<Map<String, dynamic>>();
-      temp.forEach((element) {
-        newFeedData.add(element.data);
-      });
-
-      if (newFeedData.isNotEmpty) {
-        endDateTimeBefore =
-            (newFeedData.last['creationDateTimeStamp'] as Timestamp).toDate();
+        endDateTimeBefore = newFeeds.feeds.last.feedInfo.creationDateTimeStamp;
         print(endDateTimeBefore);
-        feedData.addAll(newFeedData);
-        resultStream.sink.add(new TempClass(feedData: feedData));
-      }
+        resultStream.sink.add(newFeeds);
     } else {
       print('last user state is not feedUpdate');
       if (await getDepartmentInfo()) {
@@ -143,43 +141,38 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   Future<bool> getLatestFeeds() async {
-    Firestore db = Firestore.instance;
 
+    Firestore db = Firestore.instance;
     print('fetching feeds');
 
     if (User.lastUserState == UserState.feedUpdate) {
-      feedData.clear();
 
-      List<DocumentSnapshot> temp = (await db
-              .collection('feeds')
-              .where('creationDateTimeStamp',
-                  isLessThanOrEqualTo: User.userData.lastUpdateTime)
-              .where('departmentUid',
-                  whereIn: User.userData.subscribedDepartmentIDs)
-              .orderBy('creationDateTimeStamp', descending: true)
-              .limit(2)
-              .getDocuments()
-              .timeout(Duration(seconds: 3), onTimeout: () {
-        resultStream.sink.addError(errorMessage);
-        return null;
-      }).catchError((e) {
-        resultStream.sink.addError(errorMessage);
-        print('onError in query for getLatestFeeds');
-      }).whenComplete(() {
-        print('OnDone in query for getLatestFeeds');
+      newFeeds.feeds.clear();
+
+      await db
+        .collection('feeds')
+        .where('creationDateTimeStamp',
+            isLessThanOrEqualTo: Timestamp.now())
+        .where('departmentUid',
+            whereIn: User.userData.subscribedDepartmentIDs)
+        .orderBy('creationDateTimeStamp', descending: true)
+        .limit(2)
+        .getDocuments().then((value){
+          value.documents.forEach((element) {
+            newFeeds.feeds.add(
+              Feed(
+                feedInfo: FeedInfo.fromFirestoreJson(element.data),
+                department: Department.fromJson(departmentDetails[element.data['departmentUid']]),
+              )
+            );
+          });
+      }).whenComplete((){
         User.lastUserState = UserState.feedUpdate;
-        // update firestore user feed update time
-      }))
-          .documents;
-
-      List<Map<String, dynamic>> newFeedData = List<Map<String, dynamic>>();
-      temp.forEach((element) {
-        newFeedData.add(element.data);
       });
-      endDateTimeBefore =
-          (newFeedData.last['creationDateTimeStamp'] as Timestamp).toDate();
-      feedData.addAll(newFeedData);
-      resultStream.sink.add(new TempClass(feedData: feedData));
+
+      endDateTimeBefore = newFeeds.feeds.last.feedInfo.creationDateTimeStamp;
+      resultStream.sink.add(newFeeds);
+
     } else {
       print('last user state is not feedUpdate');
       if (await getDepartmentInfo()) {
@@ -426,30 +419,24 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           strokeWidth: 2.5,
           child: StreamBuilder(
             stream: resultStream.stream,
-            builder: (context, AsyncSnapshot<TempClass> snapshot) {
-              print(
-                  'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+            builder: (context, AsyncSnapshot<Feeds> snapshot) {
+              print('Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return FeedLoadStatus(
                   displayMessage: loadingMessage,
                 );
               } else if (snapshot.connectionState == ConnectionState.active) {
-                if (snapshot.hasData && snapshot.data.feedData.isNotEmpty) {
+                if (snapshot.hasData && snapshot.data.feeds.isNotEmpty) {
                   return ListView.builder(
-                    itemCount: snapshot.data.feedData.length,
+                    itemCount: snapshot.data.feeds?.length,
                     itemBuilder: (context, i) {
-                      Feed f = Feed(
-                          feedInfo: FeedInfo.fromFirestoreJson(
-                              snapshot.data.feedData[i]),
-                          department: Department.fromJson(departmentDetails[
-                              snapshot.data.feedData[i]['departmentUid']]));
                       return GestureDetector(
                         onLongPress: () => _onLongPress(i),
-                        onTap: () => _onTap(i, f, snapshot),
+                        onTap: () => _onTap(i, snapshot.data.feeds[i], snapshot),
                         child: Container(
                           margin: EdgeInsets.symmetric(vertical: 8.0),
-                          child: MessageBox(
-                            feed: f,
+                          child: FeedBox(
+                            feed: snapshot.data.feeds[i],
                             selected: selected[i],
                             canBeSelected: feedSelected,
                           ),
@@ -472,10 +459,11 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 }
 
-class MessageBox extends StatelessWidget {
+class FeedBox extends StatelessWidget {
+
   final Feed feed;
   final bool selected, canBeSelected;
-  MessageBox(
+  FeedBox(
       {@required this.feed,
       @required this.selected,
       @required this.canBeSelected});
