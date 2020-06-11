@@ -7,8 +7,10 @@ import 'package:hamaraprashasan/sign_in.dart';
 class LoginPage extends StatelessWidget {
 
   void onSignIn(context) async{
-    _showMyDialog(context);
     bool signed = await signInWithGoogle() ?? false;
+    if(signed){
+      _showMyDialog(context);
+    }
     bool fetchedData = await FirebaseMethods.getFirestoreUserDataInfo() ?? false;
     if(signed && fetchedData){
       print('Signed into google');

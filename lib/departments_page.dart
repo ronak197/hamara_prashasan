@@ -21,64 +21,76 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   bool isSearching = false;
   List<String> searchResults = List<String>();
   AlgoliaQuery query;
-  TextEditingController textEditingController = TextEditingController();
+  TextEditingController searchTextEditingController = TextEditingController();
 
   bool showResults = false;
-  List<Department> results = List<Department>();
-  List<Department> subscribedResults = List<Department>();
-  String message = "Fetching Subscribed Departments";
+  List<Department> searchDepartmentsResults = List<Department>();
+  List<Department> subscribedDepartments = List<Department>();
+  String errorMessage = "Fetching Subscribed Departments";
 
   void getAvailableDepartments(String searchQuery){
     Firestore db = Firestore.instance;
-    results.clear();
     setState(() {
-      message = "Searching";
+      searchDepartmentsResults?.clear();
+      errorMessage = "Searching";
+      print(errorMessage);
     });
     db.collection('departments')
         .where('areaOfAdministration', isEqualTo: searchQuery).getDocuments().asStream()
         .listen((event) {
           setState(() {
-            event.documents.forEach((snapshot) { results.add(Department.fromJson(snapshot.data)); });
+            event.documents.forEach((snapshot) {
+              searchDepartmentsResults.add(Department.fromJson(snapshot.data));
+            });
           });
         })..onDone(() {
-          if(results.isEmpty){
+          if(searchDepartmentsResults.isEmpty){
             setState(() {
-              message = 'No Available Departments';
-              print(message);
+              errorMessage = 'No available departments for your search';
+              print(errorMessage);
             });
           }
         })..onError((e){
             setState(() {
-              message = "Error Occurred";
-              print(message);
+              errorMessage = "Some unknown error occurred, Make sure you are connected proper internet connection";
+              print(errorMessage);
         });
     });
   }
 
   void getSubscribedDepartments() async{
+
     Firestore db = Firestore.instance;
-    subscribedResults?.clear();
+
+    setState(() {
+      subscribedDepartments?.clear();
+      errorMessage = "Getting subscribers";
+      print(errorMessage);
+    });
+
        db.collection('departments')
            .where('email', whereIn: User.userData.subscribedDepartmentIDs).getDocuments().asStream()
            .listen((event) {
              setState(() {
-               event.documents.forEach((snapshot) { subscribedResults.add(Department.fromJson(snapshot.data)); });
+               event.documents.forEach((snapshot) {
+                 subscribedDepartments.add(Department.fromJson(snapshot.data));
+               });
              });
        })..onDone(() {
-         if(subscribedResults.isEmpty){
+         if(subscribedDepartments.isEmpty){
            setState(() {
-             message = 'No Subscribed Departments';
-             print(message);
+             errorMessage = 'No Subscribed Departments';
+             print(errorMessage);
            });
          } else {
            setState(() {
-             results = subscribedResults;
+             searchDepartmentsResults = subscribedDepartments;
            });
          }
        })..onError((e){
          setState(() {
-           message = "Error Occurred";
-           print(message);
+           errorMessage = "Error Occurred";
+           print(errorMessage);
          });
        });
   }
@@ -92,6 +104,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
     if (!User.userData.subscribedDepartmentIDs.contains(toSubscribe)) {
       setState(() {
         User.userData.subscribedDepartmentIDs.add(toSubscribe);
+        User.saveUserData(User.userData, UserState.subscription);
       });
       await db
           .collection('users')
@@ -99,13 +112,14 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
           .updateData(User.userData.toFirestoreJson())
           .catchError((e) {
             setState(() {
-              message = 'Error Occurred';
+              errorMessage = 'Error Occurred';
             });
         return null;
       });
     } else {
       setState(() {
         User.userData.subscribedDepartmentIDs.remove(toSubscribe);
+        User.saveUserData(User.userData, UserState.subscription);
       });
       await db
           .collection('users')
@@ -113,7 +127,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
           .updateData(User.userData.toFirestoreJson())
           .catchError((e) {
             setState(() {
-              message = 'Error Occurred';
+              errorMessage = 'Error Occurred';
             });
         return null;
       });
@@ -123,22 +137,17 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
   void search(String textToSearch) async {
     print('called search');
+    searchResults.clear();
     if (textToSearch.isNotEmpty) {
       query = query.search(textToSearch);
-      searchResults.clear();
-      List<String> result = [];
+      List<String> results = List<String>();
       (await query.getObjects()).hits.forEach((element) {
         if (searchResults.length < 5) {
-          result.add(element.data['areaOfAdministration']);
+          results.add(element.data['areaOfAdministration']);
         }
       });
       setState(() {
-        searchResults = textEditingController.text.isNotEmpty ? result : [];
-      });
-    } else {
-      print('empty string');
-      setState(() {
-        searchResults.clear();
+        searchResults.addAll(results);
       });
     }
   }
@@ -160,6 +169,8 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   }
 
   Future<void> onRefresh() async{
+    searchTextEditingController.clear();
+    searchFocusNode.unfocus();
     setState(() {
       getSubscribedDepartments();
     });
@@ -170,8 +181,8 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   void initState() {
     searchFocusNode = FocusNode();
     setupAlgolia();
-    textEditingController.addListener(() {
-      search(textEditingController.text);
+    searchTextEditingController.addListener(() {
+      search(searchTextEditingController.text);
     });
     getSubscribedDepartments();
     super.initState();
@@ -179,7 +190,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
 
   @override
   void dispose() {
-    textEditingController.dispose();
+    searchTextEditingController.dispose();
     searchFocusNode.dispose();
     super.dispose();
   }
@@ -224,13 +235,13 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                   },
                   onEditingComplete: (){
                     print('completed');
-                    onPlaceSelected(textEditingController.text);
+                    onPlaceSelected(searchTextEditingController.text);
                   },
                   onSubmitted: (s){
                     searchFocusNode.unfocus();
                     print('submit');
                   },
-                  controller: textEditingController,
+                  controller: searchTextEditingController,
                   cursorColor: Colors.black,
                   style: Theme.of(context)
                       .textTheme
@@ -305,13 +316,13 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
             });
           }
         },
-        child: results.isNotEmpty ? RefreshIndicator(
+        child: RefreshIndicator(
           onRefresh: onRefresh,
           strokeWidth: 2.5,
-          child: ListView.builder(
-            itemCount: results?.length,
+          child: searchDepartmentsResults.isNotEmpty ? ListView.builder(
+            itemCount: searchDepartmentsResults?.length,
             itemBuilder: (context, index) {
-              Department department = results[index];
+              Department department = searchDepartmentsResults[index];
               bool hasSubscribed =
                   (User.userData.subscribedDepartmentIDs ?? [])
                       .contains(department.email) ??
@@ -320,15 +331,23 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                 subscribed: hasSubscribed,
                 department: department,
                 onSubscribePressed: () =>
-                    onSubscribePressed(results[index].email, hasSubscribed),
+                    onSubscribePressed(searchDepartmentsResults[index].email, hasSubscribed),
+              );
+            },
+          ) : LayoutBuilder(
+            builder: (context, constraints){
+              return SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                child: SizedBox(
+                  height: constraints.maxHeight,
+                  child: Center(
+                    child: Text(errorMessage),
+                  ),
+                ),
               );
             },
           ),
-        ) : Container(
-          child: Center(
-            child: Text(message),
-          ),
-        ),
+        )
       ),
     );
   }
