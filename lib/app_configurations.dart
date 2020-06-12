@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:hamaraprashasan/myFeeds.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hamaraprashasan/homepage.dart';
@@ -17,7 +18,7 @@ enum UserState {
   initial, // State when the user has fetched user data from firestore
   subscription, // State when the user has subscribed/unsubscribed a department
   feedUpdate, // State when the user has updated the feed
-  bookmark//State when the user has updated the bookmark id list
+  bookmark //State when the user has updated the bookmark id list
 }
 
 class AppConfigs {
@@ -82,6 +83,7 @@ class AppConfigs {
       '/newsFeed': (context) => NewsFeedPage(),
       '/feedInfo': (context) => FeedInfoPage(),
       '/bookmarks': (context) => BookmarkPage(),
+      '/myfeeds': (context) => MyFeedsPage(),
     };
   }
 }

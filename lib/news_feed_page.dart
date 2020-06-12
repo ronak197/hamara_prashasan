@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -12,10 +11,6 @@ import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-
-class Feeds {
-  List<Feed> feeds = List<Feed>();
-}
 
 class NewsFeedPage extends StatefulWidget {
   final Function(Widget Function(BuildContext) builder,
@@ -37,7 +32,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   Feeds newFeeds = new Feeds();
 
   Map<String, dynamic> departmentDetails = Map();
-  SortingType sortingType = SortingType.None;
+  SortingType sortingType = SortingType.none;
   List<Department> departments = [], selectedDepartments = [];
   List<String> categories = [], selectedCategories = [];
 
@@ -50,8 +45,6 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   bool isRunning = false;
 
   DateTime startDateTimeAfter, endDateTimeBefore;
-
-  DefaultCacheManager cacheManager = new DefaultCacheManager();
 
   Future<bool> getDepartmentInfo() async {
     print('fetching departments');
@@ -265,6 +258,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   void saveBookmarkedFeeds() async {
+    selectedFeed.forEach((e1) {
+      User.userData.bookmarkedFeeds.removeWhere((e2) => e1 == e2);
+    });
     var selIds = User.userData.bookmarkedFeeds + selectedFeed.toList();
     selectedFeed.clear();
     allSelectedFeedCleared();
@@ -273,14 +269,6 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       print("Bookmarks Saved");
     else
       print("Some Error in saving bookmarks");
-  }
-
-  void storeProfilePic() async {
-    var f = await cacheManager.getFileFromCache(User.authUser.photoUrl);
-    final bytes = await f.file.readAsBytes();
-    var encStr = base64.encode(bytes);
-    User.authUser.setPhotoString(encStr);
-    print("Stored");
   }
 
   void applyFilters(SortingType sortingType, List<Department> departments,
@@ -310,7 +298,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   @override
   Widget build(BuildContext context) {
-    bool filtered = this.sortingType != SortingType.None ||
+    bool filtered = this.sortingType != SortingType.none ||
         !listEquals(this.selectedDepartments, this.departments) ||
         !listEquals(this.selectedCategories, this.categories);
     List<String> selDepIds = selectedDepartments.map((e) => e.email).toList();
@@ -366,10 +354,8 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                           )
                         : CachedNetworkImage(
                             imageUrl: User.authUser.photoUrl,
-                            cacheManager: cacheManager,
                             fit: BoxFit.contain,
                             placeholder: (context, s) {
-                              print("Profile Url" + s);
                               return Container();
                             },
                           ),
@@ -461,8 +447,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           child: StreamBuilder(
             stream: resultStream.stream,
             builder: (context, AsyncSnapshot<Feeds> snapshot) {
-              print(
+              /* print(
                   'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+               */
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return FeedLoadStatus(
                   displayMessage: loadingMessage,

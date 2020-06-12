@@ -97,6 +97,12 @@ class _SendPostPageState extends State<SendPostPage> {
                   .add({"details": details}).then((value) {
                 print("Uploaded Feed Info Details");
               });
+              for (var field in formFields) {
+                if (field.runtimeType == PictureUploadBox) {
+                  PictureUploadBox pic = field;
+                  pic.feedPosted = true;
+                }
+              }
               Navigator.pop(context);
               Navigator.pop(context);
             },
@@ -463,53 +469,57 @@ class _SendPostPageState extends State<SendPostPage> {
           child: Form(
             key: _formKey,
             child: editing
-                ? ReorderableListView(
-                    onReorder: (oldIndex, newIndex) {
-                      if (oldIndex >= 2 && newIndex > 1) {
-                        if (oldIndex < newIndex) {
-                          newIndex -= 1;
+                ? Scrollbar(
+                    controller: scrollController,
+                    child: ReorderableListView(
+                      onReorder: (oldIndex, newIndex) {
+                        if (oldIndex >= 2 && newIndex > 1) {
+                          if (oldIndex < newIndex) {
+                            newIndex -= 1;
+                          }
+                          var f = formFields.removeAt(oldIndex);
+                          formFields.insert(newIndex, f);
+                          setState(() {});
+                        } else {
+                          showMessage(
+                              "You cannot reorder the first Title and Description fields.");
                         }
-                        var f = formFields.removeAt(oldIndex);
-                        formFields.insert(newIndex, f);
-                        setState(() {});
-                      } else {
-                        showMessage(
-                            "You cannot reorder the first Title and Description fields.");
-                      }
-                    },
-                    children: List<Widget>.generate(
-                      formFields.length,
-                      (index) {
-                        var field = formFields[index];
-                        if (index < 2)
-                          return field;
-                        else
-                          return Dismissible(
-                            key: new Key(formFields[index].hashCode.toString()),
-                            onDismissed: (dir) async {
-                              if (formFields[index].runtimeType ==
-                                  PictureUploadBox) {
-                                PictureUploadBox pic = formFields[index];
-                                pic.deleteImage(pic.data['pictureUrl']);
-                              }
-                              formFields.removeAt(index);
-                              setState(() {});
-                            },
-                            direction: DismissDirection.startToEnd,
-                            background: Container(
-                              color: Colors.red,
-                              alignment: Alignment.centerLeft,
-                              child: Icon(
-                                Icons.delete,
-                                color: Colors.white,
-                                size: 30,
-                              ),
-                              margin: EdgeInsets.symmetric(vertical: 20),
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                            ),
-                            child: field,
-                          );
                       },
+                      children: List<Widget>.generate(
+                        formFields.length,
+                        (index) {
+                          var field = formFields[index];
+                          if (index < 2)
+                            return field;
+                          else
+                            return Dismissible(
+                              key: new Key(
+                                  formFields[index].hashCode.toString()),
+                              onDismissed: (dir) async {
+                                if (formFields[index].runtimeType ==
+                                    PictureUploadBox) {
+                                  PictureUploadBox pic = formFields[index];
+                                  pic.deleteImage(pic.data['pictureUrl']);
+                                }
+                                formFields.removeAt(index);
+                                setState(() {});
+                              },
+                              direction: DismissDirection.startToEnd,
+                              background: Container(
+                                color: Colors.red,
+                                alignment: Alignment.centerLeft,
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
+                                margin: EdgeInsets.symmetric(vertical: 20),
+                                padding: EdgeInsets.symmetric(horizontal: 20),
+                              ),
+                              child: field,
+                            );
+                        },
+                      ),
                     ),
                   )
                 : /* ListView(
@@ -528,18 +538,21 @@ class _SendPostPageState extends State<SendPostPage> {
                         ) +
                         <Widget>[SizedBox(height: 150)],
                   ), */
-                SingleChildScrollView(
+                Scrollbar(
                     controller: scrollController,
-                    physics: BouncingScrollPhysics(),
-                    child: Column(
-                      children: List<Widget>.generate(
-                            formFields.length,
-                            (index) {
-                              var field = formFields[index];
-                              return field;
-                            },
-                          ) +
-                          <Widget>[SizedBox(height: 150)],
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      physics: BouncingScrollPhysics(),
+                      child: Column(
+                        children: List<Widget>.generate(
+                              formFields.length,
+                              (index) {
+                                var field = formFields[index];
+                                return field;
+                              },
+                            ) +
+                            <Widget>[SizedBox(height: 150)],
+                      ),
                     ),
                   ),
           ),
@@ -708,6 +721,11 @@ class _ContentFieldBoxState extends State<ContentFieldBox> {
 class PictureUploadBox extends StatefulWidget with FormField {
   Key key;
   ValueNotifier<bool> valid = ValueNotifier(true);
+  bool _feedPosted = false;
+  void set feedPosted(bool val) {
+    this._feedPosted = val;
+  }
+
   bool validate() {
     if (controller.value.text.isEmpty) valid.value = false;
     this.createState();
@@ -740,6 +758,7 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
   bool uploading = false;
   @override
   void dispose() {
+    if (!widget._feedPosted) widget.deleteImage(widget.data['pictureUrl']);
     print("${widget.runtimeType} disposed");
     super.dispose();
   }
@@ -750,18 +769,6 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
     if (widget.controller.value.text.isNotEmpty) {
       image = File(widget.controller.value.text);
     }
-  }
-
-  @override
-  void didUpdateWidget(PictureUploadBox oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    print("Valid  ${widget.valid}");
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    print("Hello");
   }
 
   Future<String> uploadImage(File image) async {
@@ -892,7 +899,7 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                                 source: ImageSource.gallery);
                             if (file != null) {
                               setState(() {
-                                uploading = false;
+                                uploading = true;
                               });
                               String url = await uploadImage(file);
                               if (url != null) {
@@ -1747,8 +1754,7 @@ class _TableFieldBoxState extends State<TableFieldBox> {
                   decoration: InputDecoration(
                     errorText: valid ? null : widget.errorMessage,
                     labelText: 'TABLE',
-                    hintText:
-                        "Enter Data...", //'Separate column with \',\' and row with \';\'',
+                    hintText: 'Separate column with \',\' and row with \';\'',
                     hintStyle: Theme.of(context)
                         .textTheme
                         .headline2

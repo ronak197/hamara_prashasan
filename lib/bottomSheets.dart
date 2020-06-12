@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:hamaraprashasan/editAccount.dart';
+import 'dart:convert';
 
 class AccountBottomSheet extends StatefulWidget {
   @override
@@ -118,9 +119,18 @@ class _AccountBottomSheetState extends State<AccountBottomSheet> {
                 color: Colors.white,
               ),
               child: ClipOval(
-                child: CachedNetworkImage(
-                  imageUrl: User.authUser.photoUrl,
-                ),
+                child: User.authUser.photoString != null
+                    ? Image.memory(
+                        base64.decode(User.authUser.photoString),
+                        fit: BoxFit.contain,
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: User.authUser.photoUrl,
+                        fit: BoxFit.contain,
+                        placeholder: (context, s) {
+                          return Container();
+                        },
+                      ),
               ),
             ),
           ),
@@ -139,13 +149,13 @@ class FilterBottomSheet extends StatefulWidget {
   _FilterBottomSheetState createState() => _FilterBottomSheetState();
 }
 
-enum SortingType { Department, Category, None }
+enum SortingType { department, category, none }
 
 enum FilterType { All, Department, Category }
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
   int selectedIndex = 0;
-  SortingType _sortingType = SortingType.None;
+  SortingType _sortingType = SortingType.none;
   List<String> sortingList = [
     "Department",
     "Category",
@@ -472,7 +482,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 FlatButton(
                   onPressed: () {
                     setState(() {
-                      _sortingType = SortingType.None;
+                      _sortingType = SortingType.none;
                       for (int i = 0; i < departmentSelected.length; i++) {
                         departmentSelected[i] = true;
                       }
