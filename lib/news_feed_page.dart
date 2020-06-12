@@ -41,51 +41,59 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   String errorMessage =
       'Some Error Occurred, Make sure you are connected to the internet.';
   String loadingMessage = 'Loading ...';
+  String noSubscriptionMessage = "No subscribed departments";
 
   bool isRunning = false;
 
   DateTime startDateTimeAfter, endDateTimeBefore;
 
+  bool noMoreFeeds = false;
+
   Future<bool> getDepartmentInfo() async {
     print('fetching departments');
     Firestore db = Firestore.instance;
 
-    bool success = await db
-        .collection('departments')
-        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
-        .getDocuments()
-        .then((value) {
-      value.documents.forEach((element) {
-        if (!departmentDetails.containsKey(element.data['email'])) {
-          departmentDetails[element.data['email']] = element.data;
-        }
-      });
-      departmentDetails.forEach((key, value) {
-        departments.add(new Department.fromJson(value));
-      });
-      selectedDepartments = List.from(departments);
-      Set<String> cat = new Set<String>();
-      departments.forEach((d) {
-        cat.add(d.category);
-      });
-      categories = cat.toList();
-      selectedCategories = new List.from(categories);
-      if (this.mounted) setState(() {});
-      return true;
-    }).catchError((e) {
-      resultStream.sink.addError(errorMessage);
-      print('Error in query getDepartmentInfo $e');
+    if(User.userData.subscribedDepartmentIDs.isEmpty){
+      print('No subscribed departments');
+      resultStream.sink.addError(noSubscriptionMessage);
       return false;
-    }).whenComplete(() {
-      print('Completed query getDepartmentInfo');
-      return true;
-    }).timeout(Duration(seconds: 5), onTimeout: () {
-      resultStream.sink.addError(errorMessage);
-      print('Timeout in query getDepartmentInfo');
-      return false;
-    });
-
-    return success;
+    } else {
+      bool success = await db
+          .collection('departments')
+          .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+          .getDocuments()
+          .then((value) {
+        value.documents.forEach((element) {
+          if (!departmentDetails.containsKey(element.data['email'])) {
+            departmentDetails[element.data['email']] = element.data;
+          }
+        });
+        departmentDetails.forEach((key, value) {
+          departments.add(new Department.fromJson(value));
+        });
+        selectedDepartments = List.from(departments);
+        Set<String> cat = new Set<String>();
+        departments.forEach((d) {
+          cat.add(d.category);
+        });
+        categories = cat.toList();
+        selectedCategories = new List.from(categories);
+        if (this.mounted) setState(() {});
+        return true;
+      }).catchError((e) {
+        resultStream.sink.addError(errorMessage);
+        print('Error in query getDepartmentInfo $e');
+        return false;
+      }).whenComplete(() {
+        print('Completed query getDepartmentInfo');
+        return true;
+      }).timeout(Duration(seconds: 5), onTimeout: () {
+        resultStream.sink.addError(errorMessage);
+        print('Timeout in query getDepartmentInfo');
+        return false;
+      });
+      return success;
+    }
   }
 
   Future<bool> getMoreFeeds() async {
@@ -114,6 +122,10 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                     departmentDetails[element.data['departmentUid']]),
               ));
             });
+            if(value.documents.isEmpty){
+              print('No new feeds');
+              noMoreFeeds = true;
+            }
           })
           .timeout(Duration(seconds: 3), onTimeout: () {
             resultStream.sink.addError(errorMessage);
@@ -139,8 +151,6 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         User.lastUserState = UserState.feedUpdate;
         getLatestFeeds();
         print('Gonna fetch getLatestFeeds');
-      } else {
-        resultStream.sink.addError(errorMessage);
       }
     }
     return true;
@@ -184,7 +194,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         getLatestFeeds();
         print('Gonna fetch getLatestFeeds');
       } else {
-        resultStream.sink.addError(errorMessage);
+//        resultStream.sink.addError(errorMessage);
       }
     }
     return true;
@@ -206,9 +216,12 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       isRunning = true;
       print(
           'isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
-      if (moreFeeds) {
-        await getMoreFeeds();
+      if (moreFeeds){
+        if(noMoreFeeds == false){
+          await getMoreFeeds();
+        }
       } else {
+        noMoreFeeds = false;
         await getLatestFeeds();
       }
       isRunning = false;
@@ -477,7 +490,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                   );
                 } else if (snapshot.hasError) {
                   return FeedLoadStatus(
-                    displayMessage: errorMessage,
+                    displayMessage: snapshot.error.toString(),
                   );
                 }
               }
