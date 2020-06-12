@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:algolia/algolia.dart';
+import 'dart:convert';
 
 class DepartmentsPage extends StatefulWidget {
   @override
@@ -14,7 +15,6 @@ class DepartmentsPage extends StatefulWidget {
 }
 
 class _DepartmentsPageState extends State<DepartmentsPage> {
-
   Algolia algolia;
 
   FocusNode searchFocusNode;
@@ -28,15 +28,18 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   List<Department> subscribedDepartments = List<Department>();
   String errorMessage = "Fetching Subscribed Departments";
 
-  void getAvailableDepartments(String searchQuery){
+  void getAvailableDepartments(String searchQuery) {
     Firestore db = Firestore.instance;
     setState(() {
       searchDepartmentsResults?.clear();
       errorMessage = "Searching";
       print(errorMessage);
     });
-    db.collection('departments')
-        .where('areaOfAdministration', isEqualTo: searchQuery).getDocuments().asStream()
+    db
+        .collection('departments')
+        .where('areaOfAdministration', isEqualTo: searchQuery)
+        .getDocuments()
+        .asStream()
         .listen((event) {
           setState(() {
             event.documents.forEach((snapshot) {
@@ -98,7 +101,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   void onSubscribePressed(String toSubscribe, bool hasSubscribed) async {
     Firestore db = Firestore.instance;
 
-    if(User.lastUserState != UserState.initial){
+    if (User.lastUserState != UserState.initial) {
       await FirebaseMethods.getFirestoreUserDataInfo();
     }
     if (!User.userData.subscribedDepartmentIDs.contains(toSubscribe)) {
@@ -152,11 +155,11 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
     }
   }
 
-  void onPlaceSelected(String place) async{
+  void onPlaceSelected(String place) async {
     setState(() {
       isSearching = false;
     });
-    if(place.isNotEmpty) {
+    if (place.isNotEmpty) {
       getAvailableDepartments(place.toLowerCase().trim());
     }
   }
@@ -175,7 +178,6 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
       getSubscribedDepartments();
     });
   }
-
 
   @override
   void initState() {
@@ -204,7 +206,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
         excludeHeaderSemantics: true,
         titleSpacing: 0.0,
         leading: GestureDetector(
-          onTap: (){
+          onTap: () {
             Scaffold.of(context).openDrawer();
           },
           child: Container(
@@ -212,12 +214,20 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.blue,
-              image: DecorationImage(
-                  fit: BoxFit.cover,
-                  image: CachedNetworkImageProvider(
-                    User.authUser.photoUrl,
-                  )
-              ),
+            ),
+            child: ClipOval(
+              child: User.authUser.photoString != null
+                  ? Image.memory(
+                      base64.decode(User.authUser.photoString),
+                      fit: BoxFit.contain,
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: User.authUser.photoUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (context, s) {
+                        return Container();
+                      },
+                    ),
             ),
           ),
         ),
@@ -233,11 +243,11 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                       isSearching = true;
                     });
                   },
-                  onEditingComplete: (){
+                  onEditingComplete: () {
                     print('completed');
                     onPlaceSelected(searchTextEditingController.text);
                   },
-                  onSubmitted: (s){
+                  onSubmitted: (s) {
                     searchFocusNode.unfocus();
                     print('submit');
                   },
@@ -267,8 +277,8 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
               child: IconButton(
                 icon: Icon(isSearching ? Icons.close : Icons.search),
                 color: Colors.black54,
-                onPressed: (){
-                  if(isSearching){
+                onPressed: () {
+                  if (isSearching) {
                     searchFocusNode.unfocus();
                   } else {
                     searchFocusNode.requestFocus();
@@ -284,26 +294,66 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
       ),
       body: isSearching && searchResults?.length != 0
           ? ListView.builder(
-        scrollDirection: Axis.vertical,
-        shrinkWrap: true,
-        itemCount: searchResults.length,
-        itemBuilder: (context, index) {
-          return InkWell(
-            onTap: () => onPlaceSelected(searchResults[index]),
-            highlightColor: Colors.orange[100],
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 8.0),
-              decoration: BoxDecoration(
-                  border: Border.symmetric(
-                      vertical: BorderSide(
-                          color: Colors.grey, width: 0.2))),
-              child: Text(
-                searchResults[index],
-                style: Theme.of(context)
-                    .textTheme
-                    .headline3
-                    .copyWith(color: Color(0xff6f6f6f)),
-              ),
+              scrollDirection: Axis.vertical,
+              shrinkWrap: true,
+              itemCount: searchResults.length,
+              itemBuilder: (context, index) {
+                return InkWell(
+                  onTap: () => onPlaceSelected(searchResults[index]),
+                  highlightColor: Colors.orange[100],
+                  child: Container(
+                    padding:
+                        EdgeInsets.symmetric(vertical: 15.0, horizontal: 8.0),
+                    decoration: BoxDecoration(
+                        border: Border.symmetric(
+                            vertical:
+                                BorderSide(color: Colors.grey, width: 0.2))),
+                    child: Text(
+                      searchResults[index],
+                      style: Theme.of(context)
+                          .textTheme
+                          .headline3
+                          .copyWith(color: Color(0xff6f6f6f)),
+                    ),
+                  ),
+                );
+              },
+            )
+          : GestureDetector(
+              onTap: () {
+                if (searchFocusNode.hasFocus) {
+                  searchFocusNode.unfocus();
+                  setState(() {
+                    isSearching = false;
+                  });
+                }
+              },
+              child: results.isNotEmpty
+                  ? RefreshIndicator(
+                      onRefresh: onRefresh,
+                      strokeWidth: 2.5,
+                      child: ListView.builder(
+                        itemCount: results?.length,
+                        itemBuilder: (context, index) {
+                          Department department = results[index];
+                          bool hasSubscribed =
+                              (User.userData.subscribedDepartmentIDs ?? [])
+                                      .contains(department.email) ??
+                                  false;
+                          return DepartmentsMessageBox(
+                            subscribed: hasSubscribed,
+                            department: department,
+                            onSubscribePressed: () => onSubscribePressed(
+                                results[index].email, hasSubscribed),
+                          );
+                        },
+                      ),
+                    )
+                  : Container(
+                      child: Center(
+                        child: Text(message),
+                      ),
+                    ),
             ),
           );
         },

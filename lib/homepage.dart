@@ -6,6 +6,9 @@ import 'package:hamaraprashasan/bookmarks.dart';
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
 import 'package:hamaraprashasan/departments_page.dart';
 import 'package:hamaraprashasan/news_feed_page.dart';
+import 'package:hamaraprashasan/app_configurations.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class HomePage extends StatefulWidget {
   @override
@@ -24,12 +27,17 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    if (User.authUser.photoString == null) {
+      storeProfilePic();
+    }
     _children = [
       NewsFeedPage(
         showBottomSheet: showBottomSheet,
       ),
       DepartmentsPage(),
-      BookmarkPage(),
+      BookmarkPage(
+        showBottomSheet: showBottomSheet,
+      ),
       Center(
         child: Text('Chat Page'),
       ),
@@ -51,6 +59,15 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       bottomSheetOpen = false;
     });
+  }
+
+  void storeProfilePic() async {
+    var resp = await http.get(User.authUser.photoUrl);
+    final bytes = resp.bodyBytes;
+    var encStr = base64.encode(bytes);
+    User.authUser.setPhotoString(encStr);
+    User.saveUserData(User.userData, User.lastUserState);
+    print("Profile Pic Stored");
   }
 
   @override

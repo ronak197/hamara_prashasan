@@ -11,6 +11,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/classes.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:image_downloader/image_downloader.dart';
 
 class FeedInfoPage extends StatefulWidget {
   final Feed feed;
@@ -41,15 +43,17 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
         var doc = sp.documents.first;
         doc.reference.collection("feedInfoDetails").getDocuments().then(
             (QuerySnapshot qs) {
-          if (qs.documents.isNotEmpty) {
+          if (this.mounted && qs.documents.isNotEmpty) {
             setState(() {
               content = List.from(qs.documents[0].data["details"]);
             });
           }
-        }, onError: () {
-          setState(() {
-            content = [];
-          });
+        }, onError: (e) {
+          print(e);
+          if (this.mounted)
+            setState(() {
+              content = [];
+            });
           print("Error while getting feedInfoDetails!!");
         });
       }
@@ -164,7 +168,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                 ),
               ] +
               <Widget>[
-                TitleBox(feed.feedInfo.title),
+                TitleBox(feed.feedInfo.title, isFirstTitle: true),
                 ContentBox(feed.feedInfo.description),
               ] +
               List<Widget>.generate(content.length, (i) {
@@ -208,16 +212,24 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
 
 class TitleBox extends StatelessWidget {
   final String title;
-  TitleBox(this.title);
+  bool isFirstTitle = false;
+  TitleBox(this.title, {this.isFirstTitle = false});
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 20, horizontal: 25),
-      child: Text(title,
-          style: Theme.of(context)
-              .textTheme
-              .headline4
-              .copyWith(fontWeight: FontWeight.bold)),
+      child: Text(
+        title,
+        style: isFirstTitle
+            ? Theme.of(context)
+                .textTheme
+                .headline4
+                .copyWith(fontWeight: FontWeight.bold)
+            : Theme.of(context)
+                .textTheme
+                .headline3
+                .copyWith(fontWeight: FontWeight.bold),
+      ),
     );
   }
 }
@@ -231,15 +243,15 @@ class ContentBox extends StatelessWidget {
       margin: EdgeInsets.symmetric(vertical: 15, horizontal: 25),
       child: RichText(
         text: TextSpan(
+          style: Theme.of(context)
+              .textTheme
+              .headline2
+              .copyWith(color: Colors.black54),
           children: [
             WidgetSpan(
-              child: Text(data[0].toUpperCase(),
-                  style: Theme.of(context).textTheme.headline2),
+              child: Text(data[0].toUpperCase()),
             ),
-            TextSpan(
-              text: data.substring(1),
-              style: Theme.of(context).textTheme.headline2,
-            ),
+            TextSpan(text: data.substring(1)),
           ],
         ),
       ),
@@ -253,32 +265,29 @@ class PictureBox extends StatelessWidget {
   PictureBox(this.pictureUrl, this.isLocal);
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 2,
-            offset: Offset(5, 5),
-            color: Colors.grey.withOpacity(0.3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => PictureView(pictureUrl)));
+      },
+      child: Container(
+        constraints: BoxConstraints(maxHeight: 350),
+        margin: EdgeInsets.symmetric(vertical: 20),
         child: isLocal
             ? Image.file(
                 File(pictureUrl),
                 fit: BoxFit.contain,
               )
-            : CachedNetworkImage(
-                imageUrl: pictureUrl,
-                fit: BoxFit.contain,
-                placeholder: (context, s) => Container(
-                  alignment: Alignment.center,
-                  height: 50,
-                  child: CircularProgressIndicator(),
+            : Hero(
+                tag: pictureUrl,
+                child: CachedNetworkImage(
+                  imageUrl: pictureUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, s) => Container(
+                    alignment: Alignment.center,
+                    height: 50,
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
               ),
       ),
@@ -358,8 +367,11 @@ class _MapBoxState extends State<MapBox> {
         markers: places,
         zoomControlsEnabled: true,
         zoomGesturesEnabled: true,
-        gestureRecognizers: Set()
-          ..add(Factory<PanGestureRecognizer>(() => PanGestureRecognizer())),
+        gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>[
+          new Factory<OneSequenceGestureRecognizer>(
+            () => new EagerGestureRecognizer(),
+          ),
+        ].toSet(),
       ),
     );
   }
@@ -455,6 +467,49 @@ class TableBox extends StatelessWidget {
                   }),
             );
           }),
+        ),
+      ),
+    );
+  }
+}
+
+class PictureView extends StatelessWidget {
+  final String url;
+  PictureView(this.url);
+  GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0.0,
+        actions: [
+          IconButton(
+            padding: EdgeInsets.all(5),
+            icon: Icon(Icons.save),
+            onPressed: () async {
+              var imageId = await ImageDownloader.downloadImage(url,
+                  destination: AndroidDestinationType.directoryDownloads);
+              print(imageId);
+              var name = await ImageDownloader.findName(imageId);
+              print(name);
+              _scaffoldKey.currentState.showSnackBar(
+                SnackBar(
+                  backgroundColor: Colors.green,
+                  content: new Text("Image saved to Gallery"),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Hero(
+        tag: url,
+        child: PhotoView(
+          imageProvider: CachedNetworkImageProvider(url),
         ),
       ),
     );

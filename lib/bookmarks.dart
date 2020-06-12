@@ -5,12 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:hamaraprashasan/news_feed_page.dart';
 import 'package:rxdart/subjects.dart';
 
 class BookmarkPage extends StatefulWidget {
+  final Function(Widget Function(BuildContext) builder,
+      {double elevation,
+      ShapeBorder shape,
+      Color backgroundColor}) showBottomSheet;
+  BookmarkPage({this.showBottomSheet});
   @override
   _BookmarkPageState createState() => _BookmarkPageState();
 }
@@ -21,18 +26,37 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   bool bookmarkSelected = false;
   bool isRunning = false;
-  SortingType sortingType = SortingType.None;
-  BehaviorSubject<TempClass> resultStream = BehaviorSubject<TempClass>();
+  BehaviorSubject<Feeds> resultStream = BehaviorSubject<Feeds>();
   List<Map<String, dynamic>> feedData = List<Map<String, dynamic>>();
   DocumentSnapshot lastFeedDetails;
   Map<String, dynamic> departmentDetails = Map();
-  List<Department> departments = [], selectedDepartments = [];
-  List<String> categories = [], selectedCategories = [];
+  List<Department> departments = [];
+  int feedLimit = 2;
+  Feeds newFeeds = new Feeds();
+  List<String> currentBookmarks = [];
+  ScrollController _scrollController = new ScrollController();
 
   String errorMessage =
           'Some Error Occurred, Make sure you are connected to the internet.',
       loadingMessage = 'Loading ...',
       noBookmarkMessage = "No Bookmarked Feeds.";
+
+  void getCurrentBookmarks() {
+    currentBookmarks =
+        new List<String>.from(User.userData.bookmarkedFeeds).reversed.toList();
+  }
+
+  List<String> getToBeFetchedList() {
+    print(currentBookmarks);
+    if (currentBookmarks.length < feedLimit) {
+      var list = List<String>.from(currentBookmarks);
+      currentBookmarks = [];
+      return list;
+    }
+    var list = currentBookmarks.sublist(0, feedLimit);
+    currentBookmarks.removeRange(0, feedLimit);
+    return list;
+  }
 
   Future<bool> getDepartmentInfo() async {
     print('fetching departments');
@@ -51,25 +75,19 @@ class _BookmarkPageState extends State<BookmarkPage> {
       departmentDetails.forEach((key, value) {
         departments.add(new Department.fromJson(value));
       });
-      selectedDepartments = List.from(departments);
-      Set<String> cat = new Set<String>();
-      departments.forEach((d) {
-        cat.add(d.category);
-      });
-      categories = cat.toList();
-      selectedCategories = new List.from(categories);
+
       if (this.mounted) setState(() {});
       return true;
     }).catchError((e) {
       resultStream.sink.addError(errorMessage);
-      print('Error in query getDepartmentInfo $e');
+      print('Error in query getDepartmentInfo in bookmarks $e');
       return false;
     }).whenComplete(() {
-      print('Completed query getDepartmentInfo');
+      print('Completed query getDepartmentInfo in bookmarks');
       return true;
     }).timeout(Duration(seconds: 5), onTimeout: () {
       resultStream.sink.addError(errorMessage);
-      print('Timeout in query getDepartmentInfo');
+      print('Timeout in query getDepartmentInfo in bookmarks');
       return false;
     });
 
@@ -78,122 +96,95 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   Future<bool> getMoreBookmarks() async {
     Firestore db = Firestore.instance;
-
-    print('fetching more bookmarks');
-
-    List<Map<String, dynamic>> initialFeedData = feedData;
-
-    if (User.userData.bookmarkedFeeds.isEmpty) {
-      resultStream.sink.addError(noBookmarkMessage);
-      return true;
-    }
+    print('fetching more feeds');
 
     Query resQuery;
-    if (sortingType == SortingType.Category) {
-    } else if (sortingType == SortingType.Department) {
-      resQuery = db
-          .collection('feeds')
-          .where('feedId', whereIn: User.userData.bookmarkedFeeds)
-          .orderBy('departmentUid', descending: false);
-    } else {
-      resQuery = db
-          .collection('feeds')
-          .where('feedId', whereIn: User.userData.bookmarkedFeeds);
-    }
-    List<DocumentSnapshot> temp = (await resQuery
-            .startAfterDocument(lastFeedDetails)
-            .limit(2)
-            .getDocuments()
-            .timeout(Duration(seconds: 3), onTimeout: () {
+    resQuery =
+        db.collection('feeds').where('feedId', whereIn: getToBeFetchedList());
+
+    await resQuery.limit(feedLimit).getDocuments().then((value) {
+      List<Feed> fetchedFeeds = [];
+      value.documents.forEach((element) {
+        fetchedFeeds.add(Feed(
+          feedId: element.data['feedId'],
+          feedInfo: FeedInfo.fromFirestoreJson(element.data),
+          department: Department.fromJson(
+              departmentDetails[element.data['departmentUid']]),
+        ));
+      });
+      fetchedFeeds.sort((f1, f2) {
+        int i = User.userData.bookmarkedFeeds.indexOf(f1.feedId),
+            j = User.userData.bookmarkedFeeds.indexOf(f2.feedId);
+        if (i < j)
+          return -1;
+        else if (i > j)
+          return 1;
+        else
+          return 0;
+      });
+
+      newFeeds.feeds += fetchedFeeds.reversed.toList();
+    }).timeout(Duration(seconds: 3), onTimeout: () {
       resultStream.sink.addError(errorMessage);
+      isRunning = false;
       return null;
     }).catchError((e) {
       resultStream.sink.addError(errorMessage);
+      isRunning = false;
       print('onError in query for getMoreBookmarks');
     }).whenComplete(() {
       print('OnDone in query for getMoreBookmarks');
-    }))
-        .documents;
-
-    List<Map<String, dynamic>> newFeedData = List<Map<String, dynamic>>();
-    temp.forEach((element) {
-      var data = new Map<String, dynamic>();
-      data.addAll(element.data);
-      data.addAll({"feedReference": element.reference});
-      newFeedData.add(data);
     });
 
-    if (newFeedData.isNotEmpty) {
-      if (sortingType == SortingType.Category) {
-      } else if (sortingType == SortingType.Department) {
-        lastFeedDetails = temp.last;
-      } else {
-        lastFeedDetails = temp.last;
-      }
-      feedData.addAll(newFeedData);
-      resultStream.sink.add(new TempClass(feedData: feedData));
-    }
+    resultStream.sink.add(newFeeds);
 
     return true;
   }
 
   Future<bool> getLatestBookmarks() async {
     Firestore db = Firestore.instance;
-
-    print('fetching Bookmarks');
-
-    feedData.clear();
-
-    if (User.userData.bookmarkedFeeds.isEmpty) {
-      resultStream.sink.addError(noBookmarkMessage);
-      return true;
-    }
+    print('fetching bookmarks');
+    newFeeds = new Feeds();
+    getCurrentBookmarks();
 
     Query resQuery;
-    if (sortingType == SortingType.Category) {
-    } else if (sortingType == SortingType.Department) {
-      resQuery = db
-          .collection('feeds')
-          .where('feedId', whereIn: User.userData.bookmarkedFeeds)
-          .orderBy('departmentUid', descending: false);
-    } else {
-      resQuery = db
-          .collection('feeds')
-          .where('feedId', whereIn: User.userData.bookmarkedFeeds);
-    }
+    resQuery =
+        db.collection('feeds').where('feedId', whereIn: getToBeFetchedList());
 
-    List<DocumentSnapshot> temp = (await resQuery
-            .limit(2)
-            .getDocuments()
-            .timeout(Duration(seconds: 3), onTimeout: () {
-      print("onTimeout in query for getLatestBookmarks");
+    await resQuery.limit(feedLimit).getDocuments().then((value) {
+      List<Feed> fetchedFeeds = [];
+      value.documents.forEach((element) {
+        fetchedFeeds.add(Feed(
+          feedId: element.data['feedId'],
+          feedInfo: FeedInfo.fromFirestoreJson(element.data),
+          department: Department.fromJson(
+              departmentDetails[element.data['departmentUid']]),
+        ));
+      });
+      fetchedFeeds.sort((f1, f2) {
+        int i = User.userData.bookmarkedFeeds.indexOf(f1.feedId),
+            j = User.userData.bookmarkedFeeds.indexOf(f2.feedId);
+        if (i < j)
+          return -1;
+        else if (i > j)
+          return 1;
+        else
+          return 0;
+      });
+      newFeeds.feeds += fetchedFeeds.reversed.toList();
+    }).timeout(Duration(seconds: 3), onTimeout: () {
       resultStream.sink.addError(errorMessage);
+      isRunning = false;
       return null;
     }).catchError((e) {
-      print(e);
       resultStream.sink.addError(errorMessage);
+      isRunning = false;
       print('onError in query for getLatestBookmarks');
     }).whenComplete(() {
       print('OnDone in query for getLatestBookmarks');
-    }))
-        .documents;
-
-    List<Map<String, dynamic>> newFeedData = List<Map<String, dynamic>>();
-    temp.forEach((element) {
-      var data = new Map<String, dynamic>();
-      data.addAll(element.data);
-      data.addAll({"feedReference": element.reference});
-      newFeedData.add(data);
     });
-    if (sortingType == SortingType.Category) {
-    } else if (sortingType == SortingType.Department) {
-      lastFeedDetails = temp.last;
-    } else {
-      lastFeedDetails = temp.last;
-    }
 
-    feedData.addAll(newFeedData);
-    resultStream.sink.add(new TempClass(feedData: feedData));
+    resultStream.sink.add(newFeeds);
 
     return true;
   }
@@ -205,6 +196,9 @@ class _BookmarkPageState extends State<BookmarkPage> {
     if (moreFeeds == latestFeeds || isRunning == true) {
       return;
     } else if (moreFeeds != latestFeeds && isRunning == false) {
+      if (moreFeeds && currentBookmarks.isEmpty)
+        return;
+      else if (latestFeeds && User.userData.bookmarkedFeeds.isEmpty) return;
       isRunning = true;
       print(
           'isRunning ${latestFeeds ? 'latestBookmarks' : 'moreBookmarks'} $isRunning');
@@ -247,7 +241,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
     }
   }
 
-  void _onTap(int i, Feed f, Map<String, dynamic> feedData) {
+  void _onTap(int i, Feed f) {
     bool anySelected = selectedBookmarks.isNotEmpty;
     if (anySelected) {
       setState(() {
@@ -261,8 +255,24 @@ class _BookmarkPageState extends State<BookmarkPage> {
     } else {
       Navigator.of(context).pushNamed("/feedInfo", arguments: {
         "feed": f,
-        "feedReference": feedData['feedReference'],
       });
+    }
+  }
+
+  void deleteBookmarks() async {
+    var finalList = User.userData.bookmarkedFeeds;
+    selectedBookmarks.forEach((element) {
+      finalList.remove(element);
+      newFeeds.feeds.removeWhere((f) => f.feedId == element);
+    });
+    selectedBookmarks.clear();
+    allSelectedBookmarkCleared();
+    setState(() {});
+    bool deleted = await FirebaseMethods.saveBookmarks(finalList);
+    if (deleted) {
+      print("Bookmarks deleted");
+    } else {
+      print("Error while deleting the bookmarks");
     }
   }
 
@@ -283,10 +293,6 @@ class _BookmarkPageState extends State<BookmarkPage> {
 
   @override
   Widget build(BuildContext context) {
-    bool filtered = this.sortingType != SortingType.None ||
-        !listEquals(this.selectedDepartments, this.departments) ||
-        !listEquals(this.selectedCategories, this.categories);
-    List<String> selDepIds = selectedDepartments.map((e) => e.email).toList();
     return Scaffold(
       appBar: bookmarkSelected
           ? AppBar(
@@ -312,7 +318,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                       size: 25.0,
                       color: Color(0xffea3953),
                     ),
-                    onPressed: () {},
+                    onPressed: deleteBookmarks,
                   ),
                 )
               ],
@@ -353,15 +359,33 @@ class _BookmarkPageState extends State<BookmarkPage> {
               backgroundColor: Colors.white,
               elevation: 0.0,
               titleSpacing: 0.0,
-              actions: [
-                Container(
-                  padding: EdgeInsets.all(10.0),
-                  child: Icon(
-                    Icons.filter_list,
-                    size: 20.0,
+              /* actions: [
+                GestureDetector(
+                  onTap: () async {
+                    widget.showBottomSheet(
+                      (context) {
+                        return FilterBottomSheet(
+                          departments: departmentDetails,
+                          applyFilters: applyFilters,
+                        );
+                      },
+                      elevation: 40,
+                      backgroundColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(10)),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(10.0),
+                    child: Icon(
+                      Icons.filter_list,
+                      size: 20.0,
+                    ),
                   ),
-                )
-              ],
+                ),
+              ], */
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -415,52 +439,43 @@ class _BookmarkPageState extends State<BookmarkPage> {
           strokeWidth: 2.5,
           child: StreamBuilder(
             stream: resultStream.stream,
-            builder: (context, AsyncSnapshot<TempClass> snapshot) {
+            builder: (context, AsyncSnapshot<Feeds> snapshot) {
               print(
                   'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return BookmarkLoadStatus(
+                return FeedLoadStatus(
                   displayMessage: loadingMessage,
                 );
               } else if (snapshot.connectionState == ConnectionState.active) {
-                if (snapshot.hasData && snapshot.data.feedData.isNotEmpty) {
-                  print(snapshot.data);
-                  return ListView.builder(
-                    itemCount: snapshot.data.feedData.length,
-                    itemBuilder: (context, i) {
-                      if (departmentDetails.containsKey(
-                          snapshot.data.feedData[i]['departmentUid'])) {
-                        Feed f = Feed(
-                            feedInfo: FeedInfo.fromFirestoreJson(
-                                snapshot.data.feedData[i]),
-                            department: Department.fromJson(departmentDetails[
-                                snapshot.data.feedData[i]['departmentUid']]));
-                        if (selDepIds.contains(f.department.email) &&
-                            selectedCategories
-                                .contains(f.department.category)) {
-                          return GestureDetector(
-                            onLongPress: () => _onLongPress(f.feedId),
-                            onTap: () =>
-                                _onTap(i, f, snapshot.data.feedData[i]),
-                            child: Container(
-                              margin: EdgeInsets.symmetric(vertical: 8.0),
-                              child: MessageBox(
-                                feed: f,
-                                selected: selectedBookmarks.contains(f.feedId),
-                                canBeSelected: bookmarkSelected,
-                              ),
+                if (snapshot.hasData && snapshot.data.feeds.isNotEmpty) {
+                  return Scrollbar(
+                    //isAlwaysShown: true,
+                    controller: _scrollController,
+                    child: ListView.builder(
+                      itemCount: snapshot.data.feeds.length,
+                      itemBuilder: (context, i) {
+                        Feed f = snapshot.data.feeds[i];
+                        return GestureDetector(
+                          onLongPress: () => _onLongPress(f.feedId),
+                          onTap: () => _onTap(i, f),
+                          child: Container(
+                            margin: EdgeInsets.symmetric(vertical: 8.0),
+                            child: MessageBox(
+                              feed: f,
+                              selected: selectedBookmarks.contains(f.feedId),
+                              canBeSelected: bookmarkSelected,
                             ),
-                          );
-                        } else {
-                          return SizedBox();
-                        }
-                      } else {
-                        return SizedBox();
-                      }
-                    },
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                } else if (snapshot.data.feeds.isEmpty) {
+                  return FeedLoadStatus(
+                    displayMessage: noBookmarkMessage,
                   );
                 } else if (snapshot.hasError) {
-                  return BookmarkLoadStatus(
+                  return FeedLoadStatus(
                     displayMessage: snapshot.error,
                   );
                 }
@@ -656,38 +671,6 @@ class MessageBox extends StatelessWidget {
                   )
                 ]
               : <Widget>[]),
-    );
-  }
-}
-
-class BookmarkLoadStatus extends StatelessWidget {
-  final String displayMessage;
-
-  BookmarkLoadStatus({@required this.displayMessage});
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        physics: AlwaysScrollableScrollPhysics(),
-        child: SizedBox(
-          height: constraints.maxHeight,
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    displayMessage,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headline2,
-                  )
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

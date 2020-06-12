@@ -246,8 +246,6 @@ class TableData {
   TableData({this.headers, this.contents});
 }
 
-class TempClass {
-  List<Map<String, dynamic>> feedData = List<Map<String, dynamic>>();
-
-  TempClass({this.feedData});
+class Feeds {
+  List<Feed> feeds = List<Feed>();
 }

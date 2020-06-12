@@ -139,6 +139,29 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                       ],
                     ),
                   ),
+                  InkWell(
+                    onTap: () async {
+                      Navigator.pushNamed(context, "/myfeeds");
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(20.0),
+                          child: Icon(
+                            Icons.rss_feed,
+                            color: Color(0xff303046),
+                            size: 18.0,
+                          ),
+                        ),
+                        Text(
+                          'My Feeds',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
                   Divider(),
                   InkWell(
                     onTap: () {},
@@ -209,22 +232,28 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                   Container(
                     padding: EdgeInsets.all(20.0),
                     child: RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Privacy Policy',
-                            style: Theme.of(context).textTheme.headline1.copyWith(color: Colors.grey,),
-                          ),
-                          TextSpan(
-                            text: '  ᛫  ',
-                            style: Theme.of(context).textTheme.headline1.copyWith(color: Colors.grey),
-                          ),
-                          TextSpan(
-                            text: 'v1.0.0',
-                            style: Theme.of(context).textTheme.headline1.copyWith(color: Colors.grey),
-                          ),
-                        ]
-                      ),
+                      text: TextSpan(children: [
+                        TextSpan(
+                          text: 'Privacy Policy',
+                          style: Theme.of(context).textTheme.headline1.copyWith(
+                                color: Colors.grey,
+                              ),
+                        ),
+                        TextSpan(
+                          text: '  ᛫  ',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headline1
+                              .copyWith(color: Colors.grey),
+                        ),
+                        TextSpan(
+                          text: 'v1.0.0',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headline1
+                              .copyWith(color: Colors.grey),
+                        ),
+                      ]),
                     ),
                   ),
                 ],
