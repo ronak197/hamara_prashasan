@@ -33,7 +33,7 @@ class LoginPage extends StatelessWidget {
                 onWillPop: () async => false,
                 child: AlertDialog(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
                   title: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -62,141 +62,106 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Stack(
-          children: [
-            ClipPath(
-              clipper: WhiteTopClipper(),
-              child: Container(
-                color: Color(0xfff4f5f7),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Container(
+                width: 250.0,
+                padding: EdgeInsets.only(top: 30.0),
+                child: Image.asset('assets/parliament.png',),
               ),
-            ),
-            ClipPath(
-              clipper: GreyTopClipper(),
-              child: Container(
-                color: Color(0xff306eff),
+              Padding(
+                padding: EdgeInsets.only(top: 20.0),
+                child: Text('Hamara Prashasan', style: Theme.of(context).textTheme.headline6.copyWith(fontSize: 25.0),),
               ),
-            ),
-            ClipPath(
-              clipper: BlueTopClipper(),
-              child: Container(
-                color: Colors.white,
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                Padding(
-                  padding: EdgeInsets.only(left: 20.0, top: 30.0),
-                  child: Text('hamara', style: TextStyle(fontFamily: 'OpenSans', fontSize: 40.0, fontWeight: FontWeight.w600),),
+              Padding(
+                padding: EdgeInsets.only(top: 15.0, left: 25.0, right: 25.0),
+                child: Text('Subscribe to government departments to get regular updates from them',
+                  style: Theme.of(context).textTheme.headline2.copyWith(color: Colors.black45),
+                  textAlign: TextAlign.center,
                 ),
-                Padding(
-                  padding: EdgeInsets.only(bottom: 20.0, left: 20.0),
-                  child: Text('Prashasan', style: TextStyle(fontFamily: 'OpenSans', fontSize: 40.0, fontWeight: FontWeight.w600)),
-                ),
-                Expanded(
+              ),
+              Expanded(
+                child: Container(
+                  alignment: Alignment.bottomCenter,
+                  margin: EdgeInsets.only(top: 50.0, bottom: 50.0, left: 15.0, right: 15.0),
                   child: Container(
-                    margin: EdgeInsets.all(20.0),
-                    alignment: Alignment.bottomCenter,
-                    child: RawMaterialButton(
-                      onPressed: () => onSignIn(context),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('Sign In with Google', style: TextStyle(fontFamily: 'OpenSans', color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.w600, letterSpacing: 1.0),),
-                          Container(
-                              height: 30.0,
-                              width: 30.0,
-                              padding: EdgeInsets.all(7.0),
-                              margin: EdgeInsets.only(left: 20.0),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(25.0),
-                                color: Colors.white,
-                              ),
-                              child: SvgPicture.asset('assets/google.svg')
+                    decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10.0),
+                        color: Color(0xfff3f4f8)
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.max,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.only(right: 10.0),
+                          child: RichText(
+                            text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                      text: 'Sign in with ',
+                                      style: Theme.of(context).textTheme.headline2.copyWith(color: Colors.black87)
+                                  ),
+                                  TextSpan(
+                                      children: [
+                                        TextSpan(
+                                            text: 'G',
+                                            style: Theme.of(context).textTheme.headline2.copyWith(color: Color(0xff4285f4))
+                                        ),
+                                        TextSpan(
+                                            text: 'o',
+                                            style: Theme.of(context).textTheme.headline2.copyWith(color: Color(0xffea4335))
+                                        ),
+                                        TextSpan(
+                                            text: 'o',
+                                            style: Theme.of(context).textTheme.headline2.copyWith(color: Color(0xfffbbc05))
+                                        ),
+                                        TextSpan(
+                                            text: 'g',
+                                            style: Theme.of(context).textTheme.headline2.copyWith(color: Color(0xff4285f4))
+                                        ),
+                                        TextSpan(
+                                            text: 'l',
+                                            style: Theme.of(context).textTheme.headline2.copyWith(color: Color(0xff34a853))
+                                        ),
+                                        TextSpan(
+                                            text: 'e',
+                                            style: Theme.of(context).textTheme.headline2.copyWith(color: Color(0xffea4335))
+                                        )
+                                      ]
+                                  ),
+                                ]
+                            ),
                           ),
-                        ],
-                      ),
-                      fillColor: Color(0xff528df9),
-                      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0)
-                      ),
+                        ),
+                        MaterialButton(
+                          color: Colors.white,
+                          minWidth: 40.0,
+                          padding: EdgeInsets.all(7.0),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.0)
+                          ),
+                          child: Icon(Icons.arrow_forward, size: 20.0,),
+                          onPressed: () => onSignIn(context),
+                          elevation: 0.0,
+                          focusElevation: 1.0,
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-}
-
-class BlueTopClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    var path = Path()
-      ..lineTo(0.0, 220.0)
-      ..quadraticBezierTo(
-        size.width / 2.2,
-        260.0,
-        size.width,
-        170.0,
-      )
-      ..lineTo(size.width, 0.0)
-      ..close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) {
-    return true;
-  }
-}
-
-class GreyTopClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    var path = Path()
-      ..lineTo(0.0, 265.0)
-      ..quadraticBezierTo(
-        size.width / 2,
-        285.0,
-        size.width,
-        185.0,
-      )
-      ..lineTo(size.width, 0.0)
-      ..close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) {
-    return true;
-  }
-}
-
-class WhiteTopClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    var path = Path()
-      ..lineTo(0.0, 310.0)
-      ..quadraticBezierTo(
-        size.width / 2,
-        310.0,
-        size.width,
-        200.0,
-      )
-      ..lineTo(size.width, 0.0)
-      ..close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) {
-    return true;
   }
 }
