@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:hamaraprashasan/app_configurations.dart';
 
 Map<String, String> avatarLocMap = {
   'health': 'assets/health_avatar.svg',
@@ -178,7 +181,7 @@ class AuthUser {
   String email;
   String phoneNumber;
   String photoUrl;
-  String photoString;
+  String localPhotoLoc;
   String uid;
 
   AuthUser(
@@ -186,10 +189,12 @@ class AuthUser {
       this.email,
       this.phoneNumber,
       this.photoUrl,
+      this.localPhotoLoc,
       this.uid});
 
-  void setPhotoString(String s) {
-    this.photoString = s;
+  void setPhotoLoc(String s) {
+    this.localPhotoLoc = s;
+    AppConfigs.prefs.setString('authUserDetails', jsonEncode(this));
   }
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
@@ -198,6 +203,7 @@ class AuthUser {
         phoneNumber: json["phoneNumber"],
         photoUrl: json["photoUrl"],
         uid: json["uid"],
+        localPhotoLoc: json['localPhotoLoc'],
       );
 
   Map<String, dynamic> toJson() => {
@@ -206,6 +212,7 @@ class AuthUser {
         "phoneNumber": phoneNumber,
         "photoUrl": photoUrl,
         "uid": uid,
+        "localPhotoLoc": localPhotoLoc,
       };
 }
 
@@ -249,3 +256,40 @@ class TableData {
 class Feeds {
   List<Feed> feeds = List<Feed>();
 }
+
+List<String> imageFormats = [
+  "jpg",
+  "jpeg",
+  "jpe",
+  "jif",
+  "jfif",
+  "jfi",
+  "png",
+  "gif",
+  "webp",
+  "tiff",
+  "tif",
+  "psd",
+  "raw",
+  "arw",
+  "cr2",
+  "nrw",
+  "k25",
+  "bmp",
+  "dib",
+  "heif",
+  "heic",
+  "ind",
+  "indd",
+  "indt",
+  "jp2",
+  "j2k",
+  "jpf",
+  "jpx",
+  "jpm",
+  "mj2",
+  "svg",
+  "svgz",
+  "ai",
+  "eps"
+];

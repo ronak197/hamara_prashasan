@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -10,7 +10,6 @@ import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class NewsFeedPage extends StatefulWidget {
   final Function(Widget Function(BuildContext) builder,
@@ -35,8 +34,8 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   SortingType sortingType = SortingType.none;
   List<Department> departments = [], selectedDepartments = [];
   List<String> categories = [], selectedCategories = [];
-
-  DocumentSnapshot lastFeedDetails;
+  DateTime start, end;
+  int feedLimit = 2;
 
   String errorMessage =
       'Some Error Occurred, Make sure you are connected to the internet.';
@@ -45,7 +44,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   bool isRunning = false;
 
-  DateTime startDateTimeAfter, endDateTimeBefore;
+  DocumentSnapshot lastFeedDoc;
 
   bool noMoreFeeds = false;
 
@@ -53,7 +52,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     print('fetching departments');
     Firestore db = Firestore.instance;
 
-    if(User.userData.subscribedDepartmentIDs.isEmpty){
+    if (User.userData.subscribedDepartmentIDs.isEmpty) {
       print('No subscribed departments');
       resultStream.sink.addError(noSubscriptionMessage);
       return false;
@@ -101,8 +100,6 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     print('fetching more feeds');
 
     if (User.lastUserState == UserState.feedUpdate) {
-      startDateTimeAfter = endDateTimeBefore ?? DateTime.now();
-
       await db
           .collection('feeds')
           .where('creationDateTimeStamp',
@@ -110,39 +107,36 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           .where('departmentUid',
               whereIn: User.userData.subscribedDepartmentIDs)
           .orderBy('creationDateTimeStamp', descending: true)
-          .startAfter([startDateTimeAfter])
-          .limit(2)
+          .startAfterDocument(lastFeedDoc)
+          .limit(feedLimit)
           .getDocuments()
           .then((value) {
-            value.documents.forEach((element) {
-              newFeeds.feeds.add(Feed(
-                feedId: element.data['feedId'],
-                feedInfo: FeedInfo.fromFirestoreJson(element.data),
-                department: Department.fromJson(
-                    departmentDetails[element.data['departmentUid']]),
-              ));
-            });
-            if(value.documents.isEmpty){
-              print('No new feeds');
-              noMoreFeeds = true;
-            }
-          })
-          .timeout(Duration(seconds: 3), onTimeout: () {
-            resultStream.sink.addError(errorMessage);
-            return null;
-          })
-          .catchError((e) {
-            resultStream.sink.addError(errorMessage);
-            print('onError in query for getLatestFeeds');
-          })
-          .whenComplete(() {
-            print('OnDone in query for getLatestFeeds');
-            User.lastUserState = UserState.feedUpdate;
-            // update firestore user feed update time
-          });
+        value.documents.forEach((element) {
+          newFeeds.feeds.add(Feed(
+            feedId: element.data['feedId'],
+            feedInfo: FeedInfo.fromFirestoreJson(element.data),
+            department: Department.fromJson(
+                departmentDetails[element.data['departmentUid']]),
+          ));
+        });
+        if (value.documents.isEmpty) {
+          print('No new feeds');
+          noMoreFeeds = true;
+        } else {
+          lastFeedDoc = value.documents.last;
+        }
+      }).timeout(Duration(seconds: 3), onTimeout: () {
+        resultStream.sink.addError(errorMessage);
+        return null;
+      }).catchError((e) {
+        resultStream.sink.addError(errorMessage);
+        print('onError in query for getLatestFeeds');
+      }).whenComplete(() {
+        print('OnDone in query for getLatestFeeds');
+        User.lastUserState = UserState.feedUpdate;
+        // update firestore user feed update time
+      });
 
-      endDateTimeBefore = newFeeds.feeds.last.feedInfo.creationDateTimeStamp;
-      print(endDateTimeBefore);
       resultStream.sink.add(newFeeds);
     } else {
       print('last user state is not feedUpdate');
@@ -165,11 +159,16 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
       await db
           .collection('feeds')
-          .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
+          .where('creationDateTimeStamp',
+              isGreaterThanOrEqualTo: start != null
+                  ? Timestamp.fromDate(start)
+                  : Timestamp.fromDate(DateTime(2015)),
+              isLessThanOrEqualTo:
+                  end != null ? Timestamp.fromDate(end) : Timestamp.now())
           .where('departmentUid',
               whereIn: User.userData.subscribedDepartmentIDs)
           .orderBy('creationDateTimeStamp', descending: true)
-          .limit(2)
+          .limit(feedLimit)
           .getDocuments()
           .then((value) {
         value.documents.forEach((element) {
@@ -180,11 +179,11 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                 departmentDetails[element.data['departmentUid']]),
           ));
         });
+        if (value.documents.isNotEmpty) lastFeedDoc = value.documents.last;
       }).whenComplete(() {
         User.lastUserState = UserState.feedUpdate;
       });
 
-      endDateTimeBefore = newFeeds.feeds.last.feedInfo.creationDateTimeStamp;
       resultStream.sink.add(newFeeds);
     } else {
       print('last user state is not feedUpdate');
@@ -216,8 +215,8 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       isRunning = true;
       print(
           'isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
-      if (moreFeeds){
-        if(noMoreFeeds == false){
+      if (moreFeeds) {
+        if (noMoreFeeds == false) {
           await getMoreFeeds();
         }
       } else {
@@ -285,16 +284,14 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   void applyFilters(SortingType sortingType, List<Department> departments,
-      List<String> categories) {
+      List<String> categories, DateTime start, DateTime end) {
     print("filtering");
-    if (this.sortingType != sortingType) {
-      this.sortingType = sortingType;
-      feedHandler(latestFeeds: true, moreFeeds: false);
-    } else {
-      this.selectedDepartments = departments;
-      this.selectedCategories = categories;
-      setState(() {});
-    }
+    this.selectedDepartments = departments;
+    this.selectedCategories = categories;
+    this.start = start;
+    this.end = end;
+    this.sortingType = sortingType;
+    setState(() {});
   }
 
   @override
@@ -312,8 +309,10 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   @override
   Widget build(BuildContext context) {
     bool filtered = this.sortingType != SortingType.none ||
-        !listEquals(this.selectedDepartments, this.departments) ||
-        !listEquals(this.selectedCategories, this.categories);
+        this.selectedDepartments.length != this.departments.length ||
+        this.selectedCategories.length != this.categories.length ||
+        start != null ||
+        end != null;
     List<String> selDepIds = selectedDepartments.map((e) => e.email).toList();
     return Scaffold(
       appBar: feedSelected
@@ -332,7 +331,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                 onPressed: clearSelectedFeed,
               ),
               actions: [
-                Container(
+                Padding(
                   padding: EdgeInsets.only(right: 5.0),
                   child: IconButton(
                     icon: Icon(
@@ -360,9 +359,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                     color: Colors.blue,
                   ),
                   child: ClipOval(
-                    child: User.authUser.photoString != null
-                        ? Image.memory(
-                            base64.decode(User.authUser.photoString),
+                    child: User.authUser.localPhotoLoc != null
+                        ? Image.file(
+                            File(User.authUser.localPhotoLoc),
                             fit: BoxFit.contain,
                           )
                         : CachedNetworkImage(
@@ -387,6 +386,13 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                         return FilterBottomSheet(
                           departments: departmentDetails,
                           applyFilters: applyFilters,
+                          prevVal: {
+                            "selDep": selDepIds,
+                            "selCat": selectedCategories,
+                            "sortingType": sortingType,
+                            "start": start,
+                            "end": end,
+                          },
                         );
                       },
                       elevation: 40,
@@ -397,12 +403,32 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                       ),
                     );
                   },
-                  child: Container(
-                    padding: EdgeInsets.all(10.0),
-                    child: Icon(
-                      Icons.filter_list,
-                      size: 20.0,
-                    ),
+                  child: Stack(
+                    children: <Widget>[
+                          Container(
+                            padding: EdgeInsets.all(10.0),
+                            child: Icon(
+                              Icons.filter_list,
+                              size: 20.0,
+                            ),
+                          ),
+                        ] +
+                        (filtered
+                            ? <Widget>[
+                                Positioned(
+                                  right: 5,
+                                  top: 5,
+                                  child: Container(
+                                    height: 7,
+                                    width: 7,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                )
+                              ]
+                            : []),
                   ),
                 ),
               ],
@@ -444,18 +470,22 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
               ),
             ),
       body: NotificationListener<ScrollNotification>(
-        onNotification: (ScrollNotification scrollInfo) {
-          if (scrollInfo is ScrollEndNotification &&
-              scrollInfo.metrics.pixels >=
-                  (scrollInfo.metrics.maxScrollExtent - 60.0)) {
-            print('Reached Edge, getting more feeds');
-            feedHandler(moreFeeds: true, latestFeeds: false);
-            return true;
-          }
-          return false;
-        },
+        onNotification: filtered
+            ? null
+            : (ScrollNotification scrollInfo) {
+                if (scrollInfo is ScrollEndNotification &&
+                    scrollInfo.metrics.pixels >=
+                        (scrollInfo.metrics.maxScrollExtent - 60.0)) {
+                  print('Reached Edge, getting more feeds');
+                  feedHandler(moreFeeds: true, latestFeeds: false);
+                  return true;
+                }
+                return false;
+              },
         child: RefreshIndicator(
-          onRefresh: () => feedHandler(latestFeeds: true, moreFeeds: false),
+          onRefresh: filtered
+              ? () async {}
+              : () => feedHandler(latestFeeds: true, moreFeeds: false),
           strokeWidth: 2.5,
           child: StreamBuilder(
             stream: resultStream.stream,
@@ -469,23 +499,51 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                 );
               } else if (snapshot.connectionState == ConnectionState.active) {
                 if (snapshot.hasData && snapshot.data.feeds.isNotEmpty) {
+                  var feedList = List.from(snapshot.data.feeds ?? []);
+                  if (sortingType == SortingType.department &&
+                      feedList.length >= 2) {
+                    feedList.sort((f1, f2) {
+                      return f1.department.name.compareTo(f2.department.name);
+                    });
+                  } else if (sortingType == SortingType.category &&
+                      feedList.length >= 2) {
+                    feedList.sort((f1, f2) {
+                      return f1.department.category
+                          .compareTo(f2.department.category);
+                    });
+                  }
                   return ListView.builder(
-                    itemCount: snapshot.data.feeds?.length,
+                    itemCount: feedList.length,
                     itemBuilder: (context, i) {
-                      return GestureDetector(
-                        onLongPress: () =>
-                            _onLongPress(snapshot.data.feeds[i].feedId),
-                        onTap: () => _onTap(i, snapshot.data.feeds[i]),
-                        child: Container(
-                          margin: EdgeInsets.symmetric(vertical: 8.0),
-                          child: FeedBox(
-                            feed: snapshot.data.feeds[i],
-                            selected: selectedFeed
-                                .contains(snapshot.data.feeds[i].feedId),
-                            canBeSelected: feedSelected,
+                      bool feedValid = true;
+                      Feed f = feedList[i];
+                      if (filtered) {
+                        print(start);
+                        print(end);
+                        feedValid = selDepIds.contains(f.department.email) &&
+                            selectedCategories.contains(f.department.category);
+                        if (start != null)
+                          feedValid = feedValid &&
+                              f.feedInfo.creationDateTimeStamp.isAfter(start);
+                        if (end != null)
+                          feedValid = feedValid &&
+                              f.feedInfo.creationDateTimeStamp.isBefore(end);
+                      }
+                      if (filtered == false || (filtered && feedValid))
+                        return GestureDetector(
+                          onLongPress: () => _onLongPress(f.feedId),
+                          onTap: () => _onTap(i, f),
+                          child: Container(
+                            margin: EdgeInsets.symmetric(vertical: 8.0),
+                            child: FeedBox(
+                              feed: f,
+                              selected: selectedFeed.contains(f.feedId),
+                              canBeSelected: feedSelected,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      else
+                        return SizedBox();
                     },
                   );
                 } else if (snapshot.hasError) {

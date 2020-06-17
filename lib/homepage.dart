@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -7,8 +8,8 @@ import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
 import 'package:hamaraprashasan/departments_page.dart';
 import 'package:hamaraprashasan/news_feed_page.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -27,8 +28,10 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    if (User.authUser.photoString == null) {
+    if (User.authUser.localPhotoLoc == null) {
       storeProfilePic();
+    } else {
+      print("Profile Pic already stored!!");
     }
     _children = [
       NewsFeedPage(
@@ -62,11 +65,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   void storeProfilePic() async {
+    var documentDirectory = await getApplicationDocumentsDirectory();
+    await Directory(documentDirectory.path + "/images").create(recursive: true);
+    var profilePicPath = documentDirectory.path + "/images/profilePic.jpg";
     var resp = await http.get(User.authUser.photoUrl);
-    final bytes = resp.bodyBytes;
-    var encStr = base64.encode(bytes);
-    User.authUser.setPhotoString(encStr);
-    User.saveUserData(User.userData, User.lastUserState);
+    File profilePic = File(profilePicPath);
+    await profilePic.writeAsBytes(resp.bodyBytes);
+    User.authUser.setPhotoLoc(profilePicPath);
     print("Profile Pic Stored");
   }
 

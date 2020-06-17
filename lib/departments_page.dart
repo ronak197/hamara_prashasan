@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,7 +8,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:algolia/algolia.dart';
-import 'dart:convert';
 
 class DepartmentsPage extends StatefulWidget {
   @override
@@ -41,28 +41,30 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
         .getDocuments()
         .asStream()
         .listen((event) {
-          setState(() {
-            event.documents.forEach((snapshot) {
-              searchDepartmentsResults.add(Department.fromJson(snapshot.data));
+      setState(() {
+        event.documents.forEach((snapshot) {
+          searchDepartmentsResults.add(Department.fromJson(snapshot.data));
+        });
+      });
+    })
+          ..onDone(() {
+            if (searchDepartmentsResults.isEmpty) {
+              setState(() {
+                errorMessage = 'No available departments for your search';
+                print(errorMessage);
+              });
+            }
+          })
+          ..onError((e) {
+            setState(() {
+              errorMessage =
+                  "Some unknown error occurred, Make sure you are connected proper internet connection";
+              print(errorMessage);
             });
           });
-        })..onDone(() {
-          if(searchDepartmentsResults.isEmpty){
-            setState(() {
-              errorMessage = 'No available departments for your search';
-              print(errorMessage);
-            });
-          }
-        })..onError((e){
-            setState(() {
-              errorMessage = "Some unknown error occurred, Make sure you are connected proper internet connection";
-              print(errorMessage);
-        });
-    });
   }
 
-  void getSubscribedDepartments() async{
-
+  void getSubscribedDepartments() async {
     Firestore db = Firestore.instance;
 
     setState(() {
@@ -71,31 +73,36 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
       print(errorMessage);
     });
 
-       db.collection('departments')
-           .where('email', whereIn: User.userData.subscribedDepartmentIDs).getDocuments().asStream()
-           .listen((event) {
-             setState(() {
-               event.documents.forEach((snapshot) {
-                 subscribedDepartments.add(Department.fromJson(snapshot.data));
-               });
-             });
-       })..onDone(() {
-         if(subscribedDepartments.isEmpty){
-           setState(() {
-             errorMessage = 'No Subscribed Departments';
-             print(errorMessage);
-           });
-         } else {
-           setState(() {
-             searchDepartmentsResults = subscribedDepartments;
-           });
-         }
-       })..onError((e){
-         setState(() {
-           errorMessage = "Error Occurred";
-           print(errorMessage);
-         });
-       });
+    db
+        .collection('departments')
+        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+        .getDocuments()
+        .asStream()
+        .listen((event) {
+      setState(() {
+        event.documents.forEach((snapshot) {
+          subscribedDepartments.add(Department.fromJson(snapshot.data));
+        });
+      });
+    })
+          ..onDone(() {
+            if (subscribedDepartments.isEmpty) {
+              setState(() {
+                errorMessage = 'No Subscribed Departments';
+                print(errorMessage);
+              });
+            } else {
+              setState(() {
+                searchDepartmentsResults = subscribedDepartments;
+              });
+            }
+          })
+          ..onError((e) {
+            setState(() {
+              errorMessage = "Error Occurred";
+              print(errorMessage);
+            });
+          });
   }
 
   void onSubscribePressed(String toSubscribe, bool hasSubscribed) async {
@@ -114,9 +121,9 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
           .document(User.authUser.uid)
           .updateData(User.userData.toFirestoreJson())
           .catchError((e) {
-            setState(() {
-              errorMessage = 'Error Occurred';
-            });
+        setState(() {
+          errorMessage = 'Error Occurred';
+        });
         return null;
       });
     } else {
@@ -129,9 +136,9 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
           .document(User.authUser.uid)
           .updateData(User.userData.toFirestoreJson())
           .catchError((e) {
-            setState(() {
-              errorMessage = 'Error Occurred';
-            });
+        setState(() {
+          errorMessage = 'Error Occurred';
+        });
         return null;
       });
     }
@@ -171,7 +178,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
     query = algolia.instance.index('departments_prod').setHitsPerPage(5);
   }
 
-  Future<void> onRefresh() async{
+  Future<void> onRefresh() async {
     searchTextEditingController.clear();
     searchFocusNode.unfocus();
     setState(() {
@@ -216,9 +223,9 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
               color: Colors.blue,
             ),
             child: ClipOval(
-              child: User.authUser.photoString != null
-                  ? Image.memory(
-                      base64.decode(User.authUser.photoString),
+              child: User.authUser.localPhotoLoc != null
+                  ? Image.file(
+                      File(User.authUser.localPhotoLoc),
                       fit: BoxFit.contain,
                     )
                   : CachedNetworkImage(
@@ -328,14 +335,15 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                   });
                 }
               },
-              child: results.isNotEmpty
-                  ? RefreshIndicator(
-                      onRefresh: onRefresh,
-                      strokeWidth: 2.5,
-                      child: ListView.builder(
-                        itemCount: results?.length,
+              child: RefreshIndicator(
+                onRefresh: onRefresh,
+                strokeWidth: 2.5,
+                child: searchDepartmentsResults.isNotEmpty
+                    ? ListView.builder(
+                        itemCount: searchDepartmentsResults?.length,
                         itemBuilder: (context, index) {
-                          Department department = results[index];
+                          Department department =
+                              searchDepartmentsResults[index];
                           bool hasSubscribed =
                               (User.userData.subscribedDepartmentIDs ?? [])
                                       .contains(department.email) ??
@@ -344,61 +352,25 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                             subscribed: hasSubscribed,
                             department: department,
                             onSubscribePressed: () => onSubscribePressed(
-                                results[index].email, hasSubscribed),
+                                searchDepartmentsResults[index].email,
+                                hasSubscribed),
+                          );
+                        },
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            physics: AlwaysScrollableScrollPhysics(),
+                            child: SizedBox(
+                              height: constraints.maxHeight,
+                              child: Center(
+                                child: Text(errorMessage),
+                              ),
+                            ),
                           );
                         },
                       ),
-                    )
-                  : Container(
-                      child: Center(
-                        child: Text(message),
-                      ),
-                    ),
-            ),
-          );
-        },
-      ) : GestureDetector(
-        onTap: () {
-          if(searchFocusNode.hasFocus){
-            searchFocusNode.unfocus();
-            setState(() {
-              isSearching = false;
-            });
-          }
-        },
-        child: RefreshIndicator(
-          onRefresh: onRefresh,
-          strokeWidth: 2.5,
-          child: searchDepartmentsResults.isNotEmpty ? ListView.builder(
-            itemCount: searchDepartmentsResults?.length,
-            itemBuilder: (context, index) {
-              Department department = searchDepartmentsResults[index];
-              bool hasSubscribed =
-                  (User.userData.subscribedDepartmentIDs ?? [])
-                      .contains(department.email) ??
-                      false;
-              return DepartmentsMessageBox(
-                subscribed: hasSubscribed,
-                department: department,
-                onSubscribePressed: () =>
-                    onSubscribePressed(searchDepartmentsResults[index].email, hasSubscribed),
-              );
-            },
-          ) : LayoutBuilder(
-            builder: (context, constraints){
-              return SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                child: SizedBox(
-                  height: constraints.maxHeight,
-                  child: Center(
-                    child: Text(errorMessage),
-                  ),
-                ),
-              );
-            },
-          ),
-        )
-      ),
+              )),
     );
   }
 }

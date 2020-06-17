@@ -24,6 +24,8 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
       noBookmarkMessage = "No Bookmarked Feeds.";
   ScrollController _scrollController = new ScrollController();
   Feeds myFeeds = new Feeds();
+  Set<String> selectedFeed = new Set<String>();
+  bool feedSelected = false;
 
   Future<bool> getDepartmentInfo() async {
     print('fetching departments  in editProfile');
@@ -137,6 +139,63 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
     }
   }
 
+  void _onLongPress(String feedId) {
+    bool anySelected = selectedFeed.isNotEmpty;
+    if (!anySelected) {
+      setState(() {
+        selectedFeed.add(feedId);
+        anyFeedSelected();
+      });
+    }
+  }
+
+  void _onTap(int i, Feed f) {
+    bool anySelected = selectedFeed.isNotEmpty;
+    if (anySelected) {
+      setState(() {
+        if (selectedFeed.contains(f.feedId)) {
+          selectedFeed.remove(f.feedId);
+        } else {
+          selectedFeed.add(f.feedId);
+        }
+        if (selectedFeed.isEmpty) allSelectedFeedCleared();
+      });
+    } else {
+      Navigator.of(context).pushNamed("/feedInfo", arguments: {
+        "feed": f,
+      });
+    }
+  }
+
+  void anyFeedSelected() {
+    setState(() {
+      feedSelected = true;
+    });
+  }
+
+  void allSelectedFeedCleared() {
+    setState(() {
+      feedSelected = false;
+    });
+  }
+
+  void deleteFeed() async {
+    List<String> deletedFeedIds = selectedFeed.toList();
+    bool deleteSuccess = await FirebaseMethods.deleteMyFeeds(deletedFeedIds);
+    if (deleteSuccess) {
+      setState(() {
+        deletedFeedIds.forEach((id) {
+          myFeeds.feeds.removeWhere((f) => f.feedId == id);
+        });
+      });
+      print("deletion successful");
+    } else {
+      print("error in deleting the feeds");
+    }
+    selectedFeed.clear();
+    allSelectedFeedCleared();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -161,11 +220,28 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
         backgroundColor: Colors.white,
         elevation: 0.0,
         titleSpacing: 5.0,
-        title: Text('My Feeds',
-            style: Theme.of(context)
-                .textTheme
-                .headline4
-                .copyWith(fontWeight: FontWeight.w600)),
+        title: Text(
+          'My Feeds',
+          style: Theme.of(context)
+              .textTheme
+              .headline4
+              .copyWith(fontWeight: FontWeight.w600),
+        ),
+        actions: selectedFeed.isNotEmpty
+            ? [
+                Padding(
+                  padding: EdgeInsets.only(right: 5.0),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.delete,
+                      size: 25.0,
+                      color: Colors.red,
+                    ),
+                    onPressed: deleteFeed,
+                  ),
+                )
+              ]
+            : [],
       ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
@@ -206,18 +282,15 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
                             itemBuilder: (context, i) {
                               Feed f = snapshot.data.feeds[i];
                               return GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context)
-                                      .pushNamed("/feedInfo", arguments: {
-                                    "feed": f,
-                                  });
-                                },
+                                onTap: () => _onTap(i, f),
+                                onLongPress: () => _onLongPress(f.feedId),
                                 child: Container(
                                   margin: EdgeInsets.symmetric(vertical: 8.0),
                                   child: MessageBox(
                                     feed: f,
-                                    selected: false,
-                                    canBeSelected: false,
+                                    selected: selectedFeed.contains(
+                                        snapshot.data.feeds[i].feedId),
+                                    canBeSelected: feedSelected,
                                   ),
                                 ),
                               );

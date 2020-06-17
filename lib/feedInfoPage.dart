@@ -246,7 +246,7 @@ class ContentBox extends StatelessWidget {
           style: Theme.of(context)
               .textTheme
               .headline2
-              .copyWith(color: Colors.black54),
+              .copyWith(color: Colors.black87),
           children: [
             WidgetSpan(
               child: Text(data[0].toUpperCase()),

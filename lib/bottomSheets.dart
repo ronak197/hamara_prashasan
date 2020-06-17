@@ -1,9 +1,9 @@
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:hamaraprashasan/editAccount.dart';
-import 'dart:convert';
 
 class AccountBottomSheet extends StatefulWidget {
   @override
@@ -119,9 +119,9 @@ class _AccountBottomSheetState extends State<AccountBottomSheet> {
                 color: Colors.white,
               ),
               child: ClipOval(
-                child: User.authUser.photoString != null
-                    ? Image.memory(
-                        base64.decode(User.authUser.photoString),
+                child: User.authUser.localPhotoLoc != null
+                    ? Image.file(
+                        File(User.authUser.localPhotoLoc),
                         fit: BoxFit.contain,
                       )
                     : CachedNetworkImage(
@@ -141,10 +141,13 @@ class _AccountBottomSheetState extends State<AccountBottomSheet> {
 }
 
 class FilterBottomSheet extends StatefulWidget {
-  final Map<String, dynamic> departments;
+  final Map<String, dynamic> departments, prevVal;
   final Function(SortingType sortingType, List<Department> departments,
-      List<String> categories) applyFilters;
-  FilterBottomSheet({@required this.departments, @required this.applyFilters});
+      List<String> categories, DateTime start, DateTime end) applyFilters;
+  FilterBottomSheet(
+      {@required this.departments,
+      @required this.applyFilters,
+      @required this.prevVal});
   @override
   _FilterBottomSheetState createState() => _FilterBottomSheetState();
 }
@@ -163,12 +166,15 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   List<Department> departments = [];
   List<String> categories = [];
   List<bool> departmentSelected = [], categoriesSelected = [];
+  DateTime start, end;
 
   void getDepartments() {
     widget.departments.forEach((key, value) {
       departments.add(new Department.fromJson(value));
     });
-    departmentSelected = new List.generate(departments.length, (index) => true);
+    departmentSelected = new List.generate(departments.length, (index) {
+      return widget.prevVal['selDep'].contains(departments[index].email);
+    });
   }
 
   void getCategories() {
@@ -177,7 +183,15 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       cat.add(d.category);
     });
     categories = cat.toList();
-    categoriesSelected = new List.generate(categories.length, (index) => true);
+    categoriesSelected = new List.generate(categories.length, (index) {
+      return widget.prevVal['selCat'].contains(categories[index]);
+    });
+  }
+
+  void setPreviousValues() {
+    _sortingType = widget.prevVal['sortingType'];
+    start = widget.prevVal['start'];
+    end = widget.prevVal['end'];
   }
 
   @override
@@ -185,6 +199,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     super.initState();
     getDepartments();
     getCategories();
+    setPreviousValues();
   }
 
   @override
@@ -455,7 +470,105 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                       },
                                     )
                                   : selectedIndex == 3
-                                      ? <Widget>[]
+                                      ? <Widget>[
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 10),
+                                            child: Text("Select Feeds\nFrom :",
+                                                textAlign: TextAlign.center,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .headline2),
+                                          ),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 30, vertical: 10),
+                                            child: RaisedButton(
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          10.0)),
+                                              onPressed: () async {
+                                                start = await showDatePicker(
+                                                        context: context,
+                                                        initialDate: start ??
+                                                            DateTime.now(),
+                                                        firstDate:
+                                                            DateTime(2015),
+                                                        lastDate:
+                                                            DateTime(2030)) ??
+                                                    start;
+                                                setState(() {});
+                                              },
+                                              color: Colors.yellow[600],
+                                              child: Text(
+                                                start != null
+                                                    ? start
+                                                        .toIso8601String()
+                                                        .substring(0, 10)
+                                                    : "Start",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .headline1
+                                                    .copyWith(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold),
+                                              ),
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 10),
+                                            child: Text("To :",
+                                                textAlign: TextAlign.center,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .headline2),
+                                          ),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 30, vertical: 10),
+                                            child: RaisedButton(
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          10.0)),
+                                              onPressed: () async {
+                                                end = await showDatePicker(
+                                                        context: context,
+                                                        initialDate: end ??
+                                                            start ??
+                                                            DateTime.now(),
+                                                        firstDate:
+                                                            DateTime(2015),
+                                                        lastDate:
+                                                            DateTime(2030)) ??
+                                                    end;
+                                                if (end != null) {
+                                                  end = end.add(Duration(
+                                                      seconds: 24 * 3600 - 1));
+                                                }
+                                                setState(() {});
+                                              },
+                                              color: Colors.yellow[600],
+                                              child: Text(
+                                                end != null
+                                                    ? end
+                                                        .toIso8601String()
+                                                        .substring(0, 10)
+                                                    : "End",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .headline1
+                                                    .copyWith(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold),
+                                              ),
+                                            ),
+                                          )
+                                        ]
                                       : <Widget>[],
                     ),
                   ),
@@ -483,6 +596,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   onPressed: () {
                     setState(() {
                       _sortingType = SortingType.none;
+                      start = null;
+                      end = null;
                       for (int i = 0; i < departmentSelected.length; i++) {
                         departmentSelected[i] = true;
                       }
@@ -512,8 +627,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         selectedCategories.add(categories[i]);
                       }
                     }
-                    widget.applyFilters(
-                        _sortingType, selectedDepartments, selectedCategories);
+                    widget.applyFilters(_sortingType, selectedDepartments,
+                        selectedCategories, start, end);
                     Navigator.pop(context);
                   },
                   child: Text(
