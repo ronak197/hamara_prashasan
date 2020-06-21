@@ -282,6 +282,17 @@ class _SendPostPageState extends State<SendPostPage> {
             )),
           )
         ],
+        leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              for (var f in formFields) {
+                if (f.runtimeType == PictureUploadBox) {
+                  PictureUploadBox pic = f;
+                  pic.deleteImage(pic.data['pictureUrl']);
+                }
+              }
+              Navigator.pop(context);
+            }),
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
@@ -740,6 +751,7 @@ class PictureUploadBox extends StatefulWidget with FormField {
     if (url != null) {
       try {
         var imageRef = await FirebaseStorage.instance.getReferenceFromUrl(url);
+        print("IMage ref: $imageRef");
         await imageRef.delete().then((_) {
           print("Image deleted");
         });
@@ -761,13 +773,13 @@ class PictureUploadBox extends StatefulWidget with FormField {
 class _PictureUploadBoxState extends State<PictureUploadBox> {
   File image;
   bool uploading = false;
-  @override
+  /* @override
   void dispose() {
     if (!widget._feedPosted) widget.deleteImage(widget.data['pictureUrl']);
     print("${widget.runtimeType} disposed");
     super.dispose();
   }
-
+ */
   @override
   void initState() {
     super.initState();

@@ -212,7 +212,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
 
 class TitleBox extends StatelessWidget {
   final String title;
-  bool isFirstTitle = false;
+  final bool isFirstTitle;
   TitleBox(this.title, {this.isFirstTitle = false});
   @override
   Widget build(BuildContext context) {
@@ -220,7 +220,7 @@ class TitleBox extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: 20, horizontal: 25),
       child: Text(
         title,
-        style: isFirstTitle
+        style: isFirstTitle ?? false
             ? Theme.of(context)
                 .textTheme
                 .headline4
@@ -271,23 +271,29 @@ class PictureBox extends StatelessWidget {
             MaterialPageRoute(builder: (context) => PictureView(pictureUrl)));
       },
       child: Container(
-        constraints: BoxConstraints(maxHeight: 350),
+        height: 350,
+        //constraints: BoxConstraints(maxHeight: 350),
         margin: EdgeInsets.symmetric(vertical: 20),
         child: isLocal
             ? Image.file(
                 File(pictureUrl),
-                fit: BoxFit.contain,
+                fit: BoxFit.cover,
               )
             : Hero(
                 tag: pictureUrl,
                 child: CachedNetworkImage(
                   imageUrl: pictureUrl,
                   fit: BoxFit.cover,
-                  placeholder: (context, s) => Container(
-                    alignment: Alignment.center,
-                    height: 50,
-                    child: CircularProgressIndicator(),
-                  ),
+                  progressIndicatorBuilder: (context, url, progress) {
+                    return Container(
+                      decoration: BoxDecoration(
+                          border: Border.all(width: 0.1, color: Colors.grey)),
+                      alignment: Alignment.center,
+                      height: 50,
+                      child:
+                          CircularProgressIndicator(value: progress.progress),
+                    );
+                  },
                 ),
               ),
       ),
@@ -473,43 +479,88 @@ class TableBox extends StatelessWidget {
   }
 }
 
-class PictureView extends StatelessWidget {
+class PictureView extends StatefulWidget {
   final String url;
   PictureView(this.url);
+  @override
+  _PictureViewState createState() => _PictureViewState();
+}
+
+class _PictureViewState extends State<PictureView> {
   GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
+  bool showAppbar = true;
+  bool saving = false, saved = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      extendBodyBehindAppBar: true,
+      //extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0.0,
-        actions: [
-          IconButton(
-            padding: EdgeInsets.all(5),
-            icon: Icon(Icons.save),
-            onPressed: () async {
-              var imageId = await ImageDownloader.downloadImage(url,
-                  destination: AndroidDestinationType.directoryDownloads);
-              print(imageId);
-              var name = await ImageDownloader.findName(imageId);
-              print(name);
-              _scaffoldKey.currentState.showSnackBar(
-                SnackBar(
-                  backgroundColor: Colors.green,
-                  content: new Text("Image saved to Gallery"),
-                ),
-              );
-            },
+      appBar: PreferredSize(
+        child: AnimatedCrossFade(
+          firstChild: Container(),
+          secondChild: AppBar(
+            backgroundColor: Colors.black,
+            elevation: 0.0,
+            actions: saved
+                ? []
+                : [
+                    FlatButton(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 5, horizontal: 15),
+                      child: Text(
+                        "Save to Gallery",
+                        style: Theme.of(context).textTheme.headline2.copyWith(
+                            color: saving ? Colors.grey[700] : Colors.white),
+                      ),
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              setState(() {
+                                saving = true;
+                              });
+                              var imageId = await ImageDownloader.downloadImage(
+                                  widget.url,
+                                  destination: AndroidDestinationType
+                                      .directoryDownloads);
+                              print(imageId);
+                              var name =
+                                  await ImageDownloader.findName(imageId);
+                              print(name);
+                              setState(() {
+                                saving = false;
+                                saved = true;
+                              });
+                              _scaffoldKey.currentState.showSnackBar(
+                                SnackBar(
+                                  backgroundColor: Colors.green,
+                                  content: new Text("Image saved to Gallery"),
+                                ),
+                              );
+                            },
+                    ),
+                  ],
           ),
-        ],
+          crossFadeState:
+              showAppbar ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: Duration(milliseconds: 250),
+          firstCurve: Curves.bounceIn,
+          secondCurve: Curves.bounceInOut,
+        ),
+        preferredSize: Size.fromHeight(56),
       ),
       body: Hero(
-        tag: url,
-        child: PhotoView(
-          imageProvider: CachedNetworkImageProvider(url),
+        tag: widget.url,
+        child: GestureDetector(
+          onTap: () {
+            setState(() {
+              showAppbar = !showAppbar;
+            });
+          },
+          child: PhotoView(
+            imageProvider: CachedNetworkImageProvider(widget.url),
+            enableRotation: true,
+          ),
         ),
       ),
     );
