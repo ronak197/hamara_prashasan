@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -5,7 +6,6 @@ import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/bookmarks.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:rxdart/subjects.dart';
-import 'dart:convert';
 
 class EditAccountPage extends StatefulWidget {
   @override
@@ -197,9 +197,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                         color: Colors.white,
                       ),
                       child: ClipOval(
-                        child: User.authUser.photoString != null
-                            ? Image.memory(
-                                base64.decode(User.authUser.photoString),
+                        child: User.authUser.localPhotoLoc != null
+                            ? Image.file(
+                                File(User.authUser.localPhotoLoc),
                                 fit: BoxFit.contain,
                               )
                             : CachedNetworkImage(

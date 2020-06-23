@@ -219,4 +219,32 @@ class FirebaseMethods {
     }
     return val;
   }
+
+  static Future<bool> deleteMyFeeds(List<String> deletedFeedIds) async {
+    Firestore db = Firestore.instance;
+    bool val = await db
+        .collection('feeds')
+        .where("feedId", whereIn: deletedFeedIds)
+        .getDocuments()
+        .then((snapshot) async {
+      if (snapshot.documents.isNotEmpty) {
+        snapshot.documents.forEach((doc) async {
+          bool error = false;
+          try {
+            FeedInfo feedInfo = FeedInfo.fromFirestoreJson(doc.data);
+            if (feedInfo.departmentUid == User.authUser.email) {
+              await doc.reference.delete();
+            } else {
+              print("User email not equal to departmentUid of feed");
+            }
+          } catch (e) {
+            error = true;
+          }
+          return !error;
+        });
+      }
+      return false;
+    });
+    return val;
+  }
 }

@@ -1,5 +1,4 @@
-import 'dart:convert';
-
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
@@ -224,9 +223,9 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
               color: Colors.blue,
             ),
             child: ClipOval(
-              child: User.authUser.photoString != null
-                  ? Image.memory(
-                      base64.decode(User.authUser.photoString),
+              child: User.authUser.localPhotoLoc != null
+                  ? Image.file(
+                      File(User.authUser.localPhotoLoc),
                       fit: BoxFit.contain,
                     )
                   : CachedNetworkImage(
