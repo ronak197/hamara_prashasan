@@ -10,6 +10,8 @@ import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:geolocator/geolocator.dart';
 
 class NewsFeedPage extends StatefulWidget {
   final Function(Widget Function(BuildContext) builder,
@@ -47,6 +49,8 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   DocumentSnapshot lastFeedDoc;
 
   bool noMoreFeeds = false;
+
+  String userLocation;
 
   Future<bool> getDepartmentInfo() async {
     print('fetching departments');
@@ -294,10 +298,49 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     setState(() {});
   }
 
+  void getRecentLocation() async {
+    print('fetching last location');
+    Geolocator geoLocator = Geolocator();
+    GeolocationStatus geolocationStatus  = await geoLocator.checkGeolocationPermissionStatus();
+    if(geolocationStatus == GeolocationStatus.granted){
+      Position position = (await geoLocator.getLastKnownPosition(desiredAccuracy: LocationAccuracy.lowest,)) ?? (await Geolocator().getCurrentPosition(desiredAccuracy: LocationAccuracy.lowest));
+      List<Placemark> placemark = await geoLocator.placemarkFromPosition(position);
+      print(placemark);
+      setState(() {
+        userLocation = '${placemark[0].subLocality}, ${placemark[0].locality}';
+      });
+    } else {
+      print('Permission not granted');
+    }
+  }
+
+  void getNewLocation() async{
+    print('fetching new location');
+    Geolocator geoLocator = Geolocator()..forceAndroidLocationManager = true;
+    GeolocationStatus geolocationStatus  = await geoLocator.checkGeolocationPermissionStatus();
+    if(geolocationStatus == GeolocationStatus.granted){
+      print('Permission granted');
+      Position position = (await geoLocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.lowest)
+          .catchError((e){print(e);})
+      .timeout(Duration(seconds: 3),onTimeout: (){
+        print('timeout in fetch new location');
+        return null;
+      }));
+      print(position.toString());
+      List<Placemark> placemark = await geoLocator.placemarkFromPosition(position).catchError((e){print(e);});
+      setState(() {
+        userLocation = '${placemark[0].subLocality}, ${placemark[0].locality}';
+      });
+    } else {
+      print('permission not granted');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     feedHandler(latestFeeds: true, moreFeeds: false);
+    getRecentLocation();
   }
 
   @override
@@ -459,11 +502,16 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                           height: 16.0,
                           alignment: Alignment.topLeft,
                           child: Center(
-                              child: Text('Surat',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyText1
-                                      .copyWith(color: Color(0xff6D6D6D)))))
+                              child: InkWell(
+                                onTap: (){
+                                  getNewLocation();
+                                },
+                                child: Text(userLocation ?? 'Your Location',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyText1
+                                        .copyWith(color: Color(0xff6D6D6D))),
+                              )))
                     ],
                   )
                 ],
