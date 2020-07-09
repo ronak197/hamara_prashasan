@@ -13,6 +13,7 @@ import 'package:hamaraprashasan/app_bar_icons_icons.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:image_downloader/image_downloader.dart';
+import 'package:shimmer/shimmer.dart';
 
 class FeedInfoPage extends StatefulWidget {
   final Feed feed;
@@ -284,7 +285,18 @@ class PictureBox extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: pictureUrl,
                   fit: BoxFit.cover,
-                  progressIndicatorBuilder: (context, url, progress) {
+                  placeholder: (context, url) {
+                    return Shimmer.fromColors(
+                      child: Container(
+                        height: double.maxFinite,
+                        width: double.maxFinite,
+                        color: Colors.white,
+                      ),
+                      baseColor: Colors.grey[300],
+                      highlightColor: Colors.grey[100],
+                    );
+                  },
+                  /* progressIndicatorBuilder: (context, url, progress) {
                     return Container(
                       decoration: BoxDecoration(
                           border: Border.all(width: 0.1, color: Colors.grey)),
@@ -293,7 +305,7 @@ class PictureBox extends StatelessWidget {
                       child:
                           CircularProgressIndicator(value: progress.progress),
                     );
-                  },
+                  }, */
                 ),
               ),
       ),
@@ -390,6 +402,56 @@ class TableBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     int n = t.contents.length + 1;
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 15),
+      padding: EdgeInsets.only(left: 25),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 5.0,
+          horizontalMargin: 5.0,
+          dividerThickness: 0.0,
+          columns: t.headers
+              .map<DataColumn>(
+                (h) => DataColumn(
+                  label: Container(
+                    height: tileHeight,
+                    margin: EdgeInsets.all(margin),
+                    padding: EdgeInsets.only(left: 5),
+                    alignment: Alignment.centerLeft,
+                    child: Text(h,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline3
+                            .copyWith(fontWeight: FontWeight.w600)),
+                  ),
+                  tooltip: h,
+                ),
+              )
+              .toList(),
+          rows: t.contents
+              .map<DataRow>(
+                (r) => DataRow(
+                  cells: r
+                      .map<DataCell>(
+                        (c) => DataCell(
+                          Container(
+                            height: tileHeight,
+                            margin: EdgeInsets.all(margin),
+                            padding: EdgeInsets.only(left: 5),
+                            alignment: Alignment.centerLeft,
+                            child: Text(c,
+                                style: Theme.of(context).textTheme.headline2),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
     return Container(
       margin: EdgeInsets.symmetric(vertical: 15),
       padding: EdgeInsets.only(left: 25),

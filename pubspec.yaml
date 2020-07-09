@@ -32,6 +32,7 @@ dependencies:
   google_sign_in: ^4.4.6
   firebase_auth: ^0.16.0
   shared_preferences: ^0.5.7+2
+  shimmer: ^1.1.1
   csv: ^4.0.3
   file_picker: ^1.9.0+1
   flutter_fab_dialer: ^0.1.1
