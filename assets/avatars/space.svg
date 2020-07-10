@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="75" height="75" viewBox="0 0 75 75">
+  <g id="telescope" transform="translate(-15.133 -16.133)">
+    <rect id="Rectangle_1501" data-name="Rectangle 1501" width="75" height="75" rx="11" transform="translate(15.133 16.133)" fill="#ebebeb"/>
+    <g id="Group_100" data-name="Group 100">
+      <g id="Group_98" data-name="Group 98" transform="translate(41.332 31.137)">
+        <path id="Path_246" data-name="Path 246" d="M240,200h4.078v36.7H240Z" transform="translate(-229.805 -184.707)" fill="#c8d9ea"/>
+        <path id="Path_247" data-name="Path 247" d="M282.2,236.7h-4.078L272,200h4.078Z" transform="translate(-257.726 -184.707)" fill="#c8d9ea"/>
+        <path id="Path_248" data-name="Path 248" d="M160,236.7h4.078L170.2,200h-4.078Z" transform="translate(-160 -184.707)" fill="#c8d9ea"/>
+        <path id="Path_249" data-name="Path 249" d="M240,84.078l7.137,2.039,1.02-4.078L241.02,80Z" transform="translate(-229.805 -80)" fill="#c8d9ea"/>
+      </g>
+      <path id="Path_250" data-name="Path 250" d="M401.176,152l-4.078,5.1-4.078-1.02L392,160.156l4.817,1.606a2.039,2.039,0,0,0,2.193-.608l5.225-6.1Z" transform="translate(-321.101 -111.687)" fill="#e9eef2"/>
+      <path id="Path_251" data-name="Path 251" d="M0,0H8.407V8.407H0Z" transform="translate(62.76 48.485) rotate(-75.936)" fill="#c8d9ea"/>
+      <path id="Path_252" data-name="Path 252" d="M181.41,112.313l-21.41-5.1L163.059,96l21.41,6.117Z" transform="translate(-118.668 -62.824)" fill="#509deb" opacity="0.8"/>
+      <ellipse id="Ellipse_239" data-name="Ellipse 239" cx="5.5" cy="6" rx="5.5" ry="6" transform="translate(48.133 40.133)" fill="#5991ca"/>
+      <ellipse id="Ellipse_240" data-name="Ellipse 240" cx="1.5" cy="2" rx="1.5" ry="2" transform="translate(52.133 44.133)" fill="#9bc3eb"/>
+      <path id="Path_253" data-name="Path 253" d="M250.2,34.2,240,31.137,242.039,24l10.2,3.059Z" transform="translate(-188.472)" fill="#e9eef2"/>
+      <path id="Path_254" data-name="Path 254" d="M76.235,74.352,64,71.293,68.078,56l12.235,3.059Z" transform="translate(-34.902 -27.922)" fill="#c8d9ea"/>
+      <path id="Path_255" data-name="Path 255" d="M29.1,52.391,24,51.371,29.1,32l5.1,1.02Z" transform="translate(0 -6.98)" fill="#e9eef2"/>
+    </g>
+  </g>
+</svg>

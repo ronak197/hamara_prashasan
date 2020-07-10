@@ -6,21 +6,42 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 
 Map<String, String> avatarLocMap = {
-  'health': 'assets/health_avatar.svg',
-  'police': 'assets/police_avatar.svg',
-  'muncorp': 'assets/muncorp_avatar.svg',
+  'department' : 'assets/avatars/department.svg',
+  'health' : 'assets/avatars/health.svg',
+  'police': 'assets/avatars/police.svg',
+  'municipality': 'assets/avatars/municipality.svg',
+  'transport': 'assets/avatars/transport.svg',
+  'commerce': 'assets/avatars/commerce.svg',
+  'tourism': 'assets/avatars/tourism.svg',
+  'space': 'assets/avatars/space.svg',
+  'railway': 'assets/avatars/railway.svg',
+  'agriculture': 'assets/avatars/agriculture.svg',
 };
 
 Map<String, int> avatarColorMap = {
-  'health': 0xffFFFDFC,
-  'police': 0xffFFFFFC,
-  'muncorp': 0xffFDFCFF,
+  'department' : 0xffF7FBFF,
+  'health': 0xffFFFAFA,
+  'police': 0xffFFFEFA,
+  'municipality': 0xffFBFAFF,
+  'transport': 0xffFAFAFA,
+  'commerce': 0xffFFFBFA,
+  'tourism': 0xffFAFCFF,
+  'space': 0xffFAFCFF,
+  'railway': 0xffFFFAFA,
+  'agriculture': 0xffFAFFFC,
 };
 
 Map<String, int> categoryTagColorMap = {
-  'health': 0xff01C8B5,
+  'department' : 0xff175FB4,
+  'health': 0xffE2574C,
   'police': 0xffFFCE00,
-  'muncorp': 0xff3D17BC,
+  'municipality': 0xff3D17BC,
+  'transport': 0xff777777,
+  'commerce': 0xffB9785F,
+  'tourism': 0xff55A4F9,
+  'space': 0xff205B98,
+  'railway': 0xffC03A2B,
+  'agriculture': 0xff02A437,
 };
 
 class Feed {
@@ -39,7 +60,7 @@ class Feed {
     this.feedInfo = feedInfo;
     this.department = department;
     this.feedInfoDetails = feedInfoDetails;
-    this.profileAvatar = "assets/${department.category}_avatar.svg";
+    this.profileAvatar = "assets/avatars/${department.category}.svg";
     this.bgColor = avatarColorMap['${department.category}'];
     this.feedId = feedId;
   }

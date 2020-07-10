@@ -66,7 +66,7 @@ class _SendPostPageState extends State<SendPostPage> {
     } else {
       form.save();
       List<Map<String, dynamic>> details = [];
-      for (int i = 2; i < formFields.length; i++) {
+      for (int i = 0; i < formFields.length; i++) {
         details.add(formFields[i].data);
       }
       _showSendConfirmationDialog(details);
@@ -82,7 +82,8 @@ class _SendPostPageState extends State<SendPostPage> {
         actions: [
           FlatButton(
             onPressed: () {
-              var feedRef = Firestore.instance.collection("feeds").document();
+              print(details);
+              DocumentReference feedRef = Firestore.instance.collection("feeds").document();
               feedRef.setData({
                 "feedId": feedRef.documentID,
                 "creationDateTimeStamp": DateTime.now(),
@@ -103,8 +104,7 @@ class _SendPostPageState extends State<SendPostPage> {
                   pic.feedPosted = true;
                 }
               }
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.popUntil(context, ModalRoute.withName('/home'));
             },
             child: Text("Confirm"),
           ),

@@ -23,7 +23,6 @@ enum UserState {
 
 class AppConfigs {
   static SharedPreferences prefs;
-  static String userType = 'user';
 
   static Future<SharedPreferences> get initializeSharedPref async {
     prefs = await SharedPreferences.getInstance();
@@ -66,7 +65,16 @@ class AppConfigs {
   }
 
   static get getUserRoutes {
-    if (userType == 'admin') {
+    if (User.userData?.userType == null || User.userData?.userType == 'citizen') {
+      return {
+        '/home': (context) => HomePage(),
+        '/login': (context) => LoginPage(),
+        '/newsFeed': (context) => NewsFeedPage(),
+        '/feedInfo': (context) => FeedInfoPage(),
+        '/bookmarks': (context) => BookmarkPage(),
+        '/myfeeds': (context) => MyFeedsPage(),
+      };
+    } else {
       return {
         '/home': (context) => HomePage(),
         '/login': (context) => LoginPage(),
@@ -76,15 +84,6 @@ class AppConfigs {
         '/bookmarks': (context) => BookmarkPage()
       };
     }
-    return {
-      '/home': (context) => HomePage(),
-      '/login': (context) => LoginPage(),
-      '/sendPost': (context) => SendPostPage(),
-      '/newsFeed': (context) => NewsFeedPage(),
-      '/feedInfo': (context) => FeedInfoPage(),
-      '/bookmarks': (context) => BookmarkPage(),
-      '/myfeeds': (context) => MyFeedsPage(),
-    };
   }
 }
 

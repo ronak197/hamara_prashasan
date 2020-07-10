@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="75" height="75" viewBox="0 0 75 75">
+  <g id="Railway" transform="translate(58.192 79)">
+    <rect id="Rectangle_1507" data-name="Rectangle 1507" width="75" height="75" rx="11" transform="translate(-58.192 -79)" fill="#ebebeb"/>
+    <g id="_037---Train" data-name="037---Train" transform="translate(-46.294 -67.102)">
+      <path id="Shape" d="M16.4,37.828,10.449,53.687,10,54.876a.876.876,0,0,1-.819.573h-7.5A.881.881,0,0,1,.942,54.1L11.911,36.55h.009Z" transform="translate(0 -4.347)" fill="#bdc3c7"/>
+      <path id="Shape-2" data-name="Shape" d="M43.976,36.55h.009L54.954,54.1a.881.881,0,0,1-.74,1.348h-7.5a.876.876,0,0,1-.819-.573l-.449-1.189L39.5,37.828Z" transform="translate(-4.602 -4.347)" fill="#bdc3c7"/>
+      <path id="Shape-3" data-name="Shape" d="M39.289,45.524H15.5L16.822,42H37.967Z" transform="translate(-1.747 -4.995)" fill="#a56a43"/>
+      <path id="Shape-4" data-name="Shape" d="M42.147,55.524H11.75L13.072,52H40.825Z" transform="translate(-1.301 -6.185)" fill="#a56a43"/>
+      <path id="Shape-5" data-name="Shape" d="M30.264,0H23.216A13.22,13.22,0,0,0,10,13.216V26.432A7.032,7.032,0,0,0,13,32.2h.009a7.019,7.019,0,0,0,4.035,1.278H36.432A7.019,7.019,0,0,0,40.467,32.2h.009a7.032,7.032,0,0,0,3-5.771V13.216A13.22,13.22,0,0,0,30.264,0Z" transform="translate(-1.093)" fill="#e64c3c"/>
+      <path id="Shape-6" data-name="Shape" d="M20.573,35.859H17.049a7.019,7.019,0,0,1-4.035-1.278H13a7.032,7.032,0,0,1-3-5.771V20c10.573,4.176,10.573,12.018,10.573,15.859Z" transform="translate(-1.093 -2.379)" fill="#c03a2b"/>
+      <path id="Shape-7" data-name="Shape" d="M46.573,20v8.811a7.032,7.032,0,0,1-3,5.771H43.56a7.019,7.019,0,0,1-4.035,1.278H36C36,32.018,36,24.176,46.573,20Z" transform="translate(-4.186 -2.379)" fill="#c03a2b"/>
+      <path id="Shape-8" data-name="Shape" d="M15.643,31.762H13.881a.881.881,0,1,1,0-1.762h1.762a.881.881,0,0,1,0,1.762Z" transform="translate(-1.45 -3.568)" fill="#f9eab0"/>
+      <path id="Shape-9" data-name="Shape" d="M43.643,31.762H41.881a.881.881,0,1,1,0-1.762h1.762a.881.881,0,1,1,0,1.762Z" transform="translate(-4.78 -3.568)" fill="#f9eab0"/>
+      <path id="Shape-10" data-name="Shape" d="M39.67,13.811v1.066a.89.89,0,0,1-.458.767,22.216,22.216,0,0,0-3.5,2.37.862.862,0,0,1-.555.2H19.511a.862.862,0,0,1-.555-.2,22.216,22.216,0,0,0-3.5-2.37A.89.89,0,0,1,15,14.877V13.811A8.836,8.836,0,0,1,23.811,5h7.049a8.836,8.836,0,0,1,8.811,8.811Z" transform="translate(-1.688 -0.595)" fill="#2980ba"/>
+      <g id="Group_111" data-name="Group 111" transform="translate(23.004 21.146)">
+        <path id="Shape-11" data-name="Shape" d="M30.405,25.762H26.881a.881.881,0,1,1,0-1.762h3.524a.881.881,0,1,1,0,1.762Z" transform="translate(-26 -24)" fill="#bdc3c7"/>
+        <path id="Shape-12" data-name="Shape" d="M30.405,29.762H26.881a.881.881,0,1,1,0-1.762h3.524a.881.881,0,1,1,0,1.762Z" transform="translate(-26 -24.476)" fill="#bdc3c7"/>
+        <path id="Shape-13" data-name="Shape" d="M30.405,33.762H26.881a.881.881,0,0,1,0-1.762h3.524a.881.881,0,1,1,0,1.762Z" transform="translate(-26 -24.951)" fill="#bdc3c7"/>
+      </g>
+      <path id="Shape-14" data-name="Shape" d="M33.687,5.467a44.478,44.478,0,0,0-6.352,1.3C22.251,8.216,17.167,10.868,15.546,15.7c-.026-.018-.062-.035-.088-.053A.89.89,0,0,1,15,14.877V13.811A8.836,8.836,0,0,1,23.811,5h7.049a8.854,8.854,0,0,1,2.828.467Z" transform="translate(-1.688 -0.595)" fill="#3b97d3"/>
+      <path id="Rectangle-path" d="M28,5h1.762V18.216H28Z" transform="translate(-3.234 -0.595)" fill="#c03a2b"/>
+    </g>
+  </g>
+</svg>

@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,7 +26,7 @@ class NewsFeedPage extends StatefulWidget {
 
 class _NewsFeedPageState extends State<NewsFeedPage> {
   bool feedSelected = false;
-  List<Feed> feeds = [];
+  List<Feed> feeds = new List<Feed>();
   Set<String> selectedFeed = new Set<String>();
 
   BehaviorSubject<Feeds> resultStream = BehaviorSubject<Feeds>();
@@ -37,7 +38,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   List<Department> departments = [], selectedDepartments = [];
   List<String> categories = [], selectedCategories = [];
   DateTime start, end;
-  int feedLimit = 2;
+  int feedLimit = 5;
 
   String errorMessage =
       'Some Error Occurred, Make sure you are connected to the internet.';
@@ -310,6 +311,12 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         userLocation = '${placemark[0].subLocality}, ${placemark[0].locality}';
       });
     } else {
+      await Permission.location.request();
+      await Permission.location.isGranted.then((value){
+        if(value){
+          getRecentLocation();
+        }
+      });
       print('Permission not granted');
     }
   }
@@ -673,8 +680,10 @@ class FeedBox extends StatelessWidget {
                                 padding: EdgeInsets.symmetric(
                                     horizontal: 4.0, vertical: 2.0),
                                 decoration: BoxDecoration(
-                                  color: Color(categoryTagColorMap[
-                                      feed.department.category]),
+                                  color: Color(categoryTagColorMap.containsKey(feed.department.category) ?
+                                  categoryTagColorMap[feed.department.category] :
+                                  categoryTagColorMap['department']
+                                  ),
                                   borderRadius: BorderRadius.circular(4.0),
                                 ),
                                 child: Text(
@@ -711,11 +720,11 @@ class FeedBox extends StatelessWidget {
                     margin: EdgeInsets.only(top: 10.0),
                     child: Text(
                       feed.feedInfo.description,
-                      maxLines: 3,
+                      maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context)
                           .textTheme
-                          .headline1
+                          .headline2
                           .copyWith(fontWeight: FontWeight.normal),
                     ),
                   ),
@@ -749,7 +758,7 @@ class FeedBox extends StatelessWidget {
                               ),
                             ),
                             TextSpan(
-                              text: DateFormat('MMM d, HH:m')
+                              text: DateFormat('MMM d, HH:mm')
                                   .format(feed.feedInfo.creationDateTimeStamp),
                               style: Theme.of(context)
                                   .textTheme

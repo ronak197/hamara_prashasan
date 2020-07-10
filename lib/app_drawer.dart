@@ -19,6 +19,33 @@ class MyAppDrawer extends StatefulWidget {
 class _MyAppDrawerState extends State<MyAppDrawer> {
   bool imageLoadFailed = false;
 
+
+  void _logoutDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text("Are you sure you want to Logout?", style: Theme.of(context).textTheme.headline3,),
+        actions: [
+          FlatButton(
+            onPressed: () {
+              signOutGoogle();
+              AppConfigs.setSigningState = false;
+              Navigator.pushNamedAndRemoveUntil(context, '/login', ModalRoute.withName('/home'));
+            },
+            child: Text("Yes"),
+          ),
+          FlatButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text("No"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -64,7 +91,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                 scrollDirection: Axis.vertical,
                 padding: EdgeInsets.all(0.0),
                 children: [
-                  InkWell(
+                  User.userData.userType == 'department' ? InkWell(
                     onTap: () {
                       Navigator.of(context).pushNamed('/sendPost');
                     },
@@ -85,7 +112,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                         )
                       ],
                     ),
-                  ),
+                  ) : SizedBox(),
                   InkWell(
                     onTap: () {},
                     child: Row(
@@ -139,7 +166,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                       ],
                     ),
                   ),
-                  InkWell(
+                  User.userData.userType == 'department' ? InkWell(
                     onTap: () async {
                       Navigator.pushNamed(context, "/myfeeds");
                     },
@@ -161,7 +188,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                         )
                       ],
                     ),
-                  ),
+                  ) : SizedBox(),
                   Divider(),
                   InkWell(
                     onTap: () {},
@@ -206,9 +233,7 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                   Divider(),
                   InkWell(
                     onTap: () async {
-                      signOutGoogle();
-                      AppConfigs.setSigningState = false;
-                      Navigator.of(context).pushReplacementNamed('/login');
+                      _logoutDialog();
                     },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,

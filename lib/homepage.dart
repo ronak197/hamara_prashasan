@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:hamaraprashasan/app_drawer.dart';
 import 'package:hamaraprashasan/bookmarks.dart';
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
+import 'package:hamaraprashasan/chat_page.dart';
 import 'package:hamaraprashasan/departments_page.dart';
 import 'package:hamaraprashasan/news_feed_page.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
@@ -41,9 +42,7 @@ class _HomePageState extends State<HomePage> {
       BookmarkPage(
         showBottomSheet: showBottomSheet,
       ),
-      Center(
-        child: Text('Chat Page'),
-      ),
+      ChatPage(),
     ];
   }
 

@@ -390,14 +390,14 @@ class DepartmentsMessageBox extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(5.0)),
-        color: Color(avatarColorMap[department.category]),
+        color: Color(avatarColorMap.containsKey(department.category) ? avatarColorMap[department.category] : avatarColorMap['department']),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.max,
         children: [
           Container(
             child: SvgPicture.asset(
-              avatarLocMap[department.category],
+              avatarLocMap.containsKey(department.category) ? avatarLocMap[department.category] : avatarLocMap['department'],
               height: 60.0,
               width: 60.0,
               fit: BoxFit.contain,
@@ -455,7 +455,9 @@ class DepartmentsMessageBox extends StatelessWidget {
                                 horizontal: 4.0, vertical: 1.0),
                             decoration: BoxDecoration(
                               color: Color(
-                                  categoryTagColorMap[department.category]),
+                                categoryTagColorMap.containsKey(department.category) ?
+                                  categoryTagColorMap[department.category]:
+                              categoryTagColorMap['department']),
                               borderRadius: BorderRadius.circular(4.0),
                             ),
                             child: Text(
@@ -478,6 +480,7 @@ class DepartmentsMessageBox extends StatelessWidget {
                               padding: EdgeInsets.symmetric(horizontal: 12.0),
                               fillColor: Colors.orange,
                               splashColor: Colors.red,
+                              elevation: 0.0,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(5.0)),
                               child: RichText(
@@ -517,6 +520,7 @@ class DepartmentsMessageBox extends StatelessWidget {
                                     .headline1
                                     .copyWith(color: Colors.white),
                               ),
+                              elevation: 0.0,
                               onPressed: onSubscribePressed,
                             ),
                     ],
