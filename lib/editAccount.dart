@@ -206,7 +206,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                                 imageUrl: User.authUser.photoUrl,
                                 fit: BoxFit.contain,
                                 placeholder: (context, s) {
-                                  return Container();
+                                  return Container(color: Colors.white);
                                 },
                               ),
                       ),

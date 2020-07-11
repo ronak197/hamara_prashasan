@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/classes.dart';
+import 'package:hamaraprashasan/dateSelector.dart';
 import 'package:hamaraprashasan/editAccount.dart';
 
 class AccountBottomSheet extends StatefulWidget {
@@ -128,7 +129,7 @@ class _AccountBottomSheetState extends State<AccountBottomSheet> {
                         imageUrl: User.authUser.photoUrl,
                         fit: BoxFit.contain,
                         placeholder: (context, s) {
-                          return Container();
+                          return Container(color: Colors.white);
                         },
                       ),
               ),
@@ -142,7 +143,7 @@ class _AccountBottomSheetState extends State<AccountBottomSheet> {
 
 class FilterBottomSheet extends StatefulWidget {
   final Map<String, dynamic> departments, prevVal;
-  final Function(SortingType sortingType, List<Department> departments,
+  final Function(SortingFeeds sortingFeeds, List<Department> departments,
       List<String> categories, DateTime start, DateTime end) applyFilters;
   FilterBottomSheet(
       {@required this.departments,
@@ -158,7 +159,7 @@ enum FilterType { All, Department, Category }
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
   int selectedIndex = 0;
-  SortingType _sortingType = SortingType.none;
+  SortingFeeds sortingFeeds = new SortingFeeds();
   List<String> sortingList = [
     "Department",
     "Category",
@@ -189,9 +190,41 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   }
 
   void setPreviousValues() {
-    _sortingType = widget.prevVal['sortingType'];
+    sortingFeeds = widget.prevVal['sortingFeeds'] ?? SortingFeeds();
     start = widget.prevVal['start'];
     end = widget.prevVal['end'];
+  }
+
+  void clearFilers() {
+    sortingFeeds.type = SortingType.none;
+    sortingFeeds.increasing = true;
+    start = null;
+    end = null;
+    for (int i = 0; i < departmentSelected.length; i++) {
+      departmentSelected[i] = true;
+    }
+    for (int i = 0; i < categoriesSelected.length; i++) {
+      categoriesSelected[i] = true;
+    }
+    applyFilters();
+  }
+
+  void applyFilters() {
+    List<Department> selectedDepartments = [];
+    List<String> selectedCategories = [];
+    for (int i = 0; i < departmentSelected.length; i++) {
+      if (departmentSelected[i]) {
+        selectedDepartments.add(departments[i]);
+      }
+    }
+    for (int i = 0; i < categoriesSelected.length; i++) {
+      if (categoriesSelected[i]) {
+        selectedCategories.add(categories[i]);
+      }
+    }
+    widget.applyFilters(
+        sortingFeeds, selectedDepartments, selectedCategories, start, end);
+    Navigator.pop(context);
   }
 
   @override
@@ -204,9 +237,16 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    var size = MediaQuery.of(context).size;
+    bool filtered = this.sortingFeeds.type != SortingType.none ||
+        this.departmentSelected.any((e) => !e) ||
+        this.categoriesSelected.any((e) => !e) ||
+        start != null ||
+        end != null;
+    bool sorted = this.sortingFeeds.type != SortingType.none,
+        departmentsFiltered = this.departmentSelected.any((e) => !e),
+        categoriesFiltered = this.categoriesSelected.any((e) => !e),
+        dateProvided = start != null || end != null;
     return Container(
-      height: size.height * 0.75,
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -271,82 +311,168 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                   selectedIndex = 0;
                                 });
                               },
-                              child: Container(
-                                alignment: Alignment.centerLeft,
-                                decoration: BoxDecoration(
-                                  color: selectedIndex == 0
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 15, vertical: 20),
-                                child: Text(
-                                  "Sort by",
-                                  style: Theme.of(context).textTheme.headline2,
-                                ),
+                              child: Stack(
+                                children: <Widget>[
+                                      Container(
+                                        alignment: Alignment.centerLeft,
+                                        decoration: BoxDecoration(
+                                          color: selectedIndex == 0
+                                              ? Colors.white
+                                              : Colors.transparent,
+                                        ),
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 15, vertical: 20),
+                                        child: Text(
+                                          "Sort by",
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headline2,
+                                        ),
+                                      ),
+                                    ] +
+                                    (sorted
+                                        ? <Widget>[
+                                            Positioned(
+                                              right: 5,
+                                              top: 5,
+                                              child: Container(
+                                                height: 7,
+                                                width: 7,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.orange,
+                                                ),
+                                              ),
+                                            )
+                                          ]
+                                        : <Widget>[]),
                               ),
                             ),
                             GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  selectedIndex = 1;
-                                });
-                              },
-                              child: Container(
-                                alignment: Alignment.centerLeft,
-                                decoration: BoxDecoration(
-                                  color: selectedIndex == 1
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 15, vertical: 20),
-                                child: Text(
-                                  "Department",
-                                  style: Theme.of(context).textTheme.headline2,
-                                ),
-                              ),
-                            ),
+                                onTap: () {
+                                  setState(() {
+                                    selectedIndex = 1;
+                                  });
+                                },
+                                child: Stack(
+                                  children: <Widget>[
+                                        Container(
+                                          alignment: Alignment.centerLeft,
+                                          decoration: BoxDecoration(
+                                            color: selectedIndex == 1
+                                                ? Colors.white
+                                                : Colors.transparent,
+                                          ),
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 15, vertical: 20),
+                                          child: Text(
+                                            "Department",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headline2,
+                                          ),
+                                        )
+                                      ] +
+                                      (departmentsFiltered
+                                          ? <Widget>[
+                                              Positioned(
+                                                right: 5,
+                                                top: 5,
+                                                child: Container(
+                                                  height: 7,
+                                                  width: 7,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.orange,
+                                                  ),
+                                                ),
+                                              )
+                                            ]
+                                          : <Widget>[]),
+                                )),
                             GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  selectedIndex = 2;
-                                });
-                              },
-                              child: Container(
-                                alignment: Alignment.centerLeft,
-                                decoration: BoxDecoration(
-                                  color: selectedIndex == 2
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 15, vertical: 20),
-                                child: Text(
-                                  "Category",
-                                  style: Theme.of(context).textTheme.headline2,
-                                ),
-                              ),
-                            ),
+                                onTap: () {
+                                  setState(() {
+                                    selectedIndex = 2;
+                                  });
+                                },
+                                child: Stack(
+                                  children: <Widget>[
+                                        Container(
+                                          alignment: Alignment.centerLeft,
+                                          decoration: BoxDecoration(
+                                            color: selectedIndex == 2
+                                                ? Colors.white
+                                                : Colors.transparent,
+                                          ),
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 15, vertical: 20),
+                                          child: Text(
+                                            "Category",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headline2,
+                                          ),
+                                        )
+                                      ] +
+                                      (categoriesFiltered
+                                          ? <Widget>[
+                                              Positioned(
+                                                right: 5,
+                                                top: 5,
+                                                child: Container(
+                                                  height: 7,
+                                                  width: 7,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.orange,
+                                                  ),
+                                                ),
+                                              )
+                                            ]
+                                          : <Widget>[]),
+                                )),
                             GestureDetector(
                               onTap: () {
                                 setState(() {
                                   selectedIndex = 3;
                                 });
                               },
-                              child: Container(
-                                alignment: Alignment.centerLeft,
-                                decoration: BoxDecoration(
-                                  color: selectedIndex == 3
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                ),
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 15, vertical: 20),
-                                child: Text(
-                                  "Date",
-                                  style: Theme.of(context).textTheme.headline2,
-                                ),
+                              child: Stack(
+                                children: <Widget>[
+                                      Container(
+                                        alignment: Alignment.centerLeft,
+                                        decoration: BoxDecoration(
+                                          color: selectedIndex == 3
+                                              ? Colors.white
+                                              : Colors.transparent,
+                                        ),
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 15, vertical: 20),
+                                        child: Text(
+                                          "Date",
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headline2,
+                                        ),
+                                      )
+                                    ] +
+                                    (dateProvided
+                                        ? <Widget>[
+                                            Positioned(
+                                              right: 5,
+                                              top: 5,
+                                              child: Container(
+                                                height: 7,
+                                                width: 7,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.orange,
+                                                ),
+                                              ),
+                                            )
+                                          ]
+                                        : <Widget>[]),
                               ),
                             ),
                           ],
@@ -360,40 +486,73 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       physics: BouncingScrollPhysics(),
                       children: selectedIndex == 0
                           ? new List<Widget>.generate(
-                              sortingList.length,
-                              (index) {
-                                return InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      _sortingType = SortingType.values[index];
-                                    });
-                                  },
-                                  child: Container(
-                                    alignment: Alignment.centerLeft,
-                                    padding: EdgeInsets.only(
-                                        bottom: 15,
-                                        top: 15,
-                                        left: 35,
-                                        right: 15),
-                                    child: Text(
-                                      sortingList[index],
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headline1
-                                          .copyWith(
-                                            fontWeight:
-                                                index == _sortingType.index
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                            color: index == _sortingType.index
-                                                ? Colors.green
-                                                : Colors.black,
-                                          ),
+                                sortingList.length,
+                                (index) {
+                                  return InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        sortingFeeds.type =
+                                            SortingType.values[index];
+                                      });
+                                    },
+                                    child: Container(
+                                      alignment: Alignment.centerLeft,
+                                      padding: EdgeInsets.only(
+                                          bottom: 15,
+                                          top: 15,
+                                          left: 35,
+                                          right: 15),
+                                      child: Text(
+                                        sortingList[index],
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headline1
+                                            .copyWith(
+                                              fontWeight: index ==
+                                                      sortingFeeds.type.index
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: index ==
+                                                      sortingFeeds.type.index
+                                                  ? Colors.green
+                                                  : Colors.black,
+                                            ),
+                                      ),
                                     ),
+                                  );
+                                },
+                              ) +
+                              <Widget>[
+                                SizedBox(height: 50),
+                                Container(
+                                  alignment: Alignment.centerLeft,
+                                  padding: EdgeInsets.only(
+                                      bottom: 15, top: 15, left: 35, right: 15),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Decreasing:",
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headline2
+                                            .copyWith(
+                                                decoration:
+                                                    TextDecoration.underline),
+                                      ),
+                                      Checkbox(
+                                        value: !sortingFeeds.increasing,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            sortingFeeds.increasing = !value;
+                                          });
+                                        },
+                                      )
+                                    ],
                                   ),
-                                );
-                              },
-                            )
+                                ),
+                              ]
                           : selectedIndex == 1
                               ? new List<Widget>.generate(
                                   departments.length,
@@ -480,6 +639,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                                     .textTheme
                                                     .headline2),
                                           ),
+                                          //MyDateSelector()
                                           Container(
                                             padding: EdgeInsets.symmetric(
                                                 horizontal: 30, vertical: 10),
@@ -593,44 +753,16 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 FlatButton(
-                  onPressed: () {
-                    setState(() {
-                      _sortingType = SortingType.none;
-                      start = null;
-                      end = null;
-                      for (int i = 0; i < departmentSelected.length; i++) {
-                        departmentSelected[i] = true;
-                      }
-                      for (int i = 0; i < categoriesSelected.length; i++) {
-                        categoriesSelected[i] = true;
-                      }
-                    });
-                  },
+                  onPressed: filtered ? clearFilers : null,
                   child: Text(
                     "Clear all",
                     style: Theme.of(context).textTheme.headline2.copyWith(
-                          color: Colors.grey,
+                          color: filtered ? Colors.red : Colors.grey,
                         ),
                   ),
                 ),
                 RaisedButton(
-                  onPressed: () {
-                    List<Department> selectedDepartments = [];
-                    List<String> selectedCategories = [];
-                    for (int i = 0; i < departmentSelected.length; i++) {
-                      if (departmentSelected[i]) {
-                        selectedDepartments.add(departments[i]);
-                      }
-                    }
-                    for (int i = 0; i < categoriesSelected.length; i++) {
-                      if (categoriesSelected[i]) {
-                        selectedCategories.add(categories[i]);
-                      }
-                    }
-                    widget.applyFilters(_sortingType, selectedDepartments,
-                        selectedCategories, start, end);
-                    Navigator.pop(context);
-                  },
+                  onPressed: applyFilters,
                   child: Text(
                     "Apply Filters",
                     style: Theme.of(context).textTheme.headline2.copyWith(

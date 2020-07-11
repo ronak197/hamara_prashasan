@@ -349,7 +349,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                             fit: BoxFit.contain,
                             placeholder: (context, s) {
                               print("Profile Url" + s);
-                              return Container();
+                              return Container(color: Colors.white);
                             },
                           ),
                   ),

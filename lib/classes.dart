@@ -4,10 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
+import 'package:hamaraprashasan/bottomSheets.dart';
 
 Map<String, String> avatarLocMap = {
-  'department' : 'assets/avatars/department.svg',
-  'health' : 'assets/avatars/health.svg',
+  'department': 'assets/avatars/department.svg',
+  'health': 'assets/avatars/health.svg',
   'police': 'assets/avatars/police.svg',
   'municipality': 'assets/avatars/municipality.svg',
   'transport': 'assets/avatars/transport.svg',
@@ -19,7 +20,7 @@ Map<String, String> avatarLocMap = {
 };
 
 Map<String, int> avatarColorMap = {
-  'department' : 0xffF7FBFF,
+  'department': 0xffF7FBFF,
   'health': 0xffFFFAFA,
   'police': 0xffFFFEFA,
   'municipality': 0xffFBFAFF,
@@ -32,7 +33,7 @@ Map<String, int> avatarColorMap = {
 };
 
 Map<String, int> categoryTagColorMap = {
-  'department' : 0xff175FB4,
+  'department': 0xff175FB4,
   'health': 0xffE2574C,
   'police': 0xffFFCE00,
   'municipality': 0xff3D17BC,
@@ -276,6 +277,27 @@ class TableData {
 
 class Feeds {
   List<Feed> feeds = List<Feed>();
+}
+
+class MyCsvParser {
+  static List<List<String>> parser(String data) {
+    String colDelemiter = ";", rowDelemiter = "\n";
+    List<List<String>> res = [];
+    var rows = data.split(rowDelemiter);
+    for (var r in rows) {
+      res.add(r.split(colDelemiter));
+    }
+    return res;
+  }
+}
+
+class SortingFeeds {
+  SortingType type;
+  bool increasing;
+  SortingFeeds([SortingFeeds sortingFeeds]) {
+    type = sortingFeeds != null ? sortingFeeds.type : SortingType.none;
+    increasing = sortingFeeds != null ? sortingFeeds.increasing : true;
+  }
 }
 
 List<String> imageFormats = [

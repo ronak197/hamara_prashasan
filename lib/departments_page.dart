@@ -232,7 +232,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                       imageUrl: User.authUser.photoUrl,
                       fit: BoxFit.contain,
                       placeholder: (context, s) {
-                        return Container();
+                        return Container(color: Colors.white);
                       },
                     ),
             ),
@@ -390,14 +390,18 @@ class DepartmentsMessageBox extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(5.0)),
-        color: Color(avatarColorMap.containsKey(department.category) ? avatarColorMap[department.category] : avatarColorMap['department']),
+        color: Color(avatarColorMap.containsKey(department.category)
+            ? avatarColorMap[department.category]
+            : avatarColorMap['department']),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.max,
         children: [
           Container(
             child: SvgPicture.asset(
-              avatarLocMap.containsKey(department.category) ? avatarLocMap[department.category] : avatarLocMap['department'],
+              avatarLocMap.containsKey(department.category)
+                  ? avatarLocMap[department.category]
+                  : avatarLocMap['department'],
               height: 60.0,
               width: 60.0,
               fit: BoxFit.contain,
@@ -454,10 +458,10 @@ class DepartmentsMessageBox extends StatelessWidget {
                             padding: EdgeInsets.symmetric(
                                 horizontal: 4.0, vertical: 1.0),
                             decoration: BoxDecoration(
-                              color: Color(
-                                categoryTagColorMap.containsKey(department.category) ?
-                                  categoryTagColorMap[department.category]:
-                              categoryTagColorMap['department']),
+                              color: Color(categoryTagColorMap
+                                      .containsKey(department.category)
+                                  ? categoryTagColorMap[department.category]
+                                  : categoryTagColorMap['department']),
                               borderRadius: BorderRadius.circular(4.0),
                             ),
                             child: Text(

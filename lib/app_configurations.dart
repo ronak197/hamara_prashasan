@@ -66,11 +66,11 @@ class AppConfigs {
     return startUpPage;
   }
 
-  static Route<dynamic> getUserRoutes(RouteSettings settings){
+  static Route<dynamic> getUserRoutes(RouteSettings settings) {
     print(User.userData.userType);
-    if(User.userData != null){
+    if (User.userData != null) {
       if (User.userData.userType == 'citizen') {
-        switch(settings.name){
+        switch (settings.name) {
           case '/home':
             return MaterialPageRoute(builder: (_) => HomePage());
           case '/login':
@@ -84,8 +84,8 @@ class AppConfigs {
           case '/myfeeds':
             return MaterialPageRoute(builder: (_) => MyFeedsPage());
         }
-      } else if(User.userData.userType == 'department'){
-        switch(settings.name){
+      } else if (User.userData.userType == 'department') {
+        switch (settings.name) {
           case '/home':
             return MaterialPageRoute(builder: (_) => HomePage());
           case '/login':

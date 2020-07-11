@@ -21,7 +21,7 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
   String errorMessage =
           'Some Error Occurred, Make sure you are connected to the internet.',
       loadingMessage = 'Loading ...',
-      noBookmarkMessage = "No Bookmarked Feeds.";
+      noBookmarkMessage = "No Feeds Present.";
   ScrollController _scrollController = new ScrollController();
   Feeds myFeeds = new Feeds();
   Set<String> selectedFeed = new Set<String>();
@@ -64,8 +64,7 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
     await db
         .collection('feeds')
         .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid',
-            isEqualTo: "surat_health@gmail.com" /* User.authUser.email */)
+        .where('departmentUid', isEqualTo: User.authUser.email)
         .orderBy('creationDateTimeStamp', descending: true)
         .limit(feedLimit)
         .getDocuments()
@@ -78,7 +77,7 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
               .firstWhere((d) => d.email == element.data['departmentUid']),
         ));
       });
-      lastFeedSp = value.documents.last;
+      if (value.documents.isNotEmpty) lastFeedSp = value.documents.last;
       resultStream.sink.add(myFeeds);
     }).whenComplete(() {
       print("Fetched mine latest feeds");
@@ -88,16 +87,15 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
   Future<void> getMoreFeeds() async {
     Firestore db = Firestore.instance;
     print('fetching my feeds');
-    await db
+    Query q = db
         .collection('feeds')
         .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid',
-            isEqualTo: "surat_health@gmail.com" /* User.authUser.email */)
-        .orderBy('creationDateTimeStamp', descending: true)
-        .startAfterDocument(lastFeedSp)
-        .limit(feedLimit)
-        .getDocuments()
-        .then((value) {
+        .where('departmentUid', isEqualTo: User.authUser.email)
+        .orderBy('creationDateTimeStamp', descending: true);
+    if (lastFeedSp != null) {
+      q = q.startAfterDocument(lastFeedSp);
+    }
+    await q.limit(feedLimit).getDocuments().then((value) {
       value.documents.forEach((element) {
         myFeeds.feeds.add(Feed(
           feedId: element.data['feedId'],
@@ -124,9 +122,9 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
         print(
             'isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
         if (moreFeeds) {
-          loadingStream.add(true);
+          //loadingStream.add(true);
           await getMoreFeeds();
-          loadingStream.add(false);
+          //loadingStream.add(false);
         } else {
           await getLatestFeeds();
         }
