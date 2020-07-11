@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/myFeeds.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -64,25 +66,44 @@ class AppConfigs {
     return startUpPage;
   }
 
-  static get getUserRoutes {
-    if (User.userData?.userType == null || User.userData?.userType == 'citizen') {
-      return {
-        '/home': (context) => HomePage(),
-        '/login': (context) => LoginPage(),
-        '/newsFeed': (context) => NewsFeedPage(),
-        '/feedInfo': (context) => FeedInfoPage(),
-        '/bookmarks': (context) => BookmarkPage(),
-        '/myfeeds': (context) => MyFeedsPage(),
-      };
+  static Route<dynamic> getUserRoutes(RouteSettings settings){
+    print(User.userData.userType);
+    if(User.userData != null){
+      if (User.userData.userType == 'citizen') {
+        switch(settings.name){
+          case '/home':
+            return MaterialPageRoute(builder: (_) => HomePage());
+          case '/login':
+            return MaterialPageRoute(builder: (_) => LoginPage());
+          case '/newsFeed':
+            return MaterialPageRoute(builder: (_) => NewsFeedPage());
+          case '/feedInfo':
+            return MaterialPageRoute(builder: (_) => FeedInfoPage());
+          case '/bookmarks':
+            return MaterialPageRoute(builder: (_) => BookmarkPage());
+          case '/myfeeds':
+            return MaterialPageRoute(builder: (_) => MyFeedsPage());
+        }
+      } else if(User.userData.userType == 'department'){
+        switch(settings.name){
+          case '/home':
+            return MaterialPageRoute(builder: (_) => HomePage());
+          case '/login':
+            return MaterialPageRoute(builder: (_) => LoginPage());
+          case '/newsFeed':
+            return MaterialPageRoute(builder: (_) => NewsFeedPage());
+          case '/feedInfo':
+            return MaterialPageRoute(builder: (_) => FeedInfoPage());
+          case '/bookmarks':
+            return MaterialPageRoute(builder: (_) => BookmarkPage());
+          case '/myfeeds':
+            return MaterialPageRoute(builder: (_) => MyFeedsPage());
+          case '/sendPost':
+            return MaterialPageRoute(builder: (_) => SendPostPage());
+        }
+      }
     } else {
-      return {
-        '/home': (context) => HomePage(),
-        '/login': (context) => LoginPage(),
-        '/sendPost': (context) => SendPostPage(),
-        '/newsFeed': (context) => NewsFeedPage(),
-        '/feedInfo': (context) => FeedInfoPage(),
-        '/bookmarks': (context) => BookmarkPage()
-      };
+      print('Null value in User.userData');
     }
   }
 }
@@ -124,9 +145,12 @@ class User {
   static bool getUserData() {
     var jsonData = AppConfigs.prefs.getString('userData') ?? false;
     if (jsonData == false) {
+      print('no user data');
       return false;
     }
+    print(jsonData);
     userData = UserData.fromJson(jsonDecode(jsonData));
+    print(userData.userType);
     lastUserState = UserState.initial;
     return true;
   }

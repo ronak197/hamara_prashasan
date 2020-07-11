@@ -156,7 +156,7 @@ class UserData {
         lastLocation: LatLng.fromJson(json["lastLocation"]),
         subscribedDepartmentIDs: List<String>.from(
             (json["subscribedDepartmentIDs"] ?? List<dynamic>()).map((x) => x)),
-        userType: json["userType "] as String,
+        userType: json["userType"] as String,
       );
 
   Map<String, dynamic> toJson() => {
