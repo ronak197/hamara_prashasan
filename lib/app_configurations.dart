@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/myFeeds.dart';
+import 'package:hamaraprashasan/unkown_route_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hamaraprashasan/homepage.dart';
@@ -67,45 +68,31 @@ class AppConfigs {
   }
 
   static Route<dynamic> getUserRoutes(RouteSettings settings){
-    print(User.userData.userType);
+    switch(settings.name){
+      case '/home':
+        return MaterialPageRoute(builder: (_) => HomePage());
+      case '/login':
+        return MaterialPageRoute(builder: (_) => LoginPage());
+      case '/newsFeed':
+        return MaterialPageRoute(builder: (_) => NewsFeedPage());
+      case '/feedInfo':
+        return MaterialPageRoute(builder: (_) => FeedInfoPage());
+      case '/bookmarks':
+        return MaterialPageRoute(builder: (_) => BookmarkPage());
+    }
     if(User.userData != null){
-      if (User.userData.userType == 'citizen') {
+      if(User.userData.userType == 'department'){
         switch(settings.name){
-          case '/home':
-            return MaterialPageRoute(builder: (_) => HomePage());
-          case '/login':
-            return MaterialPageRoute(builder: (_) => LoginPage());
-          case '/newsFeed':
-            return MaterialPageRoute(builder: (_) => NewsFeedPage());
-          case '/feedInfo':
-            return MaterialPageRoute(builder: (_) => FeedInfoPage());
-          case '/bookmarks':
-            return MaterialPageRoute(builder: (_) => BookmarkPage());
-          case '/myfeeds':
-            return MaterialPageRoute(builder: (_) => MyFeedsPage());
-        }
-      } else if(User.userData.userType == 'department'){
-        switch(settings.name){
-          case '/home':
-            return MaterialPageRoute(builder: (_) => HomePage());
-          case '/login':
-            return MaterialPageRoute(builder: (_) => LoginPage());
-          case '/newsFeed':
-            return MaterialPageRoute(builder: (_) => NewsFeedPage());
-          case '/feedInfo':
-            return MaterialPageRoute(builder: (_) => FeedInfoPage());
-          case '/bookmarks':
-            return MaterialPageRoute(builder: (_) => BookmarkPage());
           case '/myfeeds':
             return MaterialPageRoute(builder: (_) => MyFeedsPage());
           case '/sendPost':
             return MaterialPageRoute(builder: (_) => SendPostPage());
         }
       }
-    } else {
-      print('Null value in User.userData');
     }
+    return MaterialPageRoute(builder:  (_) => UnkownRoutePage());
   }
+
 }
 
 class User {
