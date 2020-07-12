@@ -7,6 +7,7 @@ import 'package:hamaraprashasan/bookmarks.dart';
 import 'package:hamaraprashasan/bottom_bar_icons_icons.dart';
 import 'package:hamaraprashasan/chat_page.dart';
 import 'package:hamaraprashasan/departments_page.dart';
+import 'package:hamaraprashasan/location_bloc.dart';
 import 'package:hamaraprashasan/news_feed_page.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:http/http.dart' as http;
@@ -44,6 +45,8 @@ class _HomePageState extends State<HomePage> {
       ),
       ChatPage(),
     ];
+
+    LocationBloc.getRecentLocation();
   }
 
   void showBottomSheet(Widget Function(BuildContext) builder,

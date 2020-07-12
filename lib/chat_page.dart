@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:hamaraprashasan/location_bloc.dart';
 
 
 class ChatPage extends StatefulWidget {
@@ -77,13 +78,17 @@ class _ChatPageState extends State<ChatPage> {
                     alignment: Alignment.topLeft,
                     child: Center(
                         child: InkWell(
-                          onTap: (){
-                          },
-                          child: Text('userLocation' ?? 'Your Location',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyText1
-                                  .copyWith(color: Color(0xff6D6D6D))),
+                          onTap: () => LocationBloc.getNewLocation(),
+                          child: StreamBuilder(
+                            stream: LocationBloc.locationStream,
+                            builder: (context, AsyncSnapshot<String> snapshot){
+                              return Text(snapshot.hasData ? snapshot.data : 'Your Location',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyText1
+                                      .copyWith(color: Color(0xff6D6D6D)));
+                            },
+                          ),
                         )))
               ],
             )

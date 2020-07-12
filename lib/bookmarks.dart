@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/classes.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:hamaraprashasan/location_bloc.dart';
 import 'package:hamaraprashasan/news_feed_page.dart';
 import 'package:rxdart/subjects.dart';
 
@@ -413,11 +414,19 @@ class _BookmarkPageState extends State<BookmarkPage> {
                           height: 16.0,
                           alignment: Alignment.topLeft,
                           child: Center(
-                              child: Text('Surat',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyText1
-                                      .copyWith(color: Color(0xff6D6D6D)))))
+                              child: InkWell(
+                                onTap: () => LocationBloc.getNewLocation(),
+                                child: StreamBuilder(
+                                  stream: LocationBloc.locationStream,
+                                  builder: (context, AsyncSnapshot<String> snapshot){
+                                    return Text(snapshot.hasData ? snapshot.data : 'Your Location',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyText1
+                                            .copyWith(color: Color(0xff6D6D6D)));
+                                  },
+                                ),
+                              )))
                     ],
                   )
                 ],
