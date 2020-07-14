@@ -196,6 +196,10 @@ class UserData {
         "subscribedDepartmentIDs": subscribedDepartmentIDs,
         "userType": userType,
       };
+
+  bool get isCitizen => this.userType != null && this.userType == "citizen";
+  bool get isDepartment =>
+      this.userType != null && this.userType == "department";
 }
 
 class AuthUser {

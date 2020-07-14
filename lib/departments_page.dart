@@ -220,7 +220,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
             margin: EdgeInsets.all(12.0),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.blue,
+              color: Colors.white,
             ),
             child: ClipOval(
               child: User.authUser.localPhotoLoc != null

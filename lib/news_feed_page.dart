@@ -268,9 +268,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         if (selectedFeed.isEmpty) allSelectedFeedCleared();
       });
     } else {
-      Navigator.of(context).pushNamed("/feedInfo", arguments: {
-        "feed": f,
-      });
+      Navigator.pushNamed(context, "/feedInfo", arguments: f);
     }
   }
 
@@ -460,7 +458,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                   margin: EdgeInsets.all(12.0),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.blue,
+                    color: Colors.white,
                   ),
                   child: ClipOval(
                     child: User.authUser.localPhotoLoc != null

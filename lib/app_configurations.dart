@@ -67,7 +67,6 @@ class AppConfigs {
   }
 
   static Route<dynamic> getUserRoutes(RouteSettings settings) {
-    print(User.userData.userType);
     if (User.userData != null) {
       if (User.userData.userType == 'citizen') {
         switch (settings.name) {
@@ -78,7 +77,9 @@ class AppConfigs {
           case '/newsFeed':
             return MaterialPageRoute(builder: (_) => NewsFeedPage());
           case '/feedInfo':
-            return MaterialPageRoute(builder: (_) => FeedInfoPage());
+            print("Setting arg: ${settings.arguments}");
+            return MaterialPageRoute(
+                builder: (_) => FeedInfoPage(feed: settings.arguments));
           case '/bookmarks':
             return MaterialPageRoute(builder: (_) => BookmarkPage());
           case '/myfeeds':
@@ -93,7 +94,8 @@ class AppConfigs {
           case '/newsFeed':
             return MaterialPageRoute(builder: (_) => NewsFeedPage());
           case '/feedInfo':
-            return MaterialPageRoute(builder: (_) => FeedInfoPage());
+            return MaterialPageRoute(
+                builder: (_) => FeedInfoPage(feed: settings.arguments));
           case '/bookmarks':
             return MaterialPageRoute(builder: (_) => BookmarkPage());
           case '/myfeeds':
@@ -104,6 +106,7 @@ class AppConfigs {
       }
     } else {
       print('Null value in User.userData');
+      return MaterialPageRoute(builder: (_) => LoginPage());
     }
   }
 }

@@ -66,7 +66,7 @@ class _SendPostPageState extends State<SendPostPage> {
     } else {
       form.save();
       List<Map<String, dynamic>> details = [];
-      for (int i = 0; i < formFields.length; i++) {
+      for (int i = 2; i < formFields.length; i++) {
         details.add(formFields[i].data);
       }
       _showSendConfirmationDialog(details);
@@ -76,9 +76,9 @@ class _SendPostPageState extends State<SendPostPage> {
   void _showSendConfirmationDialog(List<Map<String, dynamic>> details) {
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (context) => AlertDialog(
-        title: Text("Are you sure you want to post this feed?"),
+        title: Text("Proceed to post this feed?"),
         actions: [
           FlatButton(
             onPressed: () {
@@ -152,7 +152,7 @@ class _SendPostPageState extends State<SendPostPage> {
       );
       if (!FocusScope.of(context).hasPrimaryFocus)
         FocusScope.of(context).unfocus();
-      Navigator.of(context).pushNamed("/feedInfo", arguments: {"feed": f});
+      Navigator.of(context).pushNamed("/feedInfo", arguments: f);
     }
   }
 

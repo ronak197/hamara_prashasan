@@ -34,35 +34,35 @@ class _SearchPlaceState extends State<SearchPlace> {
   bool showSuggestions = false;
 
   void searchPlaces(String s) async {
-    double mysearchCode = Random().nextDouble();
-    searchCode = mysearchCode;
-    await Future.delayed(Duration(milliseconds: 500));
-    if (mysearchCode == searchCode) {
-      s = s.replaceAll(" ", "%20");
-      String url =
-          "https://maps.googleapis.com/maps/api/place/findplacefromtext/json?key=$apiKey&input=$s&inputtype=textquery&fields=name,geometry,formatted_address";
-      var response = await http.get(url);
-      if (response.statusCode == 200) {
-        var data = json.decode(response.body);
-        currentResults.clear();
-        for (var loc in data['candidates']) {
-          var coord = loc['geometry']['location'];
-          SearchResult sr = new SearchResult(
-              name: loc['name'],
-              pos: new LatLng(coord['lat'], coord['lng']),
-              searchString: s,
-              address: loc['formatted_address']);
-          currentResults.add(sr);
+    if (s.length >= 4) {
+      double mysearchCode = Random().nextDouble();
+      searchCode = mysearchCode;
+      await Future.delayed(Duration(milliseconds: 500));
+      if (mysearchCode == searchCode) {
+        s = s.replaceAll(" ", "%20");
+        String url =
+            "https://maps.googleapis.com/maps/api/place/findplacefromtext/json?key=$apiKey&input=$s&inputtype=textquery&fields=name,geometry,formatted_address";
+        var response = await http.get(url);
+        print("Response Body: ${response.body}");
+        if (response.statusCode == 200) {
+          var data = json.decode(response.body);
+          currentResults.clear();
+          for (var loc in data['candidates']) {
+            var coord = loc['geometry']['location'];
+            SearchResult sr = new SearchResult(
+                name: loc['name'],
+                pos: new LatLng(coord['lat'], coord['lng']),
+                searchString: s,
+                address: loc['formatted_address']);
+            currentResults.add(sr);
+          }
+          showSuggestions = true;
+          setState(() {});
         }
-        showSuggestions = true;
-        setState(() {});
+        print(currentResults);
       }
-      print(currentResults);
     }
   }
-  /*{candidates: [{formatted_address: Opp Punjab National Bank, Bangdi bazar, Kedareshwar Rd, Sudama Puri, Porbandar, Gujarat 360575, India,
-   geometry: {location: {lat: 21.6415157, lng: 69.6029045}, viewport: {northeast: {lat: 21.64276137989272, lng: 69.60424282989273},
-    southwest: {lat: 21.64006172010728, lng: 69.60154317010728}}}, name: Sweta Novelty}], status: OK} */
 
   void onTapLocation(int index) {
     var place = currentResults[index];
@@ -98,7 +98,7 @@ class _SearchPlaceState extends State<SearchPlace> {
 
   @override
   Widget build(BuildContext context) {
-    double siggestionsHeight = min(currentResults.length * 80.0, 200.0) + 20;
+    double suggestionsHeight = min(currentResults.length * 80.0, 200.0) + 20;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: true,
@@ -151,7 +151,7 @@ class _SearchPlaceState extends State<SearchPlace> {
         bottom: showSuggestions && currentResults.length > 0
             ? PreferredSize(
                 child: Container(
-                  height: siggestionsHeight,
+                  height: suggestionsHeight,
                   child: ListView(
                     physics: BouncingScrollPhysics(),
                     children: new List<Widget>.generate(
@@ -183,7 +183,7 @@ class _SearchPlaceState extends State<SearchPlace> {
                     ),
                   ),
                 ),
-                preferredSize: Size.fromHeight(siggestionsHeight),
+                preferredSize: Size.fromHeight(suggestionsHeight),
               )
             : null,
       ),
