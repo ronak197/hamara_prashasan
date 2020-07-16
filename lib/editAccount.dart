@@ -23,9 +23,10 @@ class _EditAccountPageState extends State<EditAccountPage> {
   String errorMessage =
           'Some Error Occurred, Make sure you are connected to the internet.',
       loadingMessage = 'Loading ...',
-      noBookmarkMessage = "No Bookmarked Feeds.";
+      noFeedMessage = "No Feeds Found.";
   ScrollController _scrollController = new ScrollController();
   Feeds myFeeds = new Feeds();
+  int numberOfSubscribers = 0;
 
   Future<bool> getDepartmentInfo() async {
     print('fetching departments  in editProfile');
@@ -63,8 +64,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
     await db
         .collection('feeds')
         .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid',
-            isEqualTo: "surat_health@gmail.com" /* User.authUser.email */)
+        .where('departmentUid', isEqualTo: User.authUser.email)
         .orderBy('creationDateTimeStamp', descending: true)
         .limit(feedLimit)
         .getDocuments()
@@ -77,7 +77,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
               .firstWhere((d) => d.email == element.data['departmentUid']),
         ));
       });
-      lastFeedSp = value.documents.last;
+      if (value.documents.isNotEmpty) lastFeedSp = value.documents.last;
       resultStream.sink.add(myFeeds);
     }).whenComplete(() {
       print("Fetched mine latest feeds");
@@ -87,16 +87,15 @@ class _EditAccountPageState extends State<EditAccountPage> {
   Future<void> getMoreFeeds() async {
     Firestore db = Firestore.instance;
     print('fetching my feeds');
-    await db
+    Query q = db
         .collection('feeds')
         .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid',
-            isEqualTo: "surat_health@gmail.com" /* User.authUser.email */)
-        .orderBy('creationDateTimeStamp', descending: true)
-        .startAfterDocument(lastFeedSp)
-        .limit(feedLimit)
-        .getDocuments()
-        .then((value) {
+        .where('departmentUid', isEqualTo: User.authUser.email)
+        .orderBy('creationDateTimeStamp', descending: true);
+    if (lastFeedSp != null) {
+      q = q.startAfterDocument(lastFeedSp);
+    }
+    await q.limit(feedLimit).getDocuments().then((value) {
       value.documents.forEach((element) {
         myFeeds.feeds.add(Feed(
           feedId: element.data['feedId'],
@@ -134,6 +133,17 @@ class _EditAccountPageState extends State<EditAccountPage> {
     } else {
       print("Error in getting departments information");
     }
+  }
+
+  void getNumberOfSubscribers() async {
+    Firestore db = Firestore.instance;
+    var doc = await db
+        .collection("users")
+        .where("subscribedDepartmentIDs", arrayContains: User.userData.email)
+        .getDocuments();
+    setState(() {
+      numberOfSubscribers = doc.documents.length;
+    });
   }
 
   void getSubscribedDepartments() async {
@@ -218,6 +228,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
     super.initState();
     if (User.userData.isDepartment) {
       feedHandler(latestFeeds: true, moreFeeds: false);
+      getNumberOfSubscribers();
     } else {
       getSubscribedDepartments();
     }
@@ -254,7 +265,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
               if (scrollInfo is ScrollEndNotification &&
                   scrollInfo.metrics.pixels >=
                       (scrollInfo.metrics.maxScrollExtent - 60.0)) {
-                print('Reached Edge, getting more bookmarks');
+                print('Reached Edge, getting more Feeds');
                 feedHandler(moreFeeds: true, latestFeeds: false);
                 return true;
               }
@@ -326,7 +337,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                           )
                         : SizedBox(),
                     Align(
-                      alignment: Alignment.centerRight,
+                      alignment: Alignment.center,
                       child: Container(
                         margin: EdgeInsets.symmetric(vertical: 5),
                         padding:
@@ -336,7 +347,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          "Number of subscribers: 235",
+                          "Number of subscribers: $numberOfSubscribers",
                           style: Theme.of(context)
                               .textTheme
                               .headline1
@@ -395,9 +406,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
                               },
                             );
                           } else if (snapshot.data.feeds.isEmpty) {
-                            print(noBookmarkMessage);
+                            print(noFeedMessage);
                             return FeedLoadStatus(
-                              displayMessage: noBookmarkMessage,
+                              displayMessage: noFeedMessage,
                             );
                           } else if (snapshot.hasError) {
                             return FeedLoadStatus(

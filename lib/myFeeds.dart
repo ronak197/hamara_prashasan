@@ -21,7 +21,7 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
   String errorMessage =
           'Some Error Occurred, Make sure you are connected to the internet.',
       loadingMessage = 'Loading ...',
-      noBookmarkMessage = "No Feeds Present.";
+      noBookmarkMessage = "No Feeds Found.";
   ScrollController _scrollController = new ScrollController();
   Feeds myFeeds = new Feeds();
   Set<String> selectedFeed = new Set<String>();

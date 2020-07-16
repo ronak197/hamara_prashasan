@@ -33,6 +33,10 @@ class _HomePageState extends State<HomePage> {
     } else {
       print("Profile Pic already stored!!");
     }
+    setBottomNavigationChildren();
+  }
+
+  void setBottomNavigationChildren() {
     _children = [
       NewsFeedPage(
         showBottomSheet: showBottomSheet,
@@ -64,6 +68,9 @@ class _HomePageState extends State<HomePage> {
     File profilePic = File(profilePicPath);
     await profilePic.writeAsBytes(resp.bodyBytes);
     User.authUser.setPhotoLoc(profilePicPath);
+    setState(() {
+      setBottomNavigationChildren();
+    });
     print("Profile Pic Stored");
   }
 
