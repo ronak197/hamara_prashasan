@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hamaraprashasan/myFeeds.dart';
+import 'package:hamaraprashasan/unkown_route_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hamaraprashasan/homepage.dart';
@@ -66,49 +67,32 @@ class AppConfigs {
     return startUpPage;
   }
 
-  static Route<dynamic> getUserRoutes(RouteSettings settings) {
-    if (User.userData != null) {
-      if (User.userData.userType == 'citizen') {
-        switch (settings.name) {
-          case '/home':
-            return MaterialPageRoute(builder: (_) => HomePage());
-          case '/login':
-            return MaterialPageRoute(builder: (_) => LoginPage());
-          case '/newsFeed':
-            return MaterialPageRoute(builder: (_) => NewsFeedPage());
-          case '/feedInfo':
-            print("Setting arg: ${settings.arguments}");
-            return MaterialPageRoute(
-                builder: (_) => FeedInfoPage(feed: settings.arguments));
-          case '/bookmarks':
-            return MaterialPageRoute(builder: (_) => BookmarkPage());
-          case '/myfeeds':
-            return MaterialPageRoute(builder: (_) => MyFeedsPage());
-        }
-      } else if (User.userData.userType == 'department') {
-        switch (settings.name) {
-          case '/home':
-            return MaterialPageRoute(builder: (_) => HomePage());
-          case '/login':
-            return MaterialPageRoute(builder: (_) => LoginPage());
-          case '/newsFeed':
-            return MaterialPageRoute(builder: (_) => NewsFeedPage());
-          case '/feedInfo':
-            return MaterialPageRoute(
-                builder: (_) => FeedInfoPage(feed: settings.arguments));
-          case '/bookmarks':
-            return MaterialPageRoute(builder: (_) => BookmarkPage());
+  static Route<dynamic> getUserRoutes(RouteSettings settings){
+    switch(settings.name){
+      case '/home':
+        return MaterialPageRoute(builder: (_) => HomePage());
+      case '/login':
+        return MaterialPageRoute(builder: (_) => LoginPage());
+      case '/newsFeed':
+        return MaterialPageRoute(builder: (_) => NewsFeedPage());
+      case '/feedInfo':
+        return MaterialPageRoute(builder: (_) => FeedInfoPage());
+      case '/bookmarks':
+        return MaterialPageRoute(builder: (_) => BookmarkPage());
+    }
+    if(User.userData != null){
+      if(User.userData.userType == 'department'){
+        switch(settings.name){
           case '/myfeeds':
             return MaterialPageRoute(builder: (_) => MyFeedsPage());
           case '/sendPost':
             return MaterialPageRoute(builder: (_) => SendPostPage());
         }
       }
-    } else {
-      print('Null value in User.userData');
-      return MaterialPageRoute(builder: (_) => LoginPage());
     }
+    return MaterialPageRoute(builder:  (_) => UnkownRoutePage());
   }
+
 }
 
 class User {
