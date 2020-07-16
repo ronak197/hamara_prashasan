@@ -8,6 +8,7 @@ import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hamaraprashasan/bottomSheets.dart';
 import 'package:hamaraprashasan/classes.dart';
+import 'package:hamaraprashasan/location_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:rxdart/rxdart.dart';
@@ -394,12 +395,10 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     selectedDepartments.clear();
     selectedCategories.clear();
   }
-
   @override
   void initState() {
     super.initState();
     feedHandler(latestFeeds: true, moreFeeds: false);
-    getRecentLocation();
   }
 
   @override
@@ -562,15 +561,19 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                           alignment: Alignment.topLeft,
                           child: Center(
                               child: InkWell(
-                            onTap: () {
-                              getRecentLocation();
-                            },
-                            child: Text(userLocation ?? 'Your Location',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyText1
-                                    .copyWith(color: Color(0xff6D6D6D))),
-                          )))
+
+                                onTap: () => LocationBloc.getNewLocation(),
+                                child: StreamBuilder(
+                                  stream: LocationBloc.locationStream,
+                                  builder: (context, AsyncSnapshot<String> snapshot){
+                                    return Text(snapshot.hasData ? snapshot.data : 'Your Location',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyText1
+                                            .copyWith(color: Color(0xff6D6D6D)));
+                                  },
+                                ),
+                              )))
                     ],
                   )
                 ],
