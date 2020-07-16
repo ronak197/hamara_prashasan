@@ -326,7 +326,6 @@ class _MapBoxState extends State<MapBox> {
   CameraPosition _myLocation;
   List<double> latitudes = [], longitudes = [];
   List<String> labels = [];
-
   Set<Marker> places;
 
   void filterCoordinates() {
