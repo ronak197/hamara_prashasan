@@ -30,7 +30,9 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
   @override
   void initState() {
     super.initState();
-    if (feed != null) content = feed.feedInfoDetails.details;
+    if (feed != null && feed.feedInfoDetails != null)
+      content = feed.feedInfoDetails.details;
+    else if (feed != null) getFeedInfoDetails(feed);
   }
 
   void getFeedInfoDetails(Feed f) {
@@ -65,7 +67,7 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
   Widget build(BuildContext context) {
     if (feed == null) {
       Map<String, dynamic> args = ModalRoute.of(context).settings.arguments;
-      feed = args['feed'];
+      feed = ModalRoute.of(context).settings.arguments; //args['feed'];
       if (feed.feedInfoDetails != null)
         content = feed.feedInfoDetails.details;
       else {
@@ -188,13 +190,12 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
                 } else if (content[i].containsKey('table')) {
                   TableData t = new TableData();
 
-                  var rows = content[i]['table'].toString().split(';');
-                  t.headers = rows[0].split(',');
+                  var rows = MyCsvParser.parser(content[i]['table'].toString());
+                  t.headers = rows[0];
                   t.contents = [];
                   for (int i = 1; i < rows.length; i++) {
-                    t.contents.add(rows[i].split(','));
+                    t.contents.add(rows[i]);
                   }
-
                   return TableBox(t);
                 } else {
                   return SizedBox();

@@ -336,7 +336,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                   margin: EdgeInsets.all(12.0),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.blue,
+                    color: Colors.white,
                   ),
                   child: ClipOval(
                     child: User.authUser.localPhotoLoc != null
@@ -350,7 +350,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
                             fit: BoxFit.contain,
                             placeholder: (context, s) {
                               print("Profile Url" + s);
-                              return Container();
+                              return Container(color: Colors.white);
                             },
                           ),
                   ),

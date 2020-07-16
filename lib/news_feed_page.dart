@@ -35,7 +35,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   Feeds newFeeds = new Feeds();
 
   Map<String, dynamic> departmentDetails = Map();
-  SortingType sortingType = SortingType.none;
+  SortingFeeds sortingFeeds = SortingFeeds();
   List<Department> departments = [], selectedDepartments = [];
   List<String> categories = [], selectedCategories = [];
   DateTime start, end;
@@ -269,9 +269,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         if (selectedFeed.isEmpty) allSelectedFeedCleared();
       });
     } else {
-      Navigator.of(context).pushNamed("/feedInfo", arguments: {
-        "feed": f,
-      });
+      Navigator.pushNamed(context, "/feedInfo", arguments: f);
     }
   }
 
@@ -289,17 +287,114 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       print("Some Error in saving bookmarks");
   }
 
-  void applyFilters(SortingType sortingType, List<Department> departments,
+  void applyFilters(SortingFeeds sortingFeeds, List<Department> departments,
       List<String> categories, DateTime start, DateTime end) {
     print("filtering");
     this.selectedDepartments = departments;
     this.selectedCategories = categories;
     this.start = start;
     this.end = end;
-    this.sortingType = sortingType;
+    this.sortingFeeds = sortingFeeds;
     setState(() {});
   }
 
+  void getRecentLocation() async {
+    print('fetching last location');
+    Geolocator geoLocator = Geolocator();
+    GeolocationStatus geolocationStatus =
+        await geoLocator.checkGeolocationPermissionStatus();
+    if (geolocationStatus == GeolocationStatus.granted) {
+      Position position = (await geoLocator.getLastKnownPosition(
+            desiredAccuracy: LocationAccuracy.lowest,
+          )) ??
+          (await Geolocator()
+              .getCurrentPosition(desiredAccuracy: LocationAccuracy.lowest));
+      List<Placemark> placemark =
+          await geoLocator.placemarkFromPosition(position);
+      print(placemark);
+      setState(() {
+        userLocation = '${placemark[0].subLocality}, ${placemark[0].locality}';
+      });
+    } else {
+      await Permission.location.request();
+      await Permission.location.isGranted.then((value) {
+        if (value) {
+          getRecentLocation();
+        }
+      });
+      print('Permission not granted');
+    }
+  }
+
+  void getNewLocation() async {
+    print('fetching new location');
+    Geolocator geoLocator = Geolocator()..forceAndroidLocationManager = true;
+    GeolocationStatus geolocationStatus =
+        await geoLocator.checkGeolocationPermissionStatus();
+    if (geolocationStatus == GeolocationStatus.granted) {
+      print('Permission granted');
+      Position position = (await geoLocator
+          .getCurrentPosition(desiredAccuracy: LocationAccuracy.lowest)
+          .catchError((e) {
+        print(e);
+      }).timeout(Duration(seconds: 3), onTimeout: () {
+        print('timeout in fetch new location');
+        return null;
+      }));
+      print(position.toString());
+      List<Placemark> placemark =
+          await geoLocator.placemarkFromPosition(position).catchError((e) {
+        print(e);
+      });
+      setState(() {
+        userLocation = '${placemark[0].subLocality}, ${placemark[0].locality}';
+      });
+    } else {
+      print('permission not granted');
+    }
+  }
+
+  void refreshWhenFiltered() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(
+          "Sure to Refresh?",
+          style: Theme.of(context).textTheme.headline3,
+        ),
+        content: Text(
+          "Refreshing will clear out all Filters",
+          style: Theme.of(context).textTheme.headline1,
+        ),
+        actions: [
+          FlatButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text("No"),
+          ),
+          FlatButton(
+            onPressed: () {
+              clearAllFilers();
+              feedHandler(latestFeeds: true, moreFeeds: false);
+              Navigator.pop(context);
+            },
+            child: Text("Yes"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void clearAllFilers() {
+    sortingFeeds.type = SortingType.none;
+    sortingFeeds.increasing = true;
+    start = null;
+    end = null;
+    selectedDepartments.clear();
+    selectedCategories.clear();
+  }
   @override
   void initState() {
     super.initState();
@@ -314,7 +409,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   @override
   Widget build(BuildContext context) {
-    bool filtered = this.sortingType != SortingType.none ||
+    bool filtered = this.sortingFeeds.type != SortingType.none ||
         this.selectedDepartments.length != this.departments.length ||
         this.selectedCategories.length != this.categories.length ||
         start != null ||
@@ -362,7 +457,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                   margin: EdgeInsets.all(12.0),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.blue,
+                    color: Colors.white,
                   ),
                   child: ClipOval(
                     child: User.authUser.localPhotoLoc != null
@@ -371,10 +466,10 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                             fit: BoxFit.contain,
                           )
                         : CachedNetworkImage(
-                            imageUrl: User.authUser.photoUrl,
+                            imageUrl: "", //User.authUser.photoUrl,
                             fit: BoxFit.contain,
                             placeholder: (context, s) {
-                              return Container();
+                              return Container(color: Colors.white);
                             },
                           ),
                   ),
@@ -395,7 +490,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                           prevVal: {
                             "selDep": selDepIds,
                             "selCat": selectedCategories,
-                            "sortingType": sortingType,
+                            "sortingFeeds": sortingFeeds,
                             "start": start,
                             "end": end,
                           },
@@ -466,6 +561,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                           alignment: Alignment.topLeft,
                           child: Center(
                               child: InkWell(
+
                                 onTap: () => LocationBloc.getNewLocation(),
                                 child: StreamBuilder(
                                   stream: LocationBloc.locationStream,
@@ -498,7 +594,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
               },
         child: RefreshIndicator(
           onRefresh: filtered
-              ? () async {}
+              ? () async {
+                  refreshWhenFiltered();
+                }
               : () => feedHandler(latestFeeds: true, moreFeeds: false),
           strokeWidth: 2.5,
           child: StreamBuilder(
@@ -514,17 +612,21 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
               } else if (snapshot.connectionState == ConnectionState.active) {
                 if (snapshot.hasData && snapshot.data.feeds.isNotEmpty) {
                   var feedList = List.from(snapshot.data.feeds ?? []);
-                  if (sortingType == SortingType.department &&
+                  if (sortingFeeds.type == SortingType.department &&
                       feedList.length >= 2) {
                     feedList.sort((f1, f2) {
                       return f1.department.name.compareTo(f2.department.name);
                     });
-                  } else if (sortingType == SortingType.category &&
+                  } else if (sortingFeeds.type == SortingType.category &&
                       feedList.length >= 2) {
                     feedList.sort((f1, f2) {
                       return f1.department.category
                           .compareTo(f2.department.category);
                     });
+                  }
+                  if (sortingFeeds.type != SortingType.none &&
+                      !sortingFeeds.increasing) {
+                    feedList = feedList.reversed.toList();
                   }
                   return ListView.builder(
                     itemCount: feedList.length,
@@ -639,10 +741,11 @@ class FeedBox extends StatelessWidget {
                                 padding: EdgeInsets.symmetric(
                                     horizontal: 4.0, vertical: 2.0),
                                 decoration: BoxDecoration(
-                                  color: Color(categoryTagColorMap.containsKey(feed.department.category) ?
-                                  categoryTagColorMap[feed.department.category] :
-                                  categoryTagColorMap['department']
-                                  ),
+                                  color: Color(categoryTagColorMap
+                                          .containsKey(feed.department.category)
+                                      ? categoryTagColorMap[
+                                          feed.department.category]
+                                      : categoryTagColorMap['department']),
                                   borderRadius: BorderRadius.circular(4.0),
                                 ),
                                 child: Text(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:hamaraprashasan/bookmarks.dart';
 import 'package:hamaraprashasan/classes.dart';
+import 'package:hamaraprashasan/departments_page.dart';
 import 'package:rxdart/subjects.dart';
 
 class EditAccountPage extends StatefulWidget {
@@ -14,6 +15,7 @@ class EditAccountPage extends StatefulWidget {
 
 class _EditAccountPageState extends State<EditAccountPage> {
   List<Department> departments = [];
+  List<Department> subscribedDepartments = List<Department>();
   BehaviorSubject<Feeds> resultStream = BehaviorSubject<Feeds>();
   DocumentSnapshot lastFeedSp;
   int feedLimit = 2;
@@ -134,10 +136,91 @@ class _EditAccountPageState extends State<EditAccountPage> {
     }
   }
 
+  void getSubscribedDepartments() async {
+    Firestore db = Firestore.instance;
+
+    setState(() {
+      subscribedDepartments?.clear();
+      errorMessage = "Getting subscribers";
+      print(errorMessage);
+    });
+
+    db
+        .collection('departments')
+        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+        .getDocuments()
+        .asStream()
+        .listen((event) {
+      setState(() {
+        event.documents.forEach((snapshot) {
+          subscribedDepartments.add(Department.fromJson(snapshot.data));
+        });
+      });
+    })
+          ..onDone(() {
+            if (subscribedDepartments.isEmpty) {
+              setState(() {
+                errorMessage = 'No Subscribed Departments';
+                print(errorMessage);
+              });
+            }
+          })
+          ..onError((e) {
+            setState(() {
+              errorMessage = "Error Occurred";
+              print(errorMessage);
+            });
+          });
+  }
+
+  void onSubscribePressed(String toSubscribe, bool hasSubscribed) async {
+    Firestore db = Firestore.instance;
+
+    if (User.lastUserState != UserState.initial) {
+      await FirebaseMethods.getFirestoreUserDataInfo();
+    }
+    if (!User.userData.subscribedDepartmentIDs.contains(toSubscribe)) {
+      setState(() {
+        User.userData.subscribedDepartmentIDs.add(toSubscribe);
+        User.saveUserData(User.userData, UserState.subscription);
+      });
+      await db
+          .collection('users')
+          .document(User.authUser.uid)
+          .updateData(User.userData.toFirestoreJson())
+          .catchError((e) {
+        setState(() {
+          errorMessage = 'Error Occurred';
+        });
+        return null;
+      });
+    } else {
+      setState(() {
+        User.userData.subscribedDepartmentIDs.remove(toSubscribe);
+        User.saveUserData(User.userData, UserState.subscription);
+      });
+      await db
+          .collection('users')
+          .document(User.authUser.uid)
+          .updateData(User.userData.toFirestoreJson())
+          .catchError((e) {
+        setState(() {
+          errorMessage = 'Error Occurred';
+        });
+        return null;
+      });
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
-    feedHandler(latestFeeds: true, moreFeeds: false);
+    if (User.userData.isDepartment) {
+      feedHandler(latestFeeds: true, moreFeeds: false);
+    } else {
+      getSubscribedDepartments();
+    }
   }
 
   @override
@@ -148,34 +231,208 @@ class _EditAccountPageState extends State<EditAccountPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios,
-            color: Colors.black,
-            size: 15,
+    if (User.userData.isDepartment)
+      return Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: Colors.black,
+              size: 15,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+            },
           ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
         ),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(5),
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (ScrollNotification scrollInfo) {
-            if (scrollInfo is ScrollEndNotification &&
-                scrollInfo.metrics.pixels >=
-                    (scrollInfo.metrics.maxScrollExtent - 60.0)) {
-              print('Reached Edge, getting more bookmarks');
-              feedHandler(moreFeeds: true, latestFeeds: false);
-              return true;
-            }
-            return false;
-          },
+        body: Padding(
+          padding: EdgeInsets.all(5),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification scrollInfo) {
+              if (scrollInfo is ScrollEndNotification &&
+                  scrollInfo.metrics.pixels >=
+                      (scrollInfo.metrics.maxScrollExtent - 60.0)) {
+                print('Reached Edge, getting more bookmarks');
+                feedHandler(moreFeeds: true, latestFeeds: false);
+                return true;
+              }
+              return false;
+            },
+            child: Scrollbar(
+              //isAlwaysShown: true,
+              controller: _scrollController,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Align(
+                      alignment: Alignment.center,
+                      child: Container(
+                        margin: EdgeInsets.all(12.0),
+                        padding: EdgeInsets.all(2),
+                        height: 120,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: ClipOval(
+                          child: User.authUser.localPhotoLoc != null
+                              ? Image.file(
+                                  File(User.authUser.localPhotoLoc),
+                                  fit: BoxFit.contain,
+                                )
+                              : CachedNetworkImage(
+                                  imageUrl: User.authUser.photoUrl,
+                                  fit: BoxFit.contain,
+                                  placeholder: (context, s) {
+                                    return Container(color: Colors.white);
+                                  },
+                                ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(5),
+                      child: Text(
+                        User.authUser.displayName,
+                        style: Theme.of(context).textTheme.headline2.copyWith(),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.all(5),
+                      child: Text(
+                        User.authUser.email,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline1
+                            .copyWith(color: Colors.grey),
+                      ),
+                    ),
+                    User.authUser.phoneNumber != null
+                        ? Padding(
+                            padding: EdgeInsets.all(5),
+                            child: Text(
+                              User.authUser.phoneNumber,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headline1
+                                  .copyWith(color: Colors.grey),
+                            ),
+                          )
+                        : SizedBox(),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        margin: EdgeInsets.symmetric(vertical: 5),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          "Number of subscribers: 235",
+                          style: Theme.of(context)
+                              .textTheme
+                              .headline1
+                              .copyWith(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        margin: EdgeInsets.symmetric(vertical: 5),
+                        padding: EdgeInsets.all(10),
+                        child: Text(
+                          "My Feeds :",
+                          style: Theme.of(context).textTheme.headline2,
+                        ),
+                      ),
+                    ),
+                    StreamBuilder(
+                      stream: resultStream.stream,
+                      builder: (context, AsyncSnapshot<Feeds> snapshot) {
+                        print(
+                            'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return FeedLoadStatus(
+                            displayMessage: loadingMessage,
+                          );
+                        } else if (snapshot.connectionState ==
+                            ConnectionState.active) {
+                          if (snapshot.hasData &&
+                              snapshot.data.feeds.isNotEmpty) {
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: NeverScrollableScrollPhysics(),
+                              itemCount: snapshot.data.feeds.length,
+                              itemBuilder: (context, i) {
+                                Feed f = snapshot.data.feeds[i];
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.of(context)
+                                        .pushNamed("/feedInfo", arguments: {
+                                      "feed": f,
+                                    });
+                                  },
+                                  child: Container(
+                                    margin: EdgeInsets.symmetric(vertical: 8.0),
+                                    child: MessageBox(
+                                      feed: f,
+                                      selected: false,
+                                      canBeSelected: false,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          } else if (snapshot.data.feeds.isEmpty) {
+                            print(noBookmarkMessage);
+                            return FeedLoadStatus(
+                              displayMessage: noBookmarkMessage,
+                            );
+                          } else if (snapshot.hasError) {
+                            return FeedLoadStatus(
+                              displayMessage: snapshot.error,
+                            );
+                          }
+                        }
+                        return SizedBox();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    else
+      return Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: Colors.black,
+              size: 15,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+        body: Padding(
+          padding: EdgeInsets.all(5),
           child: Scrollbar(
             //isAlwaysShown: true,
             controller: _scrollController,
@@ -184,152 +441,95 @@ class _EditAccountPageState extends State<EditAccountPage> {
               physics: BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      margin: EdgeInsets.all(12.0),
-                      padding: EdgeInsets.all(2),
-                      height: 120,
-                      width: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                      child: ClipOval(
-                        child: User.authUser.localPhotoLoc != null
-                            ? Image.file(
-                                File(User.authUser.localPhotoLoc),
-                                fit: BoxFit.contain,
-                              )
-                            : CachedNetworkImage(
-                                imageUrl: User.authUser.photoUrl,
-                                fit: BoxFit.contain,
-                                placeholder: (context, s) {
-                                  return Container();
-                                },
-                              ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(5),
-                    child: Text(
-                      User.authUser.displayName,
-                      style: Theme.of(context).textTheme.headline2.copyWith(),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(5),
-                    child: Text(
-                      User.authUser.email,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headline1
-                          .copyWith(color: Colors.grey),
-                    ),
-                  ),
-                  User.authUser.phoneNumber != null
-                      ? Padding(
-                          padding: EdgeInsets.all(5),
-                          child: Text(
-                            User.authUser.phoneNumber,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headline1
-                                .copyWith(color: Colors.grey),
+                children: <Widget>[
+                      Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          margin: EdgeInsets.all(12.0),
+                          padding: EdgeInsets.all(2),
+                          height: 120,
+                          width: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
                           ),
-                        )
-                      : SizedBox(),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      margin: EdgeInsets.symmetric(vertical: 5),
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        "Number of subscribers: 235",
-                        style: Theme.of(context)
-                            .textTheme
-                            .headline1
-                            .copyWith(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      margin: EdgeInsets.symmetric(vertical: 5),
-                      padding: EdgeInsets.all(10),
-                      child: Text(
-                        "My Feeds :",
-                        style: Theme.of(context).textTheme.headline2,
-                      ),
-                    ),
-                  ),
-                  StreamBuilder(
-                    stream: resultStream.stream,
-                    builder: (context, AsyncSnapshot<Feeds> snapshot) {
-                      print(
-                          'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
-
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return FeedLoadStatus(
-                          displayMessage: loadingMessage,
-                        );
-                      } else if (snapshot.connectionState ==
-                          ConnectionState.active) {
-                        if (snapshot.hasData &&
-                            snapshot.data.feeds.isNotEmpty) {
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
-                            itemCount: snapshot.data.feeds.length,
-                            itemBuilder: (context, i) {
-                              Feed f = snapshot.data.feeds[i];
-                              return GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context)
-                                      .pushNamed("/feedInfo", arguments: {
-                                    "feed": f,
-                                  });
-                                },
-                                child: Container(
-                                  margin: EdgeInsets.symmetric(vertical: 8.0),
-                                  child: MessageBox(
-                                    feed: f,
-                                    selected: false,
-                                    canBeSelected: false,
+                          child: ClipOval(
+                            child: User.authUser.localPhotoLoc != null
+                                ? Image.file(
+                                    File(User.authUser.localPhotoLoc),
+                                    fit: BoxFit.contain,
+                                  )
+                                : CachedNetworkImage(
+                                    imageUrl: User.authUser.photoUrl,
+                                    fit: BoxFit.contain,
+                                    placeholder: (context, s) {
+                                      return Container(color: Colors.white);
+                                    },
                                   ),
-                                ),
-                              );
-                            },
-                          );
-                        } else if (snapshot.data.feeds.isEmpty) {
-                          print(noBookmarkMessage);
-                          return FeedLoadStatus(
-                            displayMessage: noBookmarkMessage,
-                          );
-                        } else if (snapshot.hasError) {
-                          return FeedLoadStatus(
-                            displayMessage: snapshot.error,
-                          );
-                        }
-                      }
-                      return SizedBox();
-                    },
-                  ),
-                ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(5),
+                        child: Text(
+                          User.authUser.displayName,
+                          style:
+                              Theme.of(context).textTheme.headline2.copyWith(),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(5),
+                        child: Text(
+                          User.authUser.email,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headline1
+                              .copyWith(color: Colors.grey),
+                        ),
+                      ),
+                      User.authUser.phoneNumber != null
+                          ? Padding(
+                              padding: EdgeInsets.all(5),
+                              child: Text(
+                                User.authUser.phoneNumber,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headline1
+                                    .copyWith(color: Colors.grey),
+                              ),
+                            )
+                          : SizedBox(),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          margin: EdgeInsets.symmetric(vertical: 5),
+                          padding: EdgeInsets.all(10),
+                          child: Text(
+                            "Departments subscribed :",
+                            style: Theme.of(context).textTheme.headline2,
+                          ),
+                        ),
+                      ),
+                    ] +
+                    List<Widget>.generate(subscribedDepartments?.length,
+                        (index) {
+                      Department department = subscribedDepartments[index];
+                      bool hasSubscribed =
+                          (User.userData.subscribedDepartmentIDs ?? [])
+                                  .contains(department.email) ??
+                              false;
+                      return DepartmentsMessageBox(
+                        subscribed: hasSubscribed,
+                        department: department,
+                        onSubscribePressed: () => onSubscribePressed(
+                            subscribedDepartments[index].email, hasSubscribed),
+                      );
+                    }),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 

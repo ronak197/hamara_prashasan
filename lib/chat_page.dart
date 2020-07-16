@@ -5,14 +5,12 @@ import 'package:hamaraprashasan/app_configurations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hamaraprashasan/location_bloc.dart';
 
-
 class ChatPage extends StatefulWidget {
   @override
   _ChatPageState createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,16 +31,16 @@ class _ChatPageState extends State<ChatPage> {
             child: ClipOval(
               child: User.authUser.localPhotoLoc != null
                   ? Image.file(
-                File(User.authUser.localPhotoLoc),
-                fit: BoxFit.contain,
-              )
+                      File(User.authUser.localPhotoLoc),
+                      fit: BoxFit.contain,
+                    )
                   : CachedNetworkImage(
-                imageUrl: User.authUser.photoUrl,
-                fit: BoxFit.contain,
-                placeholder: (context, s) {
-                  return Container();
-                },
-              ),
+                      imageUrl: User.authUser.photoUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (context, s) {
+                        return Container(color: Colors.white);
+                      },
+                    ),
             ),
           ),
         ),
@@ -69,15 +67,16 @@ class _ChatPageState extends State<ChatPage> {
                     alignment: Alignment.bottomCenter,
                     child: Center(
                         child: Icon(
-                          Icons.location_on,
-                          size: 12.0,
-                          color: Color(0xff6D6D6D),
-                        ))),
+                      Icons.location_on,
+                      size: 12.0,
+                      color: Color(0xff6D6D6D),
+                    ))),
                 Container(
                     height: 16.0,
                     alignment: Alignment.topLeft,
                     child: Center(
                         child: InkWell(
+
                           onTap: () => LocationBloc.getNewLocation(),
                           child: StreamBuilder(
                             stream: LocationBloc.locationStream,
@@ -98,9 +97,11 @@ class _ChatPageState extends State<ChatPage> {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-          child: Text('You will soon be able to chat with the departments',
+          child: Text(
+            'You will soon be able to chat with the departments',
             style: Theme.of(context).textTheme.headline2,
-          textAlign: TextAlign.center,),
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );

@@ -66,7 +66,7 @@ class _SendPostPageState extends State<SendPostPage> {
     } else {
       form.save();
       List<Map<String, dynamic>> details = [];
-      for (int i = 0; i < formFields.length; i++) {
+      for (int i = 2; i < formFields.length; i++) {
         details.add(formFields[i].data);
       }
       _showSendConfirmationDialog(details);
@@ -76,14 +76,15 @@ class _SendPostPageState extends State<SendPostPage> {
   void _showSendConfirmationDialog(List<Map<String, dynamic>> details) {
     showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (context) => AlertDialog(
-        title: Text("Are you sure you want to post this feed?"),
+        title: Text("Proceed to post this feed?"),
         actions: [
           FlatButton(
             onPressed: () {
               print(details);
-              DocumentReference feedRef = Firestore.instance.collection("feeds").document();
+              DocumentReference feedRef =
+                  Firestore.instance.collection("feeds").document();
               feedRef.setData({
                 "feedId": feedRef.documentID,
                 "creationDateTimeStamp": DateTime.now(),
@@ -151,7 +152,7 @@ class _SendPostPageState extends State<SendPostPage> {
       );
       if (!FocusScope.of(context).hasPrimaryFocus)
         FocusScope.of(context).unfocus();
-      Navigator.of(context).pushNamed("/feedInfo", arguments: {"feed": f});
+      Navigator.of(context).pushNamed("/feedInfo", arguments: f);
     }
   }
 
@@ -1708,22 +1709,32 @@ class TableFieldBox extends StatefulWidget with FormField {
 
   bool validate() {
     if (controller.text.isNotEmpty) {
-      var rows = controller.text.split(";");
-      List<int> noOfCols = [];
-      for (var r in rows) {
-        if (rows.indexOf(r) == 34) print(r);
-        noOfCols.add(r.split(",").length);
-      }
+      var rows = MyCsvParser.parser(controller.text);
+      int headersLength = rows[0].length;
       List<int> notEqualCols = [];
-      int headersLen = noOfCols[0];
-      for (int i = 1; i < noOfCols.length; i++) {
-        if (noOfCols[i] != headersLen) notEqualCols.add(i);
+      for (int i = 1; i < rows.length; i++) {
+        if (rows[i].length != headersLength) notEqualCols.add(i);
       }
       valid.value = notEqualCols.length == 0;
       if (!valid.value) {
         errorMessage = "Number of columns not equal in rows:";
-        for (var i in notEqualCols) errorMessage += " $i,";
+        for (int i = 0; i < notEqualCols.length; i++) {
+          errorMessage += " ${notEqualCols[i]},";
+          if (i >= 4) {
+            errorMessage =
+                errorMessage.substring(0, errorMessage.length - 1) + "......";
+            break;
+          }
+        }
         errorMessage = errorMessage.substring(0, errorMessage.length - 1);
+        int f = notEqualCols.first;
+        int start =
+                rows.sublist(0, f).map((e) => e.join()).join().length + 2 * (f),
+            end = rows.sublist(0, f + 1).map((e) => e.join()).join().length +
+                2 * (f + 1);
+        controller.selection =
+            TextSelection.collapsed(offset: ((start + end) / 2).floor());
+        TextSelection(baseOffset: start, extentOffset: end);
       }
     } else {
       valid.value = false;
@@ -1741,6 +1752,7 @@ class TableFieldBox extends StatefulWidget with FormField {
 }
 
 class _TableFieldBoxState extends State<TableFieldBox> {
+  String colDelemiter = ";", rowDelemiter = "\n";
   @override
   void dispose() {
     print("${widget.runtimeType} disposed");
@@ -1800,7 +1812,8 @@ class _TableFieldBoxState extends State<TableFieldBox> {
                   decoration: InputDecoration(
                     //errorText: valid ? null : widget.errorMessage,
                     labelText: 'TABLE',
-                    hintText: 'Separate column with \',\' and row with \';\'',
+                    hintText:
+                        'Separate column with a \'$colDelemiter\' and a row with a line break', //'Separate column with \',\' and row with \';\'',
                     hintStyle: Theme.of(context)
                         .textTheme
                         .headline2
@@ -1862,10 +1875,10 @@ class _TableFieldBoxState extends State<TableFieldBox> {
                               String text = "";
                               fields.forEach((row) {
                                 row.forEach((e) {
-                                  text += e.toString() + ",";
+                                  text += e.toString() + colDelemiter;
                                 });
                                 text = text.substring(0, text.length - 1);
-                                text += ";";
+                                text += rowDelemiter;
                               });
                               text = text.substring(0, text.length - 1);
                               widget.controller.text = text;
