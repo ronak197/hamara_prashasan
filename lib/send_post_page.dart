@@ -66,7 +66,7 @@ class _SendPostPageState extends State<SendPostPage> {
     } else {
       form.save();
       List<Map<String, dynamic>> details = [];
-      for (int i = 2; i < formFields.length; i++) {
+      for (int i = 0; i < formFields.length; i++) {
         details.add(formFields[i].data);
       }
       _showSendConfirmationDialog(details);
@@ -96,7 +96,7 @@ class _SendPostPageState extends State<SendPostPage> {
               });
               feedRef
                   .collection("feedInfoDetails")
-                  .add({"details": details}).then((value) {
+                  .add({"details": details.sublist(2)}).then((value) {
                 print("Uploaded Feed Info Details");
               });
               for (var field in formFields) {
@@ -105,7 +105,8 @@ class _SendPostPageState extends State<SendPostPage> {
                   pic.feedPosted = true;
                 }
               }
-              Navigator.popUntil(context, ModalRoute.withName('/home'));
+              Navigator.pop(context);
+              Navigator.pop(context);
             },
             child: Text("Confirm"),
           ),

@@ -67,8 +67,8 @@ class AppConfigs {
     return startUpPage;
   }
 
-  static Route<dynamic> getUserRoutes(RouteSettings settings){
-    switch(settings.name){
+  static Route<dynamic> getUserRoutes(RouteSettings settings) {
+    switch (settings.name) {
       case '/home':
         return MaterialPageRoute(builder: (_) => HomePage());
       case '/login':
@@ -76,13 +76,14 @@ class AppConfigs {
       case '/newsFeed':
         return MaterialPageRoute(builder: (_) => NewsFeedPage());
       case '/feedInfo':
-        return MaterialPageRoute(builder: (_) => FeedInfoPage());
+        return MaterialPageRoute(
+            builder: (_) => FeedInfoPage(feed: settings.arguments));
       case '/bookmarks':
         return MaterialPageRoute(builder: (_) => BookmarkPage());
     }
-    if(User.userData != null){
-      if(User.userData.userType == 'department'){
-        switch(settings.name){
+    if (User.userData != null) {
+      if (User.userData.userType == 'department') {
+        switch (settings.name) {
           case '/myfeeds':
             return MaterialPageRoute(builder: (_) => MyFeedsPage());
           case '/sendPost':
@@ -90,9 +91,8 @@ class AppConfigs {
         }
       }
     }
-    return MaterialPageRoute(builder:  (_) => UnkownRoutePage());
+    return MaterialPageRoute(builder: (_) => UnkownRoutePage());
   }
-
 }
 
 class User {
