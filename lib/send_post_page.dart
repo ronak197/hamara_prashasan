@@ -875,7 +875,7 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                                 widget.errorMessage =
                                     "Maximum picture size should be 3MB";
                                 widget.valid.value = false;
-                              } else if (imageFormats.contains(ext)) {
+                              } else if (!imageFormats.contains(ext)) {
                                 widget.errorMessage =
                                     "Picture format not valid";
                                 widget.valid.value = false;
@@ -930,12 +930,23 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                                 source: ImageSource.gallery);
                             if (file != null) {
                               var fileStats = await file.stat();
-                              if (fileStats.size / (1000000) <= 3) {
+                              String ext = file.path.split(".").last;
+                              if (fileStats.size / (1000000) > 3) {
+                                widget.errorMessage =
+                                    "Maximum picture size should be 3MB";
+                                widget.valid.value = false;
+                              } else if (!imageFormats.contains(ext)) {
+                                widget.errorMessage =
+                                    "Picture format not valid";
+                                widget.valid.value = false;
+                              } else {
                                 setState(() {
                                   uploading = true;
                                 });
                                 String url = await uploadImage(file);
                                 if (url != null) {
+                                  await widget
+                                      .deleteImage(widget.data['pictureUrl']);
                                   image = file;
                                   setState(() {});
                                   widget.saveData({'pictureUrl': url});
@@ -945,10 +956,6 @@ class _PictureUploadBoxState extends State<PictureUploadBox> {
                                 setState(() {
                                   uploading = false;
                                 });
-                              } else {
-                                widget.errorMessage =
-                                    "Maximum picture size should be 3MB";
-                                widget.valid.value = false;
                               }
                             }
                           },
