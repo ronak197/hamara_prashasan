@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:hamaraprashasan/app_configurations.dart';
+import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:hamaraprashasan/location_bloc.dart';
+import 'package:hamaraprashasan/blocs/location_bloc.dart';
 
 class ChatPage extends StatefulWidget {
   @override

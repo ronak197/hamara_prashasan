@@ -1,20 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:hamaraprashasan/myFeeds.dart';
-import 'package:hamaraprashasan/unkown_route_page.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:hamaraprashasan/homepage.dart';
-import 'package:hamaraprashasan/login_page.dart';
-import 'package:hamaraprashasan/send_post_page.dart';
-import 'package:hamaraprashasan/bookmarks.dart';
-import 'package:hamaraprashasan/news_feed_page.dart';
-import 'package:hamaraprashasan/feedInfoPage.dart';
-import 'package:hamaraprashasan/classes.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+import 'package:hamaraprashasan/home_page/app_drawer/my_feeds_tab/my_feeds_page.dart';
+import 'package:hamaraprashasan/unkown_route_page.dart';
+import 'package:hamaraprashasan/home_page/homepage.dart';
+import 'package:hamaraprashasan/app_auth/login_page.dart';
+import 'package:hamaraprashasan/home_page/app_drawer/send_post_tab/send_post_page.dart';
+import 'package:hamaraprashasan/home_page/bookmarks_tab/bookmarks_page.dart';
+import 'package:hamaraprashasan/home_page/feed_tab/news_feed_page.dart';
+import 'package:hamaraprashasan/home_page/feed_tab/feed_info_page.dart';
+import 'package:hamaraprashasan/helper_classes/user_classes/auth_user_class.dart';
+import 'package:hamaraprashasan/helper_classes/user_classes/user_data_class.dart';
+import 'package:hamaraprashasan/helper_classes/feed_classes/feed_info_class.dart';
 
 enum UserState {
   none, // State when user launched the app
@@ -76,8 +81,7 @@ class AppConfigs {
       case '/newsFeed':
         return MaterialPageRoute(builder: (_) => NewsFeedPage());
       case '/feedInfo':
-        return MaterialPageRoute(
-            builder: (_) => FeedInfoPage(feed: settings.arguments));
+        return MaterialPageRoute(builder: (_) => FeedInfoPage(feed: settings.arguments));
       case '/bookmarks':
         return MaterialPageRoute(builder: (_) => BookmarkPage());
     }

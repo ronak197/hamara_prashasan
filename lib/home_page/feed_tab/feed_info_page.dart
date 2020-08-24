@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
@@ -9,8 +8,10 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:hamaraprashasan/app_bar_icons_icons.dart';
-import 'package:hamaraprashasan/classes.dart';
+import 'package:hamaraprashasan/constants/constants.dart';
+import 'package:hamaraprashasan/helper_classes/app_icons/app_bar_icons_icons.dart';
+import 'package:hamaraprashasan/helper_classes/feed_classes/feed_class.dart';
+import 'package:hamaraprashasan/helper_classes/other_classes.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:image_downloader/image_downloader.dart';
 import 'package:shimmer/shimmer.dart';
@@ -449,92 +450,6 @@ class TableBox extends StatelessWidget {
                 ),
               )
               .toList(),
-        ),
-      ),
-    );
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 15),
-      padding: EdgeInsets.only(left: 25),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: List<Widget>.generate(t.headers.length + 1, (j) {
-            if (j == 0)
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                      Container(
-                        height: tileHeight,
-                        width: 40,
-                        margin: EdgeInsets.all(margin),
-                        padding: EdgeInsets.only(left: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
-                        alignment: Alignment.centerLeft,
-                      ),
-                    ] +
-                    List<Widget>.generate(n - 1, (k) {
-                      return Container(
-                        height: tileHeight,
-                        width: 40,
-                        margin: EdgeInsets.all(margin),
-                        padding: EdgeInsets.only(left: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(5.0),
-                        ),
-                        alignment: Alignment.centerLeft,
-                        child: Text((k + 1).toString(),
-                            style: Theme.of(context).textTheme.headline2),
-                      );
-                    }),
-              );
-            j -= 1;
-            int colWidth = t.headers[j].length;
-            for (int i = 0; i < n - 1; i++) {
-              colWidth = max(t.contents[i][j].length, colWidth);
-            }
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                    Container(
-                      height: tileHeight,
-                      width: colWidth * 80 / 8,
-                      margin: EdgeInsets.all(margin),
-                      padding: EdgeInsets.only(left: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(5.0),
-                      ),
-                      alignment: Alignment.centerLeft,
-                      child: Text(t.headers[j],
-                          style: Theme.of(context).textTheme.headline2),
-                    ),
-                  ] +
-                  List<Widget>.generate(n - 1, (k) {
-                    return Container(
-                      height: tileHeight,
-                      width: colWidth * 80 / 8,
-                      margin: EdgeInsets.all(margin),
-                      padding: EdgeInsets.only(left: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(5.0),
-                      ),
-                      alignment: Alignment.centerLeft,
-                      child: Text(t.contents[k][j],
-                          style: Theme.of(context).textTheme.headline2),
-                    );
-                  }),
-            );
-          }),
         ),
       ),
     );
