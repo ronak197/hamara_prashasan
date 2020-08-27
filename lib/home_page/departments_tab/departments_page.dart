@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
@@ -65,45 +66,46 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
           });
   }
 
-  void getSubscribedDepartments() async {
-    Firestore db = Firestore.instance;
-
+  void getSubscribedDepartmentsHandler() async {
     setState(() {
       subscribedDepartments?.clear();
+      searchDepartmentsResults?.clear();
       errorMessage = "Getting subscribers";
       print(errorMessage);
     });
+    int len = User.userData.subscribedDepartmentIDs.length;
+    for (int i = 0; i < len; i += 10) {
+      await getSubscribedDepartments(i, min(i + 10, len));
+    }
+    if (searchDepartmentsResults.isEmpty) {
+      setState(() {
+        errorMessage = 'No Subscribed Departments';
+        print(errorMessage);
+      });
+    }
+  }
 
-    db
+  Future<void> getSubscribedDepartments(int si, int ei) async {
+    Firestore db = Firestore.instance;
+    subscribedDepartments?.clear();
+    await db
         .collection('departments')
-        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+        .where('email',
+            whereIn: User.userData.subscribedDepartmentIDs.sublist(si, ei))
         .getDocuments()
-        .asStream()
-        .listen((event) {
+        .then((event) {
       setState(() {
         event.documents.forEach((snapshot) {
           subscribedDepartments.add(Department.fromJson(snapshot.data));
         });
+        searchDepartmentsResults += subscribedDepartments;
       });
-    })
-          ..onDone(() {
-            if (subscribedDepartments.isEmpty) {
-              setState(() {
-                errorMessage = 'No Subscribed Departments';
-                print(errorMessage);
-              });
-            } else {
-              setState(() {
-                searchDepartmentsResults = subscribedDepartments;
-              });
-            }
-          })
-          ..onError((e) {
-            setState(() {
-              errorMessage = "Error Occurred";
-              print(errorMessage);
-            });
-          });
+    }).catchError((e) {
+      setState(() {
+        errorMessage = "Error Occurred";
+        print(errorMessage);
+      });
+    });
   }
 
   void onSubscribePressed(String toSubscribe, bool hasSubscribed) async {
@@ -183,7 +185,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
     searchTextEditingController.clear();
     searchFocusNode.unfocus();
     setState(() {
-      getSubscribedDepartments();
+      getSubscribedDepartmentsHandler();
     });
   }
 
@@ -194,7 +196,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
     searchTextEditingController.addListener(() {
       search(searchTextEditingController.text);
     });
-    getSubscribedDepartments();
+    getSubscribedDepartmentsHandler();
     super.initState();
   }
 

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -51,9 +52,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
 
   bool isRunning = false;
 
-  DocumentSnapshot lastFeedDoc;
+  List<DocumentSnapshot> lastFeedDocs = [];
 
-  bool noMoreFeeds = false;
+  List<bool> noMoreFeeds = [];
 
   String userLocation;
 
@@ -66,61 +67,108 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       resultStream.sink.addError(noSubscriptionMessage);
       return false;
     } else {
-      bool success = await db
-          .collection('departments')
-          .where('email', whereIn: User.userData.subscribedDepartmentIDs)
-          .getDocuments()
-          .then((value) {
-        value.documents.forEach((element) {
-          if (!departmentDetails.containsKey(element.data['email'])) {
-            departmentDetails[element.data['email']] = element.data;
-          }
-        });
-        departmentDetails.forEach((key, value) {
-          departments.add(new Department.fromJson(value));
-        });
-        selectedDepartments = List.from(departments);
-        Set<String> cat = new Set<String>();
-        departments.forEach((d) {
-          cat.add(d.category);
-        });
-        categories = cat.toList();
-        selectedCategories = new List.from(categories);
-        if (this.mounted) setState(() {});
-        return true;
-      }).catchError((e) {
-        resultStream.sink.addError(errorMessage);
-        print('Error in query getDepartmentInfo $e');
-        return false;
-      }).whenComplete(() {
-        print('Completed query getDepartmentInfo');
-        return true;
-      }).timeout(Duration(seconds: 5), onTimeout: () {
-        resultStream.sink.addError(errorMessage);
-        print('Timeout in query getDepartmentInfo');
-        return false;
+      bool success = true;
+      int len = User.userData.subscribedDepartmentIDs.length;
+      for (int i = 0; i < len && success; i += 10) {
+        int si = i, ei = min(i + 10, len);
+        print(User.userData.subscribedDepartmentIDs.sublist(si, ei));
+        success = success &&
+            await db
+                .collection('departments')
+                .where('email',
+                    whereIn:
+                        User.userData.subscribedDepartmentIDs.sublist(si, ei))
+                .getDocuments()
+                .then((qs) {
+              qs.documents.forEach((element) {
+                if (!departmentDetails.containsKey(element.data['email'])) {
+                  departmentDetails[element.data['email']] = element.data;
+                }
+              });
+              return true;
+            }).catchError((e) {
+              resultStream.sink.addError(errorMessage);
+              print('Error in query getDepartmentInfo $e');
+              return false;
+            }).whenComplete(() {
+              print('Completed query getDepartmentInfo');
+              return true;
+            }).timeout(Duration(seconds: 5), onTimeout: () {
+              resultStream.sink.addError(errorMessage);
+              print('Timeout in query getDepartmentInfo');
+              return false;
+            });
+      }
+      departmentDetails.forEach((key, value) {
+        departments.add(new Department.fromJson(value));
       });
+      selectedDepartments = List.from(departments);
+      Set<String> cat = new Set<String>();
+      departments.forEach((d) {
+        cat.add(d.category);
+      });
+      categories = cat.toList();
+      selectedCategories = new List.from(categories);
+
+      lastFeedDocs = new List.filled(
+          (User.userData.subscribedDepartmentIDs.length / 10).ceil(), null);
+      noMoreFeeds = new List.filled(
+          (User.userData.subscribedDepartmentIDs.length / 10).ceil(), false);
+
+      if (this.mounted) setState(() {});
       return success;
     }
   }
 
-  Future<bool> getMoreFeeds() async {
+  Future<void> feedPartitionHandler(bool moreFeeds, bool latestFeeds) async {
+    if (moreFeeds && latestFeeds) {
+      return;
+    } else if (latestFeeds) {
+      int len = User.userData.subscribedDepartmentIDs.length;
+      newFeeds.feeds.clear();
+      for (int i = 0; i < lastFeedDocs.length; i++) {
+        lastFeedDocs[i] = null;
+        noMoreFeeds[i] = false;
+      }
+      for (int i = 0; i < len; i += 10) {
+        await getLatestFeeds(i, min(i + 10, len));
+      }
+    } else if (moreFeeds) {
+      int len = User.userData.subscribedDepartmentIDs.length;
+      for (int i = 0; i < len; i += 10) {
+        int index = (i / 10).floor();
+        if (noMoreFeeds[index] == false) {
+          await getMoreFeeds(i, min(i + 10, len));
+        }
+      }
+    }
+  }
+
+  Future<bool> getMoreFeeds(int si, int ei) async {
     Firestore db = Firestore.instance;
     print('fetching more feeds');
 
     if (User.lastUserState == UserState.feedUpdate) {
-      await db
+      int limit = (feedLimit /
+              ((User.userData.subscribedDepartmentIDs.length / 10).ceil()))
+          .ceil();
+      int index = (si / 10).floor();
+      Query q = db
           .collection('feeds')
           .where('creationDateTimeStamp',
-              isLessThanOrEqualTo: User.userData.lastUpdateTime)
+              isGreaterThanOrEqualTo: start != null
+                  ? Timestamp.fromDate(start)
+                  : Timestamp.fromDate(DateTime(2015)),
+              isLessThanOrEqualTo:
+                  end != null ? Timestamp.fromDate(end) : Timestamp.now())
           .where('departmentUid',
-              whereIn: User.userData.subscribedDepartmentIDs)
-          .orderBy('creationDateTimeStamp', descending: true)
-          .startAfterDocument(lastFeedDoc)
-          .limit(feedLimit)
-          .getDocuments()
-          .then((value) {
-        value.documents.forEach((element) {
+              whereIn: User.userData.subscribedDepartmentIDs.sublist(si, ei))
+          .orderBy('creationDateTimeStamp', descending: true);
+      if (lastFeedDocs[index] != null) {
+        q = q.startAfterDocument(lastFeedDocs[index]);
+      }
+      await q.limit(limit).getDocuments().then((qs) {
+        qs.documents.forEach((element) {
           newFeeds.feeds.add(Feed(
             feedId: element.data['feedId'],
             feedInfo: FeedInfo.fromFirestoreJson(element.data),
@@ -128,20 +176,20 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                 departmentDetails[element.data['departmentUid']]),
           ));
         });
-        if (value.documents.isEmpty) {
+        if (qs.documents.isEmpty) {
           print('No new feeds');
-          noMoreFeeds = true;
+          noMoreFeeds[index] = true;
         } else {
-          lastFeedDoc = value.documents.last;
+          lastFeedDocs[index] = qs.documents.last;
         }
       }).timeout(Duration(seconds: 3), onTimeout: () {
         resultStream.sink.addError(errorMessage);
         return null;
       }).catchError((e) {
         resultStream.sink.addError(errorMessage);
-        print('onError in query for getLatestFeeds');
+        print('onError in query for getMoreFeeds');
       }).whenComplete(() {
-        print('OnDone in query for getLatestFeeds');
+        print('OnDone in query for getMoreFeeds');
         User.lastUserState = UserState.feedUpdate;
         // update firestore user feed update time
       });
@@ -152,20 +200,21 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       if (await getDepartmentInfo()) {
         print('Fetched departments info');
         User.lastUserState = UserState.feedUpdate;
-        getLatestFeeds();
+        feedPartitionHandler(true, false);
         print('Gonna fetch getLatestFeeds');
       }
     }
     return true;
   }
 
-  Future<bool> getLatestFeeds() async {
+  Future<bool> getLatestFeeds(int si, int ei) async {
     Firestore db = Firestore.instance;
-    print('fetching feeds');
+    print('fetching Latest feeds');
 
     if (User.lastUserState == UserState.feedUpdate) {
-      newFeeds.feeds.clear();
-
+      int limit = (feedLimit /
+              ((User.userData.subscribedDepartmentIDs.length / 10).ceil()))
+          .ceil();
       await db
           .collection('feeds')
           .where('creationDateTimeStamp',
@@ -175,12 +224,12 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
               isLessThanOrEqualTo:
                   end != null ? Timestamp.fromDate(end) : Timestamp.now())
           .where('departmentUid',
-              whereIn: User.userData.subscribedDepartmentIDs)
+              whereIn: User.userData.subscribedDepartmentIDs.sublist(si, ei))
           .orderBy('creationDateTimeStamp', descending: true)
-          .limit(feedLimit)
+          .limit(limit)
           .getDocuments()
-          .then((value) {
-        value.documents.forEach((element) {
+          .then((qs) {
+        qs.documents.forEach((element) {
           newFeeds.feeds.add(Feed(
             feedId: element.data['feedId'],
             feedInfo: FeedInfo.fromFirestoreJson(element.data),
@@ -188,7 +237,10 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                 departmentDetails[element.data['departmentUid']]),
           ));
         });
-        if (value.documents.isNotEmpty) lastFeedDoc = value.documents.last;
+        if (qs.documents.isNotEmpty) {
+          int index = (si / 10).floor();
+          lastFeedDocs[index] = qs.documents.last;
+        }
       }).whenComplete(() {
         User.lastUserState = UserState.feedUpdate;
       });
@@ -199,7 +251,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       if (await getDepartmentInfo()) {
         print('Fetched departments info');
         User.lastUserState = UserState.feedUpdate;
-        getLatestFeeds();
+        feedPartitionHandler(false, true);
         print('Gonna fetch getLatestFeeds');
       } else {
 //        resultStream.sink.addError(errorMessage);
@@ -225,12 +277,9 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       print(
           'isRunning ${latestFeeds ? 'latestFeeds' : 'moreFeeds'} $isRunning');
       if (moreFeeds) {
-        if (noMoreFeeds == false) {
-          await getMoreFeeds();
-        }
+        await feedPartitionHandler(moreFeeds, latestFeeds);
       } else {
-        noMoreFeeds = false;
-        await getLatestFeeds();
+        await feedPartitionHandler(moreFeeds, latestFeeds);
       }
       isRunning = false;
       print(
@@ -290,7 +339,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       print("Some Error in saving bookmarks");
   }
 
-   dynamic applyFilters(SortingFeeds sortingFeeds, List<Department> departments,
+  dynamic applyFilters(SortingFeeds sortingFeeds, List<Department> departments,
       List<String> categories, DateTime start, DateTime end) {
     print("filtering");
     this.selectedDepartments = departments;
@@ -398,6 +447,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
     selectedDepartments.clear();
     selectedCategories.clear();
   }
+
   @override
   void initState() {
     super.initState();
@@ -564,19 +614,22 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
                           alignment: Alignment.topLeft,
                           child: Center(
                               child: InkWell(
-
-                                onTap: () => LocationBloc.getNewLocation(),
-                                child: StreamBuilder(
-                                  stream: LocationBloc.locationStream,
-                                  builder: (context, AsyncSnapshot<String> snapshot){
-                                    return Text(snapshot.hasData ? snapshot.data : 'Your Location',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyText1
-                                            .copyWith(color: Color(0xff6D6D6D)));
-                                  },
-                                ),
-                              )))
+                            onTap: () => LocationBloc.getNewLocation(),
+                            child: StreamBuilder(
+                              stream: LocationBloc.locationStream,
+                              builder:
+                                  (context, AsyncSnapshot<String> snapshot) {
+                                return Text(
+                                    snapshot.hasData
+                                        ? snapshot.data
+                                        : 'Your Location',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyText1
+                                        .copyWith(color: Color(0xff6D6D6D)));
+                              },
+                            ),
+                          )))
                     ],
                   )
                 ],

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -65,35 +66,40 @@ class _BookmarkPageState extends State<BookmarkPage> {
   Future<bool> getDepartmentInfo() async {
     print('fetching departments');
     Firestore db = Firestore.instance;
-
-    bool success = await db
-        .collection('departments')
-        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
-        .getDocuments()
-        .then((value) {
-      value.documents.forEach((element) {
-        if (!departmentDetails.containsKey(element.data['email'])) {
-          departmentDetails[element.data['email']] = element.data;
-        }
+    bool success = true;
+    int len = User.userData.subscribedDepartmentIDs.length;
+    for (int i = 0; i < len && success; i += 10) {
+      int si = i, ei = min(i + 10, len);
+      success = await db
+          .collection('departments')
+          .where('email',
+              whereIn: User.userData.subscribedDepartmentIDs.sublist(si, ei))
+          .getDocuments()
+          .then((value) {
+        value.documents.forEach((element) {
+          if (!departmentDetails.containsKey(element.data['email'])) {
+            departmentDetails[element.data['email']] = element.data;
+          }
+        });
+        return true;
+      }).catchError((e) {
+        resultStream.sink.addError(errorMessage);
+        print('Error in query getDepartmentInfo in bookmarks $e');
+        return false;
+      }).whenComplete(() {
+        print('Completed query getDepartmentInfo in bookmarks');
+        return true;
+      }).timeout(Duration(seconds: 5), onTimeout: () {
+        resultStream.sink.addError(errorMessage);
+        print('Timeout in query getDepartmentInfo in bookmarks');
+        return false;
       });
-      departmentDetails.forEach((key, value) {
-        departments.add(new Department.fromJson(value));
-      });
-
-      if (this.mounted) setState(() {});
-      return true;
-    }).catchError((e) {
-      resultStream.sink.addError(errorMessage);
-      print('Error in query getDepartmentInfo in bookmarks $e');
-      return false;
-    }).whenComplete(() {
-      print('Completed query getDepartmentInfo in bookmarks');
-      return true;
-    }).timeout(Duration(seconds: 5), onTimeout: () {
-      resultStream.sink.addError(errorMessage);
-      print('Timeout in query getDepartmentInfo in bookmarks');
-      return false;
+    }
+    departmentDetails.forEach((key, value) {
+      departments.add(new Department.fromJson(value));
     });
+
+    if (this.mounted) setState(() {});
 
     return success;
   }
@@ -418,18 +424,22 @@ class _BookmarkPageState extends State<BookmarkPage> {
                           alignment: Alignment.topLeft,
                           child: Center(
                               child: InkWell(
-                                onTap: () => LocationBloc.getNewLocation(),
-                                child: StreamBuilder(
-                                  stream: LocationBloc.locationStream,
-                                  builder: (context, AsyncSnapshot<String> snapshot){
-                                    return Text(snapshot.hasData ? snapshot.data : 'Your Location',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyText1
-                                            .copyWith(color: Color(0xff6D6D6D)));
-                                  },
-                                ),
-                              )))
+                            onTap: () => LocationBloc.getNewLocation(),
+                            child: StreamBuilder(
+                              stream: LocationBloc.locationStream,
+                              builder:
+                                  (context, AsyncSnapshot<String> snapshot) {
+                                return Text(
+                                    snapshot.hasData
+                                        ? snapshot.data
+                                        : 'Your Location',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyText1
+                                        .copyWith(color: Color(0xff6D6D6D)));
+                              },
+                            ),
+                          )))
                     ],
                   )
                 ],
