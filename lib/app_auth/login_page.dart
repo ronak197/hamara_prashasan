@@ -1,8 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/sign_in.dart';
+import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
+import 'package:hamaraprashasan/app_auth/google_sign_in/sign_in.dart';
 
 class LoginPage extends StatelessWidget {
 

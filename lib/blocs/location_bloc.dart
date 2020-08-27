@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter/material.dart';
-import 'package:hamaraprashasan/bloc.dart';
+import 'package:hamaraprashasan/helper_classes/bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class LocationBloc implements Bloc{

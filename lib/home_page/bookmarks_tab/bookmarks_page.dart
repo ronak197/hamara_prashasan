@@ -4,11 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/classes.dart';
+import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:hamaraprashasan/location_bloc.dart';
-import 'package:hamaraprashasan/news_feed_page.dart';
+import 'package:hamaraprashasan/constants/constants.dart';
+import 'package:hamaraprashasan/helper_classes/feed_classes/feed_class.dart';
+import 'package:hamaraprashasan/helper_classes/feed_classes/feed_info_class.dart';
+import 'package:hamaraprashasan/helper_classes/user_classes/department_user_class.dart';
+import 'package:hamaraprashasan/blocs/location_bloc.dart';
+import 'package:hamaraprashasan/home_page/feed_tab/news_feed_page.dart';
 import 'package:rxdart/subjects.dart';
 
 class BookmarkPage extends StatefulWidget {

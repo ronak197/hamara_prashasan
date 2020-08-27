@@ -5,9 +5,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/classes.dart';
+import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
 import 'package:algolia/algolia.dart';
+import 'package:hamaraprashasan/constants/constants.dart';
+import 'package:hamaraprashasan/helper_classes/user_classes/department_user_class.dart';
 
 class DepartmentsPage extends StatefulWidget {
   @override

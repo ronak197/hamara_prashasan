@@ -4,15 +4,18 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:hamaraprashasan/app_configurations.dart';
+import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:hamaraprashasan/bottomSheets.dart';
-import 'package:hamaraprashasan/classes.dart';
-import 'package:hamaraprashasan/location_bloc.dart';
+import 'package:hamaraprashasan/constants/constants.dart';
+import 'package:hamaraprashasan/helper_classes/feed_classes/feed_class.dart';
+import 'package:hamaraprashasan/helper_classes/feed_classes/feed_info_class.dart';
+import 'package:hamaraprashasan/helper_classes/other_classes.dart';
+import 'package:hamaraprashasan/helper_classes/user_classes/department_user_class.dart';
+import 'package:hamaraprashasan/home_page/feed_tab/filter_bottom_sheet.dart';
+import 'package:hamaraprashasan/blocs/location_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:geolocator/geolocator.dart';
 
 class NewsFeedPage extends StatefulWidget {
@@ -287,7 +290,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       print("Some Error in saving bookmarks");
   }
 
-  void applyFilters(SortingFeeds sortingFeeds, List<Department> departments,
+   dynamic applyFilters(SortingFeeds sortingFeeds, List<Department> departments,
       List<String> categories, DateTime start, DateTime end) {
     print("filtering");
     this.selectedDepartments = departments;

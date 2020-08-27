@@ -1,10 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/drawer_icons_icons.dart';
-import 'package:hamaraprashasan/editAccount.dart';
-import 'package:hamaraprashasan/sign_in.dart';
+import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
+import 'package:hamaraprashasan/helper_classes/app_icons/drawer_icons_icons.dart';
+import 'package:hamaraprashasan/home_page/app_drawer/account_tab/edit_account_page.dart';
+import 'package:hamaraprashasan/app_auth/google_sign_in/sign_in.dart';
 
 class MyAppDrawer extends StatefulWidget {
   final Function(Widget Function(BuildContext) builder,

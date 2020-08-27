@@ -1,12 +1,17 @@
 import 'dart:io';
+
+import 'package:flutter/material.dart';
+
+import 'package:rxdart/subjects.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:hamaraprashasan/app_configurations.dart';
-import 'package:hamaraprashasan/bookmarks.dart';
-import 'package:hamaraprashasan/classes.dart';
-import 'package:hamaraprashasan/departments_page.dart';
-import 'package:rxdart/subjects.dart';
+
+import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
+import 'package:hamaraprashasan/home_page/bookmarks_tab/bookmarks_page.dart';
+import 'package:hamaraprashasan/home_page/departments_tab/departments_page.dart';
+import 'package:hamaraprashasan/helper_classes/user_classes/department_user_class.dart';
+import 'package:hamaraprashasan/helper_classes/feed_classes/feed_class.dart';
+import 'package:hamaraprashasan/helper_classes/feed_classes/feed_info_class.dart';
 
 class EditAccountPage extends StatefulWidget {
   @override
