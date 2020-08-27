@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'file:///C:/Users/jainr/AndroidStudioProjects/hamara_prashasan/lib/helper_classes/bloc.dart';
+import 'package:hamaraprashasan/helper_classes/bloc.dart';
+
 // 1
 class BlocProvider<T extends Bloc> extends StatefulWidget {
   final Widget child;

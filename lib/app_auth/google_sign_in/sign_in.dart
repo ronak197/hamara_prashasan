@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'file:///C:/Users/jainr/AndroidStudioProjects/hamara_prashasan/lib/app_configurations/app_configurations.dart';
+import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
 
 final FirebaseAuth _auth = FirebaseAuth.instance;
 final GoogleSignIn googleSignIn = GoogleSignIn();
