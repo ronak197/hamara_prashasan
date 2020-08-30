@@ -11,12 +11,27 @@ void main() async {
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+  /* SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    statusBarColor: Colors.white,
+    //statusBarIconBrightness: Brightness.dark,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  )); */
+
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark.copyWith(
+          statusBarColor: Colors.white,
+          /* set Status bar color in Android devices. */
+
+          statusBarIconBrightness: Brightness.dark,
+          /* set Status bar icons color in Android devices.*/
+
+          statusBarBrightness:
+              Brightness.dark) /* set Status bar icon color in iOS. */
+      );
 
   runApp(MyApp(startUpPage));
 }
 
 class MyApp extends StatelessWidget {
-
   final String _defaultHome;
 
   MyApp(this._defaultHome);

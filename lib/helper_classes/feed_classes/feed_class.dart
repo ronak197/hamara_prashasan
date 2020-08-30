@@ -13,14 +13,18 @@ class Feed {
 
   Feed(
       {FeedInfo feedInfo,
-        Department department,
-        FeedInfoDetails feedInfoDetails,
-        String feedId}) {
+      Department department,
+      FeedInfoDetails feedInfoDetails,
+      String feedId}) {
     this.feedInfo = feedInfo;
     this.department = department;
     this.feedInfoDetails = feedInfoDetails;
-    this.profileAvatar = "assets/avatars/${department.category}.svg";
-    this.bgColor = avatarColorMap['${department.category}'];
+    this.profileAvatar = avatarLocMap.containsKey(department.category)
+        ? avatarLocMap[department.category]
+        : avatarLocMap["department"];
+    this.bgColor = avatarColorMap.containsKey(department.category)
+        ? avatarColorMap[department.category]
+        : avatarColorMap['department'];
     this.feedId = feedId;
   }
 }

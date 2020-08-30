@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:hamaraprashasan/helper_classes/other_classes.dart';
 import 'package:hamaraprashasan/helper_classes/user_classes/department_user_class.dart';
 
-
 class FilterBottomSheet extends StatefulWidget {
   final Map<String, dynamic> departments, prevVal;
   final Function(SortingFeeds sortingFeeds, List<Department> departments,
@@ -506,6 +505,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                             padding: EdgeInsets.symmetric(
                                                 horizontal: 30, vertical: 10),
                                             child: RaisedButton(
+                                              elevation: 0.0,
                                               shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
@@ -522,7 +522,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                                     start;
                                                 setState(() {});
                                               },
-                                              color: Colors.yellow[600],
+                                              color: Color(0xfff1c40f),
                                               child: Text(
                                                 start != null
                                                     ? start
@@ -552,6 +552,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                             padding: EdgeInsets.symmetric(
                                                 horizontal: 30, vertical: 10),
                                             child: RaisedButton(
+                                              elevation: 0.0,
                                               shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
@@ -573,7 +574,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                                 }
                                                 setState(() {});
                                               },
-                                              color: Colors.yellow[600],
+                                              color: Color(0xfff1c40f),
                                               child: Text(
                                                 end != null
                                                     ? end

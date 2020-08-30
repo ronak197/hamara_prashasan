@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -19,7 +20,6 @@ class EditAccountPage extends StatefulWidget {
 }
 
 class _EditAccountPageState extends State<EditAccountPage> {
-  List<Department> departments = [];
   List<Department> subscribedDepartments = List<Department>();
   BehaviorSubject<Feeds> resultStream = BehaviorSubject<Feeds>();
   DocumentSnapshot lastFeedSp;
@@ -33,34 +33,19 @@ class _EditAccountPageState extends State<EditAccountPage> {
   Feeds myFeeds = new Feeds();
   int numberOfSubscribers = 0;
 
-  Future<bool> getDepartmentInfo() async {
-    print('fetching departments  in editProfile');
-    Firestore db = Firestore.instance;
+  //variables for Beta version only
+  List<String> allDepartmentList = ["temporary_department@gmail.com"];
+  String _selectedDepartmentId = "temporary_department@gmail.com";
 
-    bool success = await db
-        .collection('departments')
-        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
-        .getDocuments()
-        .then((value) {
-      value.documents.forEach((element) {
-        if (!departments.any((d) => d.email == element.data['email'])) {
-          departments.add(new Department.fromJson(element.data));
-        }
+  //Function for Beta version only
+  void fetchAllDeparmentIds() async {
+    QuerySnapshot qs =
+        await Firestore.instance.collection("departments").getDocuments();
+    setState(() {
+      qs.documents.forEach((doc) {
+        allDepartmentList.add(doc.data["email"].toString());
       });
-
-      return true;
-    }).catchError((e) {
-      print('Error in query getDepartmentInfo in editProfile $e');
-      return false;
-    }).whenComplete(() {
-      print('Completed query getDepartmentInfo in editProfile');
-      return true;
-    }).timeout(Duration(seconds: 5), onTimeout: () {
-      print('Timeout in query getDepartmentInfo in editProfile');
-      return false;
     });
-
-    return success;
   }
 
   Future<void> getLatestFeeds() async {
@@ -69,7 +54,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
     await db
         .collection('feeds')
         .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid', isEqualTo: User.authUser.email)
+        .where('departmentUid',
+            isEqualTo: _selectedDepartmentId ?? User.authUser.email)
         .orderBy('creationDateTimeStamp', descending: true)
         .limit(feedLimit)
         .getDocuments()
@@ -78,7 +64,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
         myFeeds.feeds.add(Feed(
           feedId: element.data['feedId'],
           feedInfo: FeedInfo.fromFirestoreJson(element.data),
-          department: departments
+          department: subscribedDepartments
               .firstWhere((d) => d.email == element.data['departmentUid']),
         ));
       });
@@ -95,7 +81,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
     Query q = db
         .collection('feeds')
         .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid', isEqualTo: User.authUser.email)
+        .where('departmentUid',
+            isEqualTo: _selectedDepartmentId ?? User.authUser.email)
         .orderBy('creationDateTimeStamp', descending: true);
     if (lastFeedSp != null) {
       q = q.startAfterDocument(lastFeedSp);
@@ -105,7 +92,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
         myFeeds.feeds.add(Feed(
           feedId: element.data['feedId'],
           feedInfo: FeedInfo.fromFirestoreJson(element.data),
-          department: departments
+          department: subscribedDepartments
               .firstWhere((d) => d.email == element.data['departmentUid']),
         ));
       });
@@ -118,8 +105,8 @@ class _EditAccountPageState extends State<EditAccountPage> {
 
   Future<void> feedHandler(
       {bool moreFeeds = false, bool latestFeeds = false}) async {
-    if (departments.isNotEmpty ||
-        (departments.isEmpty && (await getDepartmentInfo()))) {
+    if (subscribedDepartments.isEmpty) await getSubscribedDepartmentsHandler();
+    if (subscribedDepartments.isNotEmpty) {
       if (moreFeeds == latestFeeds || isRunning == true) {
         return;
       } else if (moreFeeds != latestFeeds && isRunning == false) {
@@ -129,6 +116,7 @@ class _EditAccountPageState extends State<EditAccountPage> {
         if (moreFeeds) {
           await getMoreFeeds();
         } else {
+          myFeeds.feeds.clear();
           await getLatestFeeds();
         }
         isRunning = false;
@@ -151,41 +139,49 @@ class _EditAccountPageState extends State<EditAccountPage> {
     });
   }
 
-  void getSubscribedDepartments() async {
-    Firestore db = Firestore.instance;
-
+  Future<void> getSubscribedDepartmentsHandler() async {
     setState(() {
       subscribedDepartments?.clear();
       errorMessage = "Getting subscribers";
       print(errorMessage);
     });
+    if (_selectedDepartmentId != null) {
+      await getSubscribedDepartments([_selectedDepartmentId]);
+    } else {
+      int len = User.userData.subscribedDepartmentIDs.length;
+      for (int i = 0; i < len; i += 10) {
+        List<String> ids =
+            User.userData.subscribedDepartmentIDs.sublist(i, min(i + 10, len));
+        await getSubscribedDepartments(ids);
+      }
+      if (subscribedDepartments.isEmpty) {
+        setState(() {
+          errorMessage = 'No Subscribed Departments';
+          print(errorMessage);
+        });
+      }
+    }
+  }
 
-    db
+  Future<void> getSubscribedDepartments(List<String> ids) async {
+    Firestore db = Firestore.instance;
+
+    await db
         .collection('departments')
-        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+        .where('email', whereIn: ids)
         .getDocuments()
-        .asStream()
-        .listen((event) {
+        .then((qs) {
       setState(() {
-        event.documents.forEach((snapshot) {
+        qs.documents.forEach((snapshot) {
           subscribedDepartments.add(Department.fromJson(snapshot.data));
         });
       });
-    })
-          ..onDone(() {
-            if (subscribedDepartments.isEmpty) {
-              setState(() {
-                errorMessage = 'No Subscribed Departments';
-                print(errorMessage);
-              });
-            }
-          })
-          ..onError((e) {
-            setState(() {
-              errorMessage = "Error Occurred";
-              print(errorMessage);
-            });
-          });
+    }).catchError((e) {
+      setState(() {
+        errorMessage = "Error Occurred";
+        print(errorMessage);
+      });
+    });
   }
 
   void onSubscribePressed(String toSubscribe, bool hasSubscribed) async {
@@ -234,8 +230,9 @@ class _EditAccountPageState extends State<EditAccountPage> {
     if (User.userData.isDepartment) {
       feedHandler(latestFeeds: true, moreFeeds: false);
       getNumberOfSubscribers();
+      fetchAllDeparmentIds();
     } else {
-      getSubscribedDepartments();
+      getSubscribedDepartmentsHandler();
     }
   }
 
@@ -248,216 +245,44 @@ class _EditAccountPageState extends State<EditAccountPage> {
   @override
   Widget build(BuildContext context) {
     if (User.userData.isDepartment)
-      return Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back_ios,
-              color: Colors.black,
-              size: 15,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-        ),
-        body: Padding(
-          padding: EdgeInsets.all(5),
-          child: NotificationListener<ScrollNotification>(
-            onNotification: (ScrollNotification scrollInfo) {
-              if (scrollInfo is ScrollEndNotification &&
-                  scrollInfo.metrics.pixels >=
-                      (scrollInfo.metrics.maxScrollExtent - 60.0)) {
-                print('Reached Edge, getting more Feeds');
-                feedHandler(moreFeeds: true, latestFeeds: false);
-                return true;
-              }
-              return false;
-            },
-            child: Scrollbar(
-              //isAlwaysShown: true,
-              controller: _scrollController,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                physics: BouncingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Align(
-                      alignment: Alignment.center,
-                      child: Container(
-                        margin: EdgeInsets.all(12.0),
-                        padding: EdgeInsets.all(2),
-                        height: 120,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        child: ClipOval(
-                          child: User.authUser.localPhotoLoc != null
-                              ? Image.file(
-                                  File(User.authUser.localPhotoLoc),
-                                  fit: BoxFit.contain,
-                                )
-                              : CachedNetworkImage(
-                                  imageUrl: User.authUser.photoUrl,
-                                  fit: BoxFit.contain,
-                                  placeholder: (context, s) {
-                                    return Container(color: Colors.white);
-                                  },
-                                ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(5),
-                      child: Text(
-                        User.authUser.displayName,
-                        style: Theme.of(context).textTheme.headline2.copyWith(),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(5),
-                      child: Text(
-                        User.authUser.email,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headline1
-                            .copyWith(color: Colors.grey),
-                      ),
-                    ),
-                    User.authUser.phoneNumber != null
-                        ? Padding(
-                            padding: EdgeInsets.all(5),
-                            child: Text(
-                              User.authUser.phoneNumber,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headline1
-                                  .copyWith(color: Colors.grey),
-                            ),
-                          )
-                        : SizedBox(),
-                    Align(
-                      alignment: Alignment.center,
-                      child: Container(
-                        margin: EdgeInsets.symmetric(vertical: 5),
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          "Number of subscribers: $numberOfSubscribers",
-                          style: Theme.of(context)
-                              .textTheme
-                              .headline1
-                              .copyWith(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        margin: EdgeInsets.symmetric(vertical: 5),
-                        padding: EdgeInsets.all(10),
-                        child: Text(
-                          "My Feeds :",
-                          style: Theme.of(context).textTheme.headline2,
-                        ),
-                      ),
-                    ),
-                    StreamBuilder(
-                      stream: resultStream.stream,
-                      builder: (context, AsyncSnapshot<Feeds> snapshot) {
-                        print(
-                            'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
-
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return FeedLoadStatus(
-                            displayMessage: loadingMessage,
-                          );
-                        } else if (snapshot.connectionState ==
-                            ConnectionState.active) {
-                          if (snapshot.hasData &&
-                              snapshot.data.feeds.isNotEmpty) {
-                            return ListView.builder(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              itemCount: snapshot.data.feeds.length,
-                              itemBuilder: (context, i) {
-                                Feed f = snapshot.data.feeds[i];
-                                return GestureDetector(
-                                  onTap: () {
-                                    Navigator.of(context)
-                                        .pushNamed("/feedInfo", arguments: {
-                                      "feed": f,
-                                    });
-                                  },
-                                  child: Container(
-                                    margin: EdgeInsets.symmetric(vertical: 8.0),
-                                    child: MessageBox(
-                                      feed: f,
-                                      selected: false,
-                                      canBeSelected: false,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          } else if (snapshot.data.feeds.isEmpty) {
-                            print(noFeedMessage);
-                            return FeedLoadStatus(
-                              displayMessage: noFeedMessage,
-                            );
-                          } else if (snapshot.hasError) {
-                            return FeedLoadStatus(
-                              displayMessage: snapshot.error,
-                            );
-                          }
-                        }
-                        return SizedBox();
-                      },
-                    ),
-                  ],
-                ),
+      return SafeArea(
+        child: Scaffold(
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back_ios,
+                color: Colors.black,
+                size: 15,
               ),
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
           ),
-        ),
-      );
-    else
-      return Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back_ios,
-              color: Colors.black,
-              size: 15,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
-        ),
-        body: Padding(
-          padding: EdgeInsets.all(5),
-          child: Scrollbar(
-            //isAlwaysShown: true,
-            controller: _scrollController,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: <Widget>[
+          body: Padding(
+            padding: EdgeInsets.all(5),
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (ScrollNotification scrollInfo) {
+                if (scrollInfo is ScrollEndNotification &&
+                    scrollInfo.metrics.pixels >=
+                        (scrollInfo.metrics.maxScrollExtent - 60.0)) {
+                  print('Reached Edge, getting more Feeds');
+                  feedHandler(moreFeeds: true, latestFeeds: false);
+                  return true;
+                }
+                return false;
+              },
+              child: Scrollbar(
+                //isAlwaysShown: true,
+                controller: _scrollController,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
                       Align(
                         alignment: Alignment.center,
                         child: Container(
@@ -516,31 +341,280 @@ class _EditAccountPageState extends State<EditAccountPage> {
                             )
                           : SizedBox(),
                       Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          margin: EdgeInsets.symmetric(vertical: 5),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            "Number of subscribers: $numberOfSubscribers",
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline1
+                                .copyWith(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Select email:",
+                              style: TextStyle(
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              flex: 3,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(width: 0.5),
+                                  color: Colors.white,
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    onChanged: (String dep) {
+                                      setState(() {
+                                        _selectedDepartmentId = dep;
+                                      });
+                                      lastFeedSp = null;
+                                      isRunning = false;
+                                      subscribedDepartments.clear();
+                                      feedHandler(
+                                          latestFeeds: true, moreFeeds: false);
+                                    },
+                                    isExpanded: true,
+                                    hint: Text(
+                                      "Select",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    value: _selectedDepartmentId,
+                                    items: allDepartmentList
+                                        .map<DropdownMenuItem<String>>(
+                                          (dep) => DropdownMenuItem<String>(
+                                            value: dep,
+                                            child: Container(
+                                              child: Text(
+                                                dep,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Align(
                         alignment: Alignment.centerLeft,
                         child: Container(
                           margin: EdgeInsets.symmetric(vertical: 5),
                           padding: EdgeInsets.all(10),
                           child: Text(
-                            "Departments subscribed :",
+                            "My Feeds :",
                             style: Theme.of(context).textTheme.headline2,
                           ),
                         ),
                       ),
-                    ] +
-                    List<Widget>.generate(subscribedDepartments?.length,
-                        (index) {
-                      Department department = subscribedDepartments[index];
-                      bool hasSubscribed =
-                          (User.userData.subscribedDepartmentIDs ?? [])
-                                  .contains(department.email) ??
-                              false;
-                      return DepartmentsMessageBox(
-                        subscribed: hasSubscribed,
-                        department: department,
-                        onSubscribePressed: () => onSubscribePressed(
-                            subscribedDepartments[index].email, hasSubscribed),
-                      );
-                    }),
+                      StreamBuilder(
+                        stream: resultStream.stream,
+                        builder: (context, AsyncSnapshot<Feeds> snapshot) {
+                          print(
+                              'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return FeedLoadStatus(
+                              displayMessage: loadingMessage,
+                            );
+                          } else if (snapshot.connectionState ==
+                              ConnectionState.active) {
+                            if (snapshot.hasData &&
+                                snapshot.data.feeds.isNotEmpty) {
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                itemCount: snapshot.data.feeds.length,
+                                itemBuilder: (context, i) {
+                                  Feed f = snapshot.data.feeds[i];
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.of(context)
+                                          .pushNamed("/feedInfo", arguments: {
+                                        "feed": f,
+                                      });
+                                    },
+                                    child: Container(
+                                      margin:
+                                          EdgeInsets.symmetric(vertical: 8.0),
+                                      child: MessageBox(
+                                        feed: f,
+                                        selected: false,
+                                        canBeSelected: false,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            } else if (snapshot.data.feeds.isEmpty) {
+                              if (isRunning)
+                                return FeedLoadStatus(
+                                  displayMessage: loadingMessage,
+                                );
+                              else
+                                return FeedLoadStatus(
+                                  displayMessage: noFeedMessage,
+                                );
+                            } else if (snapshot.hasError) {
+                              return FeedLoadStatus(
+                                displayMessage: snapshot.error,
+                              );
+                            }
+                          }
+                          return SizedBox();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    else
+      return SafeArea(
+        child: Scaffold(
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back_ios,
+                color: Colors.black,
+                size: 15,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ),
+          body: Padding(
+            padding: EdgeInsets.all(5),
+            child: Scrollbar(
+              //isAlwaysShown: true,
+              controller: _scrollController,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                        Align(
+                          alignment: Alignment.center,
+                          child: Container(
+                            margin: EdgeInsets.all(12.0),
+                            padding: EdgeInsets.all(2),
+                            height: 120,
+                            width: 120,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
+                            child: ClipOval(
+                              child: User.authUser.localPhotoLoc != null
+                                  ? Image.file(
+                                      File(User.authUser.localPhotoLoc),
+                                      fit: BoxFit.contain,
+                                    )
+                                  : CachedNetworkImage(
+                                      imageUrl: User.authUser.photoUrl,
+                                      fit: BoxFit.contain,
+                                      placeholder: (context, s) {
+                                        return Container(color: Colors.white);
+                                      },
+                                    ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(5),
+                          child: Text(
+                            User.authUser.displayName,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline2
+                                .copyWith(),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(5),
+                          child: Text(
+                            User.authUser.email,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headline1
+                                .copyWith(color: Colors.grey),
+                          ),
+                        ),
+                        User.authUser.phoneNumber != null
+                            ? Padding(
+                                padding: EdgeInsets.all(5),
+                                child: Text(
+                                  User.authUser.phoneNumber,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headline1
+                                      .copyWith(color: Colors.grey),
+                                ),
+                              )
+                            : SizedBox(),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(vertical: 5),
+                            padding: EdgeInsets.all(10),
+                            child: Text(
+                              "Departments subscribed :",
+                              style: Theme.of(context).textTheme.headline2,
+                            ),
+                          ),
+                        ),
+                      ] +
+                      List<Widget>.generate(subscribedDepartments?.length,
+                          (index) {
+                        Department department = subscribedDepartments[index];
+                        bool hasSubscribed =
+                            (User.userData.subscribedDepartmentIDs ?? [])
+                                    .contains(department.email) ??
+                                false;
+                        return DepartmentsMessageBox(
+                          subscribed: hasSubscribed,
+                          department: department,
+                          onSubscribePressed: () => onSubscribePressed(
+                              subscribedDepartments[index].email,
+                              hasSubscribed),
+                        );
+                      }),
+                ),
               ),
             ),
           ),

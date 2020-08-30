@@ -70,14 +70,14 @@ class LoginPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Container(
-                width: 250.0,
-                padding: EdgeInsets.only(top: 30.0),
+                width: 300.0,
+                padding: EdgeInsets.only(top: 100.0),
                 child: Image.asset('assets/parliament.png',),
               ),
-              Padding(
+              /* Padding(
                 padding: EdgeInsets.only(top: 20.0),
                 child: Text('Hamara Prashasan', style: Theme.of(context).textTheme.headline6.copyWith(fontSize: 25.0),),
-              ),
+              ), */
               Padding(
                 padding: EdgeInsets.only(top: 15.0, left: 25.0, right: 25.0),
                 child: Text('Subscribe to government departments to get regular updates from them',

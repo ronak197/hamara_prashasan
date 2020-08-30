@@ -43,7 +43,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   List<Department> departments = [], selectedDepartments = [];
   List<String> categories = [], selectedCategories = [];
   DateTime start, end;
-  int feedLimit = 5;
+  int feedLimit = 10;
 
   String errorMessage =
       'Some Error Occurred, Make sure you are connected to the internet.';
@@ -133,6 +133,12 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
       for (int i = 0; i < len; i += 10) {
         await getLatestFeeds(i, min(i + 10, len));
       }
+      newFeeds.feeds.sort((f1, f2) {
+        return -1 *
+            f1.feedInfo.creationDateTimeStamp
+                .compareTo(f2.feedInfo.creationDateTimeStamp);
+      });
+      resultStream.sink.add(newFeeds);
     } else if (moreFeeds) {
       int len = User.userData.subscribedDepartmentIDs.length;
       for (int i = 0; i < len; i += 10) {
@@ -141,6 +147,12 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
           await getMoreFeeds(i, min(i + 10, len));
         }
       }
+      newFeeds.feeds.sort((f1, f2) {
+        return -1 *
+            f1.feedInfo.creationDateTimeStamp
+                .compareTo(f2.feedInfo.creationDateTimeStamp);
+      });
+      resultStream.sink.add(newFeeds);
     }
   }
 
@@ -194,7 +206,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         // update firestore user feed update time
       });
 
-      resultStream.sink.add(newFeeds);
+      //resultStream.sink.add(newFeeds);
     } else {
       print('last user state is not feedUpdate');
       if (await getDepartmentInfo()) {
@@ -245,7 +257,7 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
         User.lastUserState = UserState.feedUpdate;
       });
 
-      resultStream.sink.add(newFeeds);
+      //resultStream.sink.add(newFeeds);
     } else {
       print('last user state is not feedUpdate');
       if (await getDepartmentInfo()) {
@@ -440,12 +452,14 @@ class _NewsFeedPageState extends State<NewsFeedPage> {
   }
 
   void clearAllFilers() {
-    sortingFeeds.type = SortingType.none;
-    sortingFeeds.increasing = true;
-    start = null;
-    end = null;
-    selectedDepartments.clear();
-    selectedCategories.clear();
+    setState(() {
+      sortingFeeds.type = SortingType.none;
+      sortingFeeds.increasing = true;
+      start = null;
+      end = null;
+      selectedDepartments = new List.from(departments);
+      selectedCategories = new List.from(categories);
+    });
   }
 
   @override

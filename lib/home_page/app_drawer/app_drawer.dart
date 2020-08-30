@@ -5,6 +5,7 @@ import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
 import 'package:hamaraprashasan/helper_classes/app_icons/drawer_icons_icons.dart';
 import 'package:hamaraprashasan/home_page/app_drawer/account_tab/edit_account_page.dart';
 import 'package:hamaraprashasan/app_auth/google_sign_in/sign_in.dart';
+import 'package:launch_review/launch_review.dart';
 
 class MyAppDrawer extends StatefulWidget {
   final Function(Widget Function(BuildContext) builder,
@@ -238,6 +239,28 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                             )),
                         Text(
                           'Help',
+                          style: Theme.of(context).textTheme.headline2,
+                        )
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      LaunchReview.launch();
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Container(
+                            padding: EdgeInsets.all(20.0),
+                            child: Icon(
+                              Icons.feedback,
+                              color: Color(0xff303046),
+                              size: 18.0,
+                            )),
+                        Text(
+                          'Feedback',
                           style: Theme.of(context).textTheme.headline2,
                         )
                       ],

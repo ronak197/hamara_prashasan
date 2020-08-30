@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +39,10 @@ class _SendPostPageState extends State<SendPostPage> {
   static final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
 
+  //Variables for beta version
+  List<String> allDepartmentList = ["temporary_department@gmail.com"];
+  String _selectedDepartmentId = "temporary_department@gmail.com";
+
   int keyIndex = 1;
 
   List<dynamic> formFields = [];
@@ -46,6 +51,17 @@ class _SendPostPageState extends State<SendPostPage> {
   bool editing = false;
 
   ScrollController scrollController;
+
+  void fetchAllDeparmentIds() async {
+    allDepartmentList.clear();
+    QuerySnapshot qs =
+        await Firestore.instance.collection("departments").getDocuments();
+    setState(() {
+      qs.documents.forEach((doc) {
+        allDepartmentList.add(doc.data["email"].toString());
+      });
+    });
+  }
 
   void showMessage(String message, [MaterialColor color = Colors.red]) {
     _scaffoldKey.currentState.showSnackBar(
@@ -78,6 +94,62 @@ class _SendPostPageState extends State<SendPostPage> {
     }
   }
 
+  void temp(List<Map<String, dynamic>> details) {
+    for (int i = 0; i < allDepartmentList.length; i++) {
+      DateTime date = DateTime(2020, Random().nextInt(9), Random().nextInt(25));
+
+      DocumentReference feedRef =
+          Firestore.instance.collection("feeds").document();
+      feedRef.setData({
+        "feedId": feedRef.documentID,
+        "creationDateTimeStamp": date, // DateTime.now(),
+        "departmentUid": allDepartmentList[
+            i], // _selectedDepartmentId ?? User.userData.email,
+        "description":
+            "content of ${allDepartmentList[i]}", //details[1]["content"],
+        "title": "Title of ${allDepartmentList[i]}", // details[0]["title"],
+      }).then((value) {
+        print("Uploaded Feed Info");
+      });
+      /* feedRef
+          .collection("feedInfoDetails")
+          .add({"details": details.sublist(2)}).then((value) {
+        print("Uploaded Feed Info Details");
+      }); */
+      /* for (var field in formFields) {
+        if (field.runtimeType == PictureUploadBox) {
+          PictureUploadBox pic = field;
+          pic.feedPosted = true;
+        }
+      } */
+    }
+  }
+
+  void confirmSend(List<Map<String, dynamic>> details) {
+    DocumentReference feedRef =
+        Firestore.instance.collection("feeds").document();
+    feedRef.setData({
+      "feedId": feedRef.documentID,
+      "creationDateTimeStamp": DateTime.now(),
+      "departmentUid": _selectedDepartmentId ?? User.userData.email,
+      "description": details[1]["content"],
+      "title": details[0]["title"],
+    }).then((value) {
+      print("Uploaded Feed Info");
+    });
+    feedRef
+        .collection("feedInfoDetails")
+        .add({"details": details.sublist(2)}).then((value) {
+      print("Uploaded Feed Info Details");
+    });
+    for (var field in formFields) {
+      if (field.runtimeType == PictureUploadBox) {
+        PictureUploadBox pic = field;
+        pic.feedPosted = true;
+      }
+    }
+  }
+
   void _showSendConfirmationDialog(List<Map<String, dynamic>> details) {
     showDialog(
       context: context,
@@ -88,28 +160,8 @@ class _SendPostPageState extends State<SendPostPage> {
           FlatButton(
             onPressed: () {
               print(details);
-              DocumentReference feedRef =
-                  Firestore.instance.collection("feeds").document();
-              feedRef.setData({
-                "feedId": feedRef.documentID,
-                "creationDateTimeStamp": DateTime.now(),
-                "departmentUid": User.userData.email,
-                "description": details[1]["content"],
-                "title": details[0]["title"],
-              }).then((value) {
-                print("Uploaded Feed Info");
-              });
-              feedRef
-                  .collection("feedInfoDetails")
-                  .add({"details": details.sublist(2)}).then((value) {
-                print("Uploaded Feed Info Details");
-              });
-              for (var field in formFields) {
-                if (field.runtimeType == PictureUploadBox) {
-                  PictureUploadBox pic = field;
-                  pic.feedPosted = true;
-                }
-              }
+              //temp(details);
+              confirmSend(details);
               Navigator.pop(context);
               Navigator.pop(context);
             },
@@ -241,6 +293,7 @@ class _SendPostPageState extends State<SendPostPage> {
     scrollController = new ScrollController();
     formFields.add(TitleFieldBox());
     formFields.add(ContentFieldBox());
+    fetchAllDeparmentIds();
     super.initState();
   }
 
@@ -253,294 +306,295 @@ class _SendPostPageState extends State<SendPostPage> {
   Widget build(BuildContext context) {
     var fabColor = editing ? Colors.grey : Color(0xff2d334c),
         iconColor = editing ? Colors.grey[300] : Colors.white;
-    return Scaffold(
-      key: _scaffoldKey,
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        iconTheme: IconThemeData(color: Colors.black),
-        titleSpacing: 0.0,
-        backgroundColor: Colors.white,
-        title: Text(
-          'Write Post',
-          style: Theme.of(context).textTheme.headline2,
-        ),
-        actions: [
-          FlatButton(
-            onPressed: editing ? null : startPreview,
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 10.0),
-              child: Center(
-                child: Text(
-                  'PREVIEW',
-                  style: Theme.of(context).textTheme.headline2.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: editing ? Colors.grey : Colors.black),
+    return SafeArea(
+      child: Scaffold(
+        key: _scaffoldKey,
+        appBar: AppBar(
+          automaticallyImplyLeading: true,
+          iconTheme: IconThemeData(color: Colors.black),
+          titleSpacing: 0.0,
+          backgroundColor: Colors.white,
+          title: Text(
+            'Write Post',
+            style: Theme.of(context).textTheme.headline2,
+          ),
+          actions: [
+            FlatButton(
+              onPressed: editing ? null : startPreview,
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 10.0),
+                child: Center(
+                  child: Text(
+                    'PREVIEW',
+                    style: Theme.of(context).textTheme.headline2.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: editing ? Colors.grey : Colors.black),
+                  ),
                 ),
               ),
             ),
-          ),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 10.0),
-            child: Center(
-                child: IconButton(
-              icon: Icon(Icons.send),
-              color: Colors.black,
-              onPressed: _sendPost,
-            )),
-          )
-        ],
-        leading: IconButton(
-            icon: Icon(Icons.arrow_back),
-            onPressed: () {
-              for (var f in formFields) {
-                if (f.runtimeType == PictureUploadBox) {
-                  PictureUploadBox pic = f;
-                  pic.deleteImage(pic.data['pictureUrl']);
-                }
-              }
-              Navigator.pop(context);
-            }),
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          showInsertOptions & showTextFieldOptions
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    floatingButtonListTile(
-                      onTap: editing
-                          ? null
-                          : () {
-                              setState(() {
-                                formFields.add(new TitleFieldBox());
-                                gotoBottom();
-                              });
-                            },
-                      toolTip: "Add Title",
-                      toolTipColor: editing ? Colors.white : fabColor,
-                      toolTipBackgroundColor: iconColor,
-                      iconTag: "addTitle",
-                      icon: Icon(
-                        Icons.title,
-                        size: 20.0,
-                        color: editing ? Colors.white : iconColor,
-                      ),
-                      iconBackgroundColor: fabColor,
-                    ),
-                    floatingButtonListTile(
-                      onTap: editing
-                          ? null
-                          : () {
-                              setState(() {
-                                formFields.add(new ContentFieldBox());
-                                gotoBottom();
-                              });
-                            },
-                      toolTip: "Add Description",
-                      toolTipColor: editing ? Colors.white : fabColor,
-                      toolTipBackgroundColor: iconColor,
-                      iconTag: "addContent",
-                      icon: Icon(
-                        Icons.content_paste,
-                        size: 20.0,
-                        color: editing ? Colors.white : iconColor,
-                      ),
-                      iconBackgroundColor: fabColor,
-                    ),
-                  ],
-                )
-              : SizedBox(),
-          showInsertOptions && !showTextFieldOptions
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    floatingButtonListTile(
-                      onTap: () {
-                        if (!editing) {
-                          showTextFieldOptions = false;
-                          showInsertOptions = false;
-                        }
-                        editForm();
-                      },
-                      toolTip: "Move or Delete Fields",
-                      toolTipColor: editing ? Colors.white : fabColor,
-                      toolTipBackgroundColor:
-                          editing ? Colors.green : iconColor,
-                      iconTag: "edit",
-                      icon: Icon(
-                        Icons.edit,
-                        size: 20.0,
-                        color: editing ? Colors.white : iconColor,
-                      ),
-                      iconBackgroundColor: editing ? Colors.green : fabColor,
-                    ),
-                    floatingButtonListTile(
-                      onTap: editing
-                          ? null
-                          : () {
-                              setState(() {
-                                formFields.add(new TableFieldBox());
-                                gotoBottom();
-                              });
-                            },
-                      toolTip: "Add Table",
-                      toolTipColor: editing ? Colors.white : fabColor,
-                      toolTipBackgroundColor: iconColor,
-                      iconTag: "addTable",
-                      icon: Icon(
-                        Icons.table_chart,
-                        size: 20.0,
-                        color: iconColor,
-                      ),
-                      iconBackgroundColor: fabColor,
-                    ),
-                    floatingButtonListTile(
-                      onTap: editing
-                          ? null
-                          : () {
-                              setState(() {
-                                formFields.add(new MapFieldBox());
-                                gotoBottom();
-                              });
-                            },
-                      toolTip: "Add Map",
-                      toolTipColor: editing ? Colors.white : fabColor,
-                      toolTipBackgroundColor: iconColor,
-                      iconTag: "addMap",
-                      icon: Icon(
-                        Icons.map,
-                        size: 20.0,
-                        color: iconColor,
-                      ),
-                      iconBackgroundColor: fabColor,
-                    ),
-                    floatingButtonListTile(
-                      onTap: editing
-                          ? null
-                          : () {
-                              setState(() {
-                                formFields.add(new PictureUploadBox());
-                                gotoBottom();
-                              });
-                            },
-                      toolTip: "Add Image",
-                      toolTipColor: editing ? Colors.white : fabColor,
-                      toolTipBackgroundColor: iconColor,
-                      iconTag: "addImage",
-                      icon: Icon(
-                        Icons.map,
-                        size: 20.0,
-                        color: iconColor,
-                      ),
-                      iconBackgroundColor: fabColor,
-                    ),
-                    floatingButtonListTile(
-                      onTap: editing
-                          ? null
-                          : () {
-                              setState(() {
-                                showTextFieldOptions = !showTextFieldOptions;
-                              });
-                            },
-                      toolTip: "Add Text",
-                      toolTipColor: editing ? Colors.white : fabColor,
-                      toolTipBackgroundColor: iconColor,
-                      iconTag: "addText",
-                      icon: Icon(
-                        Icons.text_fields,
-                        size: 20.0,
-                        color: iconColor,
-                      ),
-                      iconBackgroundColor: fabColor,
-                    ),
-                  ],
-                )
-              : SizedBox(),
-          Padding(
-            padding: const EdgeInsets.all(2.0),
-            child: FloatingActionButton(
-              child: Icon(
-                showInsertOptions ? Icons.close : Icons.add,
-                size: 30.0,
-                color: Colors.white,
-              ),
-              backgroundColor: Color(0xff2d334c), //Color(0xff1010fc),
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 10.0),
+              child: Center(
+                  child: IconButton(
+                icon: Icon(Icons.send),
+                color: Colors.black,
+                onPressed: _sendPost,
+              )),
+            )
+          ],
+          leading: IconButton(
+              icon: Icon(Icons.arrow_back),
               onPressed: () {
-                setState(() {
-                  showInsertOptions = !showInsertOptions;
-                  showTextFieldOptions = false;
-                });
-              },
-              elevation: 25,
-              //padding: EdgeInsets.all(0.0),
-              //borderRadius: BorderRadius.circular(50.0),
-            ),
-          ),
-        ],
-      ),
-      body: Opacity(
-        opacity: showInsertOptions ? 0.2 : 1,
-        child: AbsorbPointer(
-          absorbing: showInsertOptions,
-          child: Form(
-            key: _formKey,
-            child: editing
-                ? Scrollbar(
-                    controller: scrollController,
-                    child: ReorderableListView(
-                      onReorder: (oldIndex, newIndex) {
-                        if (oldIndex >= 2 && newIndex > 1) {
-                          if (oldIndex < newIndex) {
-                            newIndex -= 1;
-                          }
-                          var f = formFields.removeAt(oldIndex);
-                          formFields.insert(newIndex, f);
-                          setState(() {});
-                        } else {
-                          showMessage(
-                              "You cannot reorder the first Title and Description fields.");
-                        }
-                      },
-                      children: List<Widget>.generate(
-                        formFields.length,
-                        (index) {
-                          var field = formFields[index];
-                          if (index < 2)
-                            return field;
-                          else
-                            return Dismissible(
-                              key: new Key(
-                                  formFields[index].hashCode.toString()),
-                              onDismissed: (dir) async {
-                                if (formFields[index].runtimeType ==
-                                    PictureUploadBox) {
-                                  PictureUploadBox pic = formFields[index];
-                                  pic.deleteImage(pic.data['pictureUrl']);
-                                }
-                                formFields.removeAt(index);
-                                setState(() {});
+                for (var f in formFields) {
+                  if (f.runtimeType == PictureUploadBox) {
+                    PictureUploadBox pic = f;
+                    pic.deleteImage(pic.data['pictureUrl']);
+                  }
+                }
+                Navigator.pop(context);
+              }),
+        ),
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            showInsertOptions & showTextFieldOptions
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      floatingButtonListTile(
+                        onTap: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  formFields.add(new TitleFieldBox());
+                                  gotoBottom();
+                                });
                               },
-                              direction: DismissDirection.startToEnd,
-                              background: Container(
-                                color: Colors.red,
-                                alignment: Alignment.centerLeft,
-                                child: Icon(
-                                  Icons.delete,
-                                  color: Colors.white,
-                                  size: 30,
-                                ),
-                                margin: EdgeInsets.symmetric(vertical: 20),
-                                padding: EdgeInsets.symmetric(horizontal: 20),
-                              ),
-                              child: field,
-                            );
-                        },
+                        toolTip: "Add Title",
+                        toolTipColor: editing ? Colors.white : fabColor,
+                        toolTipBackgroundColor: iconColor,
+                        iconTag: "addTitle",
+                        icon: Icon(
+                          Icons.title,
+                          size: 20.0,
+                          color: editing ? Colors.white : iconColor,
+                        ),
+                        iconBackgroundColor: fabColor,
                       ),
-                    ),
+                      floatingButtonListTile(
+                        onTap: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  formFields.add(new ContentFieldBox());
+                                  gotoBottom();
+                                });
+                              },
+                        toolTip: "Add Description",
+                        toolTipColor: editing ? Colors.white : fabColor,
+                        toolTipBackgroundColor: iconColor,
+                        iconTag: "addContent",
+                        icon: Icon(
+                          Icons.content_paste,
+                          size: 20.0,
+                          color: editing ? Colors.white : iconColor,
+                        ),
+                        iconBackgroundColor: fabColor,
+                      ),
+                    ],
                   )
-                : /* ListView(
+                : SizedBox(),
+            showInsertOptions && !showTextFieldOptions
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      floatingButtonListTile(
+                        onTap: () {
+                          if (!editing) {
+                            showTextFieldOptions = false;
+                            showInsertOptions = false;
+                          }
+                          editForm();
+                        },
+                        toolTip: "Move or Delete Fields",
+                        toolTipColor: editing ? Colors.white : fabColor,
+                        toolTipBackgroundColor:
+                            editing ? Colors.green : iconColor,
+                        iconTag: "edit",
+                        icon: Icon(
+                          Icons.edit,
+                          size: 20.0,
+                          color: editing ? Colors.white : iconColor,
+                        ),
+                        iconBackgroundColor: editing ? Colors.green : fabColor,
+                      ),
+                      floatingButtonListTile(
+                        onTap: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  formFields.add(new TableFieldBox());
+                                  gotoBottom();
+                                });
+                              },
+                        toolTip: "Add Table",
+                        toolTipColor: editing ? Colors.white : fabColor,
+                        toolTipBackgroundColor: iconColor,
+                        iconTag: "addTable",
+                        icon: Icon(
+                          Icons.table_chart,
+                          size: 20.0,
+                          color: iconColor,
+                        ),
+                        iconBackgroundColor: fabColor,
+                      ),
+                      floatingButtonListTile(
+                        onTap: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  formFields.add(new MapFieldBox());
+                                  gotoBottom();
+                                });
+                              },
+                        toolTip: "Add Map",
+                        toolTipColor: editing ? Colors.white : fabColor,
+                        toolTipBackgroundColor: iconColor,
+                        iconTag: "addMap",
+                        icon: Icon(
+                          Icons.map,
+                          size: 20.0,
+                          color: iconColor,
+                        ),
+                        iconBackgroundColor: fabColor,
+                      ),
+                      floatingButtonListTile(
+                        onTap: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  formFields.add(new PictureUploadBox());
+                                  gotoBottom();
+                                });
+                              },
+                        toolTip: "Add Image",
+                        toolTipColor: editing ? Colors.white : fabColor,
+                        toolTipBackgroundColor: iconColor,
+                        iconTag: "addImage",
+                        icon: Icon(
+                          Icons.map,
+                          size: 20.0,
+                          color: iconColor,
+                        ),
+                        iconBackgroundColor: fabColor,
+                      ),
+                      floatingButtonListTile(
+                        onTap: editing
+                            ? null
+                            : () {
+                                setState(() {
+                                  showTextFieldOptions = !showTextFieldOptions;
+                                });
+                              },
+                        toolTip: "Add Text",
+                        toolTipColor: editing ? Colors.white : fabColor,
+                        toolTipBackgroundColor: iconColor,
+                        iconTag: "addText",
+                        icon: Icon(
+                          Icons.text_fields,
+                          size: 20.0,
+                          color: iconColor,
+                        ),
+                        iconBackgroundColor: fabColor,
+                      ),
+                    ],
+                  )
+                : SizedBox(),
+            Padding(
+              padding: const EdgeInsets.all(2.0),
+              child: FloatingActionButton(
+                child: Icon(
+                  showInsertOptions ? Icons.close : Icons.add,
+                  size: 30.0,
+                  color: Colors.white,
+                ),
+                backgroundColor: Color(0xff2d334c), //Color(0xff1010fc),
+                onPressed: () {
+                  setState(() {
+                    showInsertOptions = !showInsertOptions;
+                    showTextFieldOptions = false;
+                  });
+                },
+                elevation: 25,
+                //padding: EdgeInsets.all(0.0),
+                //borderRadius: BorderRadius.circular(50.0),
+              ),
+            ),
+          ],
+        ),
+        body: Opacity(
+          opacity: showInsertOptions ? 0.2 : 1,
+          child: AbsorbPointer(
+            absorbing: showInsertOptions,
+            child: Form(
+              key: _formKey,
+              child: editing
+                  ? Scrollbar(
+                      controller: scrollController,
+                      child: ReorderableListView(
+                        onReorder: (oldIndex, newIndex) {
+                          if (oldIndex >= 2 && newIndex > 1) {
+                            if (oldIndex < newIndex) {
+                              newIndex -= 1;
+                            }
+                            var f = formFields.removeAt(oldIndex);
+                            formFields.insert(newIndex, f);
+                            setState(() {});
+                          } else {
+                            showMessage(
+                                "You cannot reorder the first Title and Description fields.");
+                          }
+                        },
+                        children: List<Widget>.generate(
+                          formFields.length,
+                          (index) {
+                            var field = formFields[index];
+                            if (index < 2)
+                              return field;
+                            else
+                              return Dismissible(
+                                key: new Key(
+                                    formFields[index].hashCode.toString()),
+                                onDismissed: (dir) async {
+                                  if (formFields[index].runtimeType ==
+                                      PictureUploadBox) {
+                                    PictureUploadBox pic = formFields[index];
+                                    pic.deleteImage(pic.data['pictureUrl']);
+                                  }
+                                  formFields.removeAt(index);
+                                  setState(() {});
+                                },
+                                direction: DismissDirection.startToEnd,
+                                background: Container(
+                                  color: Colors.red,
+                                  alignment: Alignment.centerLeft,
+                                  child: Icon(
+                                    Icons.delete,
+                                    color: Colors.white,
+                                    size: 30,
+                                  ),
+                                  margin: EdgeInsets.symmetric(vertical: 20),
+                                  padding: EdgeInsets.symmetric(horizontal: 20),
+                                ),
+                                child: field,
+                              );
+                          },
+                        ),
+                      ),
+                    )
+                  : /* ListView(
                     physics: BouncingScrollPhysics(),
                     addAutomaticKeepAlives: true,
                     keyboardDismissBehavior:
@@ -556,23 +610,88 @@ class _SendPostPageState extends State<SendPostPage> {
                         ) +
                         <Widget>[SizedBox(height: 150)],
                   ), */
-                Scrollbar(
-                    controller: scrollController,
-                    child: SingleChildScrollView(
+                  Scrollbar(
                       controller: scrollController,
-                      physics: BouncingScrollPhysics(),
-                      child: Column(
-                        children: List<Widget>.generate(
-                              formFields.length,
-                              (index) {
-                                var field = formFields[index];
-                                return field;
-                              },
-                            ) +
-                            <Widget>[SizedBox(height: 150)],
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        physics: BouncingScrollPhysics(),
+                        child: Column(
+                          children: <Widget>[
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Send Post from email:",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        flex: 3,
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 5),
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            border: Border.all(width: 0.5),
+                                            color: Colors.white,
+                                          ),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              onChanged: (String dep) {
+                                                setState(() {
+                                                  _selectedDepartmentId = dep;
+                                                });
+                                              },
+                                              isExpanded: true,
+                                              hint: Text(
+                                                "Select",
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              value: _selectedDepartmentId,
+                                              items: allDepartmentList
+                                                  .map<
+                                                      DropdownMenuItem<String>>(
+                                                    (dep) => DropdownMenuItem<
+                                                        String>(
+                                                      value: dep,
+                                                      child: Container(
+                                                        child: Text(
+                                                          dep,
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ] +
+                              List<Widget>.generate(
+                                formFields.length,
+                                (index) {
+                                  var field = formFields[index];
+                                  return field;
+                                },
+                              ) +
+                              <Widget>[SizedBox(height: 150)],
+                        ),
                       ),
                     ),
-                  ),
+            ),
           ),
         ),
       ),

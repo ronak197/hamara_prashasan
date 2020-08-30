@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import 'package:rxdart/subjects.dart';
@@ -31,13 +33,28 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
   Set<String> selectedFeed = new Set<String>();
   bool feedSelected = false;
 
+  //Variables for beta version
+  List<String> allDepartmentList = ["temporary_department@gmail.com"];
+  String _selectedDepartmentId = "temporary_department@gmail.com";
+
+  //Function for beta version
+  void fetchAllDeparmentIds() async {
+    allDepartmentList.clear();
+    QuerySnapshot qs =
+        await Firestore.instance.collection("departments").getDocuments();
+    setState(() {
+      qs.documents.forEach((doc) {
+        allDepartmentList.add(doc.data["email"].toString());
+      });
+    });
+  }
+
   Future<bool> getDepartmentInfo() async {
     print('fetching departments  in editProfile');
     Firestore db = Firestore.instance;
-
     bool success = await db
         .collection('departments')
-        .where('email', whereIn: User.userData.subscribedDepartmentIDs)
+        .where('email', isEqualTo: _selectedDepartmentId ?? User.userData.email)
         .getDocuments()
         .then((value) {
       value.documents.forEach((element) {
@@ -45,13 +62,11 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
           departments.add(new Department.fromJson(element.data));
         }
       });
-
       return true;
     }).catchError((e) {
       print('Error in query getDepartmentInfo in editProfile $e');
       return false;
     }).whenComplete(() {
-      print('Completed query getDepartmentInfo in editProfile');
       return true;
     }).timeout(Duration(seconds: 5), onTimeout: () {
       print('Timeout in query getDepartmentInfo in editProfile');
@@ -68,7 +83,8 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
     await db
         .collection('feeds')
         .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid', isEqualTo: User.authUser.email)
+        .where('departmentUid',
+            isEqualTo: _selectedDepartmentId ?? User.authUser.email)
         .orderBy('creationDateTimeStamp', descending: true)
         .limit(feedLimit)
         .getDocuments()
@@ -94,7 +110,8 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
     Query q = db
         .collection('feeds')
         .where('creationDateTimeStamp', isLessThanOrEqualTo: Timestamp.now())
-        .where('departmentUid', isEqualTo: User.authUser.email)
+        .where('departmentUid',
+            isEqualTo: _selectedDepartmentId ?? User.authUser.email)
         .orderBy('creationDateTimeStamp', descending: true);
     if (lastFeedSp != null) {
       q = q.startAfterDocument(lastFeedSp);
@@ -130,6 +147,8 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
           await getMoreFeeds();
           //loadingStream.add(false);
         } else {
+          myFeeds.feeds.clear();
+          resultStream.add(myFeeds);
           await getLatestFeeds();
         }
         isRunning = false;
@@ -202,6 +221,7 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
   void initState() {
     super.initState();
     feedHandler(latestFeeds: true, moreFeeds: false);
+    fetchAllDeparmentIds();
   }
 
   @override
@@ -213,123 +233,195 @@ class _MyFeedsPageState extends State<MyFeedsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.black,
-        ),
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 0.0,
-        titleSpacing: 5.0,
-        title: Text(
-          'My Feeds',
-          style: Theme.of(context)
-              .textTheme
-              .headline4
-              .copyWith(fontWeight: FontWeight.w600),
-        ),
-        actions: selectedFeed.isNotEmpty
-            ? [
-                Padding(
-                  padding: EdgeInsets.only(right: 5.0),
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.delete,
-                      size: 25.0,
-                      color: Colors.red,
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          iconTheme: IconThemeData(
+            color: Colors.black,
+          ),
+          automaticallyImplyLeading: true,
+          backgroundColor: Colors.white,
+          elevation: 0.0,
+          titleSpacing: 5.0,
+          title: Text(
+            'My Feeds',
+            style: Theme.of(context)
+                .textTheme
+                .headline4
+                .copyWith(fontWeight: FontWeight.w600),
+          ),
+          actions: selectedFeed.isNotEmpty
+              ? [
+                  Padding(
+                    padding: EdgeInsets.only(right: 5.0),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.delete,
+                        size: 25.0,
+                        color: Colors.red,
+                      ),
+                      onPressed: deleteFeed,
                     ),
-                    onPressed: deleteFeed,
-                  ),
-                )
-              ]
-            : [],
-      ),
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (ScrollNotification scrollInfo) {
-          if (scrollInfo is ScrollEndNotification &&
-              scrollInfo.metrics.pixels >=
-                  (scrollInfo.metrics.maxScrollExtent - 60.0)) {
-            print('Reached Edge, getting more bookmarks');
-            feedHandler(moreFeeds: true, latestFeeds: false);
-            return true;
-          }
-          return false;
-        },
-        child: RefreshIndicator(
-          onRefresh: () => feedHandler(latestFeeds: true, moreFeeds: false),
-          strokeWidth: 2.5,
-          child: Column(
-            children: [
-              Expanded(
-                child: StreamBuilder(
-                  stream: resultStream.stream,
-                  builder: (context, AsyncSnapshot<Feeds> snapshot) {
-                    print(
-                        'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return FeedLoadStatus(
-                        displayMessage: loadingMessage,
-                      );
-                    } else if (snapshot.connectionState ==
-                        ConnectionState.active) {
-                      if (snapshot.hasData && snapshot.data.feeds.isNotEmpty) {
-                        return Scrollbar(
-                          //isAlwaysShown: true,
-                          controller: _scrollController,
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            physics: AlwaysScrollableScrollPhysics(),
-                            itemCount: snapshot.data.feeds.length,
-                            itemBuilder: (context, i) {
-                              Feed f = snapshot.data.feeds[i];
-                              return GestureDetector(
-                                onTap: () => _onTap(i, f),
-                                onLongPress: () => _onLongPress(f.feedId),
-                                child: Container(
-                                  margin: EdgeInsets.symmetric(vertical: 8.0),
-                                  child: MessageBox(
-                                    feed: f,
-                                    selected: selectedFeed.contains(
-                                        snapshot.data.feeds[i].feedId),
-                                    canBeSelected: feedSelected,
-                                  ),
-                                ),
-                              );
-                            },
+                  )
+                ]
+              : [],
+        ),
+        body: NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification scrollInfo) {
+            if (scrollInfo is ScrollEndNotification &&
+                scrollInfo.metrics.pixels >=
+                    (scrollInfo.metrics.maxScrollExtent - 60.0)) {
+              print('Reached Edge, getting more bookmarks');
+              feedHandler(moreFeeds: true, latestFeeds: false);
+              return true;
+            }
+            return false;
+          },
+          child: RefreshIndicator(
+            onRefresh: () => feedHandler(latestFeeds: true, moreFeeds: false),
+            strokeWidth: 2.5,
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Select email:",
+                        style: TextStyle(
+                          fontSize: 15,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        flex: 3,
+                        child: Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(width: 0.5),
+                            color: Colors.white,
                           ),
-                        );
-                      } else if (snapshot.data.feeds.isEmpty) {
-                        return FeedLoadStatus(
-                          displayMessage: noBookmarkMessage,
-                        );
-                      } else if (snapshot.hasError) {
-                        return FeedLoadStatus(
-                          displayMessage: snapshot.error,
-                        );
-                      }
-                    }
-                    return SizedBox();
-                  },
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              onChanged: (String dep) {
+                                setState(() {
+                                  _selectedDepartmentId = dep;
+                                });
+                                lastFeedSp = null;
+                                isRunning = false;
+                                departments.clear();
+                                feedHandler(
+                                    latestFeeds: true, moreFeeds: false);
+                              },
+                              isExpanded: true,
+                              hint: Text(
+                                "Select",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                ),
+                              ),
+                              value: _selectedDepartmentId,
+                              items: allDepartmentList
+                                  .map<DropdownMenuItem<String>>(
+                                    (dep) => DropdownMenuItem<String>(
+                                      value: dep,
+                                      child: Container(
+                                        child: Text(
+                                          dep,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              StreamBuilder(
-                stream: loadingStream,
-                builder: (context, AsyncSnapshot<bool> sp) {
-                  if (sp.connectionState == ConnectionState.active &&
-                      sp.hasData &&
-                      sp.data)
-                    return Container(
-                      margin: EdgeInsets.symmetric(vertical: 5),
-                      child: CircularProgressIndicator(strokeWidth: 1),
-                      height: 25,
-                      width: 25,
-                    );
-                  else
-                    return SizedBox();
-                },
-              )
-            ],
+                Expanded(
+                  child: StreamBuilder(
+                    stream: resultStream.stream,
+                    builder: (context, AsyncSnapshot<Feeds> snapshot) {
+                      print(
+                          'Snapshot details, connection : ${snapshot.connectionState.toString()}, hasData : ${snapshot.hasData}, hasError : ${snapshot.hasError}, hasCode : ${snapshot.hashCode}');
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return FeedLoadStatus(
+                          displayMessage: loadingMessage,
+                        );
+                      } else if (snapshot.connectionState ==
+                          ConnectionState.active) {
+                        if (snapshot.hasData &&
+                            snapshot.data.feeds.isNotEmpty) {
+                          return Scrollbar(
+                            //isAlwaysShown: true,
+                            controller: _scrollController,
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              physics: AlwaysScrollableScrollPhysics(),
+                              itemCount: snapshot.data.feeds.length,
+                              itemBuilder: (context, i) {
+                                Feed f = snapshot.data.feeds[i];
+                                return GestureDetector(
+                                  onTap: () => _onTap(i, f),
+                                  onLongPress: () => _onLongPress(f.feedId),
+                                  child: Container(
+                                    margin: EdgeInsets.symmetric(vertical: 8.0),
+                                    child: MessageBox(
+                                      feed: f,
+                                      selected: selectedFeed.contains(
+                                          snapshot.data.feeds[i].feedId),
+                                      canBeSelected: feedSelected,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        } else if (snapshot.data.feeds.isEmpty) {
+                          if (isRunning)
+                            return FeedLoadStatus(
+                              displayMessage: loadingMessage,
+                            );
+                          else
+                            return FeedLoadStatus(
+                              displayMessage: noBookmarkMessage,
+                            );
+                        } else if (snapshot.hasError) {
+                          return FeedLoadStatus(
+                            displayMessage: snapshot.error,
+                          );
+                        }
+                      }
+                      return SizedBox();
+                    },
+                  ),
+                ),
+                StreamBuilder(
+                  stream: loadingStream,
+                  builder: (context, AsyncSnapshot<bool> sp) {
+                    if (sp.connectionState == ConnectionState.active &&
+                        sp.hasData &&
+                        sp.data)
+                      return Container(
+                        margin: EdgeInsets.symmetric(vertical: 5),
+                        child: CircularProgressIndicator(strokeWidth: 1),
+                        height: 25,
+                        width: 25,
+                      );
+                    else
+                      return SizedBox();
+                  },
+                )
+              ],
+            ),
           ),
         ),
       ),
