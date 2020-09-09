@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:hamaraprashasan/app_configurations/app_configurations.dart';
@@ -6,6 +7,7 @@ import 'package:hamaraprashasan/helper_classes/app_icons/drawer_icons_icons.dart
 import 'package:hamaraprashasan/home_page/app_drawer/account_tab/edit_account_page.dart';
 import 'package:hamaraprashasan/app_auth/google_sign_in/sign_in.dart';
 import 'package:launch_review/launch_review.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MyAppDrawer extends StatefulWidget {
   final Function(Widget Function(BuildContext) builder,
@@ -299,6 +301,9 @@ class _MyAppDrawerState extends State<MyAppDrawer> {
                           style: Theme.of(context).textTheme.headline1.copyWith(
                                 color: Colors.grey,
                               ),
+                          recognizer: TapGestureRecognizer()..onTap = (){
+                            launch('https://hamara-prashasan.flycricket.io/privacy.html');
+                          }
                         ),
                         TextSpan(
                           text: '  ᛫  ',
