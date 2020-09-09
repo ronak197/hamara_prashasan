@@ -75,138 +75,145 @@ class _FeedInfoPageState extends State<FeedInfoPage> {
         getFeedInfoDetails(args['feed']);
       }
     }
-    return Scaffold(
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.black,
-        ),
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 5.0,
-        titleSpacing: 0.0,
-        leading: IconButton(
-          icon: Icon(Icons.clear),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-        actions: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(feed.department.name,
-                  style: Theme.of(context).textTheme.headline2),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                      height: 16.0,
-                      alignment: Alignment.bottomCenter,
-                      child: Center(
-                          child: Icon(
-                        AppBarIcons.location,
-                        size: 10.0,
-                        color: Color(0xff6D6D6D),
-                      ))),
-                  Container(
-                      height: 16.0,
-                      alignment: Alignment.bottomRight,
-                      child: Center(
-                          child: Text(feed.department.areaOfAdministration,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyText1
-                                  .copyWith(color: Color(0xff6D6D6D)))))
-                ],
-              )
-            ],
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          iconTheme: IconThemeData(
+            color: Colors.black,
           ),
-          Container(
-            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-            child: SvgPicture.asset(
-              feed.profileAvatar,
-            ),
-          )
-        ],
-      ),
-      body: Container(
-        margin: EdgeInsets.only(top: 10),
-        child: ListView(
-          shrinkWrap: true,
-          physics: BouncingScrollPhysics(),
-          children: <Widget>[
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 4.0, vertical: 2.0),
-                        decoration: BoxDecoration(
-                          color: Color(
-                              categoryTagColorMap[feed.department.category]),
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Text(
-                          feed.department.category,
-                          style: Theme.of(context).textTheme.bodyText2.copyWith(
-                              color: Colors.white, fontWeight: FontWeight.w600),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                          feed.department.areaOfAdministration +
-                              ", " +
-                              feed.feedInfo.creationDateTimeStamp
-                                  .toIso8601String()
-                                  .substring(11, 16),
-                          style: Theme.of(context).textTheme.bodyText1),
-                    ],
-                  ),
-                ),
-              ] +
-              <Widget>[
-                TitleBox(feed.feedInfo.title, isFirstTitle: true),
-                ContentBox(feed.feedInfo.description),
-              ] +
-              List<Widget>.generate(content.length, (i) {
-                if (content[i].containsKey('title')) {
-                  String title = content[i]['title'];
-                  return TitleBox(title);
-                } else if (content[i].containsKey('content')) {
-                  String data = content[i]['content'];
-                  return ContentBox(data);
-                } else if (content[i].containsKey('pictureUrl')) {
-                  String pictureUrl = content[i]['pictureUrl'];
-                  bool isLocal = content[i]['isLocal'] ?? false;
-                  return PictureBox(pictureUrl, isLocal);
-                } else if (content[i].containsKey('coords')) {
-                  return MapBox(content[i]['coords']);
-                } else if (content[i].containsKey('table')) {
-                  TableData t = new TableData();
-
-                  var rows = MyCsvParser.parser(content[i]['table'].toString());
-                  t.headers = rows[0];
-                  t.contents = [];
-                  for (int i = 1; i < rows.length; i++) {
-                    t.contents.add(rows[i]);
-                  }
-                  return TableBox(t);
-                } else {
-                  return SizedBox();
-                }
-              }) +
-              <Widget>[
-                SizedBox(
-                  height: 15,
-                ),
+          automaticallyImplyLeading: true,
+          backgroundColor: Colors.white,
+          elevation: 5.0,
+          titleSpacing: 0.0,
+          leading: IconButton(
+            icon: Icon(Icons.clear),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          actions: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(feed.department.name,
+                    style: Theme.of(context).textTheme.headline2),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                        height: 16.0,
+                        alignment: Alignment.bottomCenter,
+                        child: Center(
+                            child: Icon(
+                          AppBarIcons.location,
+                          size: 10.0,
+                          color: Color(0xff6D6D6D),
+                        ))),
+                    Container(
+                        height: 16.0,
+                        alignment: Alignment.bottomRight,
+                        child: Center(
+                            child: Text(feed.department.areaOfAdministration,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyText1
+                                    .copyWith(color: Color(0xff6D6D6D)))))
+                  ],
+                )
               ],
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+              child: SvgPicture.asset(
+                feed.profileAvatar,
+              ),
+            )
+          ],
+        ),
+        body: Container(
+          margin: EdgeInsets.only(top: 10),
+          child: ListView(
+            shrinkWrap: true,
+            physics: BouncingScrollPhysics(),
+            children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 25),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 4.0, vertical: 2.0),
+                          decoration: BoxDecoration(
+                            color: Color(
+                                categoryTagColorMap[feed.department.category]),
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          child: Text(
+                            feed.department.category,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyText2
+                                .copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                            feed.department.areaOfAdministration +
+                                ", " +
+                                feed.feedInfo.creationDateTimeStamp
+                                    .toIso8601String()
+                                    .substring(11, 16),
+                            style: Theme.of(context).textTheme.bodyText1),
+                      ],
+                    ),
+                  ),
+                ] +
+                <Widget>[
+                  TitleBox(feed.feedInfo.title, isFirstTitle: true),
+                  ContentBox(feed.feedInfo.description),
+                ] +
+                List<Widget>.generate(content.length, (i) {
+                  if (content[i].containsKey('title')) {
+                    String title = content[i]['title'];
+                    return TitleBox(title);
+                  } else if (content[i].containsKey('content')) {
+                    String data = content[i]['content'];
+                    return ContentBox(data);
+                  } else if (content[i].containsKey('pictureUrl')) {
+                    String pictureUrl = content[i]['pictureUrl'];
+                    bool isLocal = content[i]['isLocal'] ?? false;
+                    return PictureBox(pictureUrl, isLocal);
+                  } else if (content[i].containsKey('coords')) {
+                    return MapBox(content[i]['coords']);
+                  } else if (content[i].containsKey('table')) {
+                    TableData t = new TableData();
+
+                    var rows =
+                        MyCsvParser.parser(content[i]['table'].toString());
+                    t.headers = rows[0];
+                    t.contents = [];
+                    for (int i = 1; i < rows.length; i++) {
+                      t.contents.add(rows[i]);
+                    }
+                    return TableBox(t);
+                  } else {
+                    return SizedBox();
+                  }
+                }) +
+                <Widget>[
+                  SizedBox(
+                    height: 15,
+                  ),
+                ],
+          ),
         ),
       ),
     );
